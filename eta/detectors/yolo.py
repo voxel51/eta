@@ -32,7 +32,7 @@ import eta.core.tfutils as etat
 import eta.core.utils as etau
 
 
-_ensure_tf1 = lambda: etau.ensure_package("tensorflow<2")
+_ensure_tf1 = lambda: etau.ensure_import("tensorflow<2")
 tf = etau.lazy_import("tensorflow", callback=_ensure_tf1)
 
 _ERROR_MSG = "You must run `eta install darkflow` in order to use this model"

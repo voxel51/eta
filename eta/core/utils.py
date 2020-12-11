@@ -611,10 +611,14 @@ def install_package(requirement_str, error_level=0):
 
 
 def ensure_package(requirement_str, error_level=0):
-    """Ensures that the given package is installed on the host machine.
+    """Ensures that the given package is installed.
 
     This function uses `pkg_resources.get_distribution` to locate the package
     by its pip name and does not actually import the module.
+
+    Therefore, unlike `ensure_import()`, `requirement_str` should refer to the
+    package name (e.g., "tensorflow-gpu"), not the module name
+    (e.g., "tensorflow").
 
     Args:
         requirement_str: a PEP 440 compliant package requirement, like
@@ -632,6 +636,39 @@ def ensure_package(requirement_str, error_level=0):
         version = pkg_resources.get_distribution(req.name).version
         error = None
     except pkg_resources.DistributionNotFound as e:
+        version = None
+        error = e
+
+    _ensure_requirement(req, version, error_level, error=error)
+
+
+def ensure_import(requirement_str, error_level=0):
+    """Ensures that the given package is installed and importable.
+
+    This function imports the module the specified name and optionally enforces
+    any version requirements included in `requirement_str`.
+
+    Therefore, unlike `ensure_package()`, `requirement_str` should refer to the
+    module name (e.g., "tensorflow"), not the package name (e.g.,
+    "tensorflow-gpu").
+
+    Args:
+        requirement_str: a PEP 440-like module requirement, like "tensorflow",
+            "tensorflow<2", "tensorflow==2.3.0", or "tensorflow>=1.13,<1.15"
+        error_level: the error level to use, defined as:
+
+            0: raise error if requirement is not satisfied
+            1: log warning if requirement is not satisifed
+            2: ignore unsatisifed requirements
+    """
+    req = Requirement(requirement_str)
+
+    try:
+        # @todo not all modules have `__version__`
+        mod = importlib.import_module(req.name)
+        version = mod.__version__
+        error = None
+    except ImportError as e:
         version = None
         error = e
 
