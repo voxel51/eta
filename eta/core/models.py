@@ -904,6 +904,7 @@ class Model(Serializable):
             `eta.core.learning.ModelConfig` describing the recommended settings
             for deploying the model
         requirements: the ModelRequirements for the model (if any)
+        tags: a list of tags for the model (if any)
         date_created: the datetime that the model was created (if any)
     """
 
@@ -916,6 +917,7 @@ class Model(Serializable):
         description=None,
         default_deployment_config_dict=None,
         requirements=None,
+        tags=None,
         date_created=None,
     ):
         """Creates a Model instance.
@@ -930,6 +932,7 @@ class Model(Serializable):
                 representation of an `eta.core.learning.ModelConfig` describing
                 the recommended settings for deploying the model
             requirements: (optional) a ModelRequirements for the model
+            tags: (optional) a list of tags for the model
             date_created: (optional) the datetime that the model was created
         """
         self.base_name = base_name
@@ -939,6 +942,7 @@ class Model(Serializable):
         self.description = description
         self.default_deployment_config_dict = default_deployment_config_dict
         self.requirements = requirements
+        self.tags = tags
         self.date_created = date_created
 
     @property
@@ -997,6 +1001,25 @@ class Model(Serializable):
             return None
 
         return self.requirements.supports_gpu
+
+    @property
+    def has_tags(self):
+        """Whether this model has tags."""
+        return self.tags is not None
+
+    def has_tag(self, tag):
+        """Whether this model has the given tag.
+
+        Args:
+            tag: a tag
+
+        Returns:
+            True/False
+        """
+        if not self.has_tags:
+            return False
+
+        return tag in self.tags
 
     def install_requirements(self, error_level=0):
         """Installs any necessary requirement(s) for this model.
@@ -1182,6 +1205,7 @@ class Model(Serializable):
             "manager",
             "default_deployment_config_dict",
             "requirements",
+            "tags",
             "date_created",
         ]
 
@@ -1201,6 +1225,8 @@ class Model(Serializable):
         if requirements is not None:
             requirements = ModelRequirements.from_dict(requirements)
 
+        tags = d.get("tags", None)
+
         date_created = etau.parse_isotime(d.get("date_created"))
 
         return cls(
@@ -1213,6 +1239,7 @@ class Model(Serializable):
                 "default_deployment_config_dict", None
             ),
             requirements=requirements,
+            tags=tags,
             date_created=date_created,
         )
 
