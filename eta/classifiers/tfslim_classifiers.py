@@ -61,7 +61,7 @@ _DEFAULT_FEATURES_NAMES = {
     "resnet_v1_50": "resnet_v1_50/pool5",
     "resnet_v2_50": "resnet_v2_50/pool5",
     "mobilenet_v2": "MobilenetV2/Logits/AvgPool",
-    "inception_v4": "InceptionV4/Logits/PreLogitsFlatten/flatten",
+    "inception_v4": "InceptionV4/Logits/PreLogitsFlatten/flatten/Reshape",
     "inception_resnet_v2": "InceptionResnetV2/Logits/Dropout/Identity",
 }
 
@@ -364,6 +364,7 @@ class TFSlimClassifier(
         # Save data, if necessary
         if self.exposes_features:
             self._last_features = features  # n x features_dim
+
         self._last_probs = probs  # n x 1 x num_classes
 
         return predictions
