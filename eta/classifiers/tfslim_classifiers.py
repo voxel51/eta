@@ -33,11 +33,15 @@ import eta.core.utils as etau
 
 sys.path.insert(1, etac.TF_SLIM_DIR)
 
+
 _ensure_tf1 = lambda: etau.ensure_package("tensorflow<2")
 tf = etau.lazy_import("tensorflow", callback=_ensure_tf1)
 
-pf = etau.lazy_import("preprocessing.preprocessing_factory")
-nf = etau.lazy_import("nets.nets_factory")
+_ERROR_MSG = "You must run `eta install models` in order to use this model"
+pf = etau.lazy_import(
+    "preprocessing.preprocessing_factory", error_msg=_ERROR_MSG
+)
+nf = etau.lazy_import("nets.nets_factory", error_msg=_ERROR_MSG)
 
 
 logger = logging.getLogger(__name__)

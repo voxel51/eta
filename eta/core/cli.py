@@ -86,6 +86,7 @@ class ETACommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "install", InstallCommand)
         _register_command(subparsers, "build", BuildCommand)
         _register_command(subparsers, "run", RunCommand)
         _register_command(subparsers, "clean", CleanCommand)
@@ -104,6 +105,76 @@ class ETACommand(Command):
     @staticmethod
     def execute(parser, args):
         parser.print_help()
+
+
+class InstallCommand(Command):
+    """Run ETA install scripts.
+
+    Examples:
+        # List available scripts
+        eta install --list
+
+        # Run an install script
+        eta install <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-l",
+            "--list",
+            action="store_true",
+            help="list the available scripts",
+        )
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            nargs="?",
+            help="the install script to run",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        _INSTALL_SCRIPTS = {
+            "automl": (
+                os.path.join(etac.TENSORFLOW_DIR, "install_automl.bash"),
+                os.path.join(etac.TENSORFLOW_DIR, "automl"),
+            ),
+            "darkflow": (
+                os.path.join(etac.TENSORFLOW_DIR, "install_darkflow.bash"),
+                os.path.join(etac.TENSORFLOW_DIR, "darkflow"),
+            ),
+            "models": (
+                os.path.join(etac.TENSORFLOW_DIR, "install_models.bash"),
+                os.path.join(etac.TENSORFLOW_DIR, "models"),
+            ),
+        }
+
+        if args.list or not args.name:
+            _print_install_table(_INSTALL_SCRIPTS)
+
+        if args.name:
+            if args.name not in _INSTALL_SCRIPTS:
+                print("Script '%s' not found" % args.name)
+                return
+
+            script_path = _INSTALL_SCRIPTS[args.name][0]
+            etau.call(["bash", script_path])
+
+
+def _print_install_table(d):
+    records = []
+    for name in sorted(d):
+        script_path, install_dir = d[name]
+        installed = "\u2713" if os.path.isdir(install_dir) else ""
+        records.append((name, installed, script_path))
+
+    table_str = tabulate(
+        records,
+        headers=["name", "installed", "script"],
+        tablefmt=_TABLE_FORMAT,
+    )
+    print(table_str)
 
 
 class BuildCommand(Command):

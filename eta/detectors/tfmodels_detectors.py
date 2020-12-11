@@ -43,7 +43,10 @@ def _setup():
 _ensure_tf1 = lambda: etau.ensure_package("tensorflow<2")
 tf = etau.lazy_import("tensorflow", callback=_ensure_tf1)
 
-gool = etau.lazy_import("label_map_util", callback=_ensure_tf1)
+_ERROR_MSG = "You must run `eta install models` in order to use this model"
+gool = etau.lazy_import(
+    "label_map_util", callback=_ensure_tf1, error_msg=_ERROR_MSG
+)
 
 
 logger = logging.getLogger(__name__)

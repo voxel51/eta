@@ -37,18 +37,6 @@ import eta.core.utils as etau
 from .utils import reset_path
 
 
-_ERROR_MSG = """
-
-You must clone a GitHub repository in order to use this model:
-
-mkdir -p '{0}'
-git clone https://github.com/voxel51/automl '{0}'
-
-""".format(
-    etac.AUTOML_DIR
-)
-
-
 def _setup():
     reset_path()
     sys.path.insert(1, etac.EFFICIENTDET_DIR)
@@ -57,6 +45,7 @@ def _setup():
 _ensure_tf1 = lambda: etau.ensure_package("tensorflow>=1.14,<2")
 tf = etau.lazy_import("tensorflow", callback=_ensure_tf1)
 
+_ERROR_MSG = "You must run `eta install automl` in order to use this model"
 efficientdet_arch = etau.lazy_import("efficientdet_arch", error_msg=_ERROR_MSG)
 hparams_config = etau.lazy_import("hparams_config", error_msg=_ERROR_MSG)
 inference = etau.lazy_import("inference", error_msg=_ERROR_MSG)

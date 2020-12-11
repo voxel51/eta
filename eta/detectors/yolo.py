@@ -32,22 +32,10 @@ import eta.core.tfutils as etat
 import eta.core.utils as etau
 
 
-_ERROR_MSG = """
-
-You must clone and install a repository in order to use this model:
-
-mkdir -p '{0}'
-git clone https://github.com/voxel51/darkflow '{0}'
-pip install -e '{0}'
-
-""".format(
-    etac.DARKFLOW_DIR
-)
-
-
 _ensure_tf1 = lambda: etau.ensure_package("tensorflow<2")
 etau.lazy_import("tensorflow", callback=_ensure_tf1)
 
+_ERROR_MSG = "You must run `eta install darkflow` in order to use this model"
 dnb = etau.lazy_import("darkflow.net.build", error_msg=_ERROR_MSG)
 
 
