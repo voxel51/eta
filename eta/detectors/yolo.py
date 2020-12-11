@@ -91,7 +91,10 @@ class YOLODetector(etal.ObjectDetector):
         model_path = self.config.model_path
 
         # Get GPU usage
-        gpu = _get_gpu_usage()
+        try:
+            gpu = _get_gpu_usage()
+        except:
+            gpu = 1.0
 
         # Block logging and warnings that we don't care about
         with etau.CaptureStdout():
