@@ -11,4 +11,10 @@ echo "Updating submodule tensorflow/automl"
 cd "${ETA_DIR}"
 git submodule update --init tensorflow/automl
 
+echo "Installing pycocotools"
+git clone https://github.com/cocodataset/cocoapi
+make --directory=cocoapi/PythonAPI
+cp -r cocoapi/PythonAPI/pycocotools tensorflow/automl/efficientdet
+rm -rf cocoapi
+
 echo "Installation complete"

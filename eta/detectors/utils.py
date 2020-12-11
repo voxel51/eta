@@ -20,6 +20,11 @@ def reset_path():
         pass
 
     try:
+        sys.path.remove(etac.TF_RESEARCH_DIR)
+    except ValueError:
+        pass
+
+    try:
         sys.path.remove(os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
     except ValueError:
         pass

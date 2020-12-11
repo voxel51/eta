@@ -37,6 +37,8 @@ from .utils import reset_path
 
 def _setup():
     reset_path()
+
+    sys.path.insert(1, etac.TF_RESEARCH_DIR)
     sys.path.insert(1, os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
 
 

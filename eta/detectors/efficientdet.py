@@ -39,6 +39,7 @@ from .utils import reset_path
 
 def _setup():
     reset_path()
+
     sys.path.insert(1, etac.EFFICIENTDET_DIR)
 
 
