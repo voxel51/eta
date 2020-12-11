@@ -45,6 +45,7 @@ import numbers
 import os
 from packaging.requirements import Requirement
 import patoolib
+import pkg_resources
 import pytz
 import random
 import re
@@ -612,6 +613,9 @@ def install_package(requirement_str, error_level=0):
 def ensure_package(requirement_str, error_level=0):
     """Ensures that the given package is installed on the host machine.
 
+    This function uses `pkg_resources.get_distribution` to locate the package
+    by its pip name and does not actually import the module.
+
     Args:
         requirement_str: a PEP 440 compliant package requirement, like
             "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
@@ -625,18 +629,17 @@ def ensure_package(requirement_str, error_level=0):
     req = Requirement(requirement_str)
 
     try:
-        pkg = importlib.import_module(req.name)
-        version = pkg.__version__
-        import_error = None
-    except ImportError as e:
+        version = pkg_resources.get_distribution(req.name).version
+        error = None
+    except pkg_resources.DistributionNotFound as e:
         version = None
-        import_error = e
+        error = e
 
-    _ensure_requirement(req, version, error_level, import_error=import_error)
+    _ensure_requirement(req, version, error_level, error=error)
 
 
 def _ensure_requirement(
-    req, version, error_level, error_cls=ImportError, import_error=None
+    req, version, error_level, error_cls=ImportError, error=None
 ):
     if version is None:
         handle_error(
@@ -645,7 +648,7 @@ def _ensure_requirement(
                 "your machine" % str(req)
             ),
             error_level,
-            import_error,
+            error,
         )
 
     if not req.specifier.contains(version):
