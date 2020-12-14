@@ -687,8 +687,7 @@ def _ensure_requirement(
             error_level,
             error,
         )
-
-    if not req.specifier.contains(version):
+    elif not req.specifier.contains(version):
         handle_error(
             error_cls(
                 "The requested operation requires that '%s' is installed "
