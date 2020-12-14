@@ -1315,6 +1315,10 @@ class ProgressBar(object):
         if self._total is None:
             self._show_remaining_time = False
 
+        # When tracking iterators, the iteration isn't complete until the next
+        # element is emitted, so progress should be delayed by 1
+        self._iteration = -1
+
         self._iterator = iter(iterable)
         return self
 
@@ -1331,6 +1335,9 @@ class ProgressBar(object):
         try:
             val = next(self._iterator)
         except StopIteration:
+            # Update once more so progress reaches 100%
+            self.update(draw=False)
+
             self.close(None, None, None)
             raise
 
