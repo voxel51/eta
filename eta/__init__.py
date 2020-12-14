@@ -62,13 +62,11 @@ class ETAConfig(EnvConfig):
         )
         self.tf_config = self.parse_dict(d, "tf_config", default={})
         self.patterns = self.parse_dict(d, "patterns", default={})
-        self.max_model_versions_to_keep = int(
-            self.parse_number(
-                d,
-                "max_model_versions_to_keep",
-                env_var="ETA_MAX_MODEL_VERSIONS_TO_KEEP",
-                default=-1,
-            )
+        self.max_model_versions_to_keep = self.parse_int(
+            d,
+            "max_model_versions_to_keep",
+            env_var="ETA_MAX_MODEL_VERSIONS_TO_KEEP",
+            default=-1,
         )
         self.allow_model_downloads = self.parse_bool(
             d,

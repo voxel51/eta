@@ -548,14 +548,14 @@ def register_model(name, base_filename, models_dir, manager, description=None):
     # Create model
     logger.info("Creating a new model '%s'", name)
     base_name, version = Model.parse_name(name)
-    date_created = etau.get_localtime()
+    date_added = etau.get_localtime()
     model = Model(
         base_name,
         base_filename,
         manager,
         version=version,
         description=description,
-        date_created=date_created,
+        date_added=date_added,
     )
 
     # Initialize models directory, if necessary
@@ -904,7 +904,8 @@ class Model(Serializable):
             `eta.core.learning.ModelConfig` describing the recommended settings
             for deploying the model
         requirements: the ModelRequirements for the model (if any)
-        date_created: the datetime that the model was created (if any)
+        tags: a list of tags for the model (if any)
+        date_added: the datetime that the model was added (if any)
     """
 
     def __init__(
@@ -916,7 +917,8 @@ class Model(Serializable):
         description=None,
         default_deployment_config_dict=None,
         requirements=None,
-        date_created=None,
+        tags=None,
+        date_added=None,
     ):
         """Creates a Model instance.
 
@@ -930,7 +932,8 @@ class Model(Serializable):
                 representation of an `eta.core.learning.ModelConfig` describing
                 the recommended settings for deploying the model
             requirements: (optional) a ModelRequirements for the model
-            date_created: (optional) the datetime that the model was created
+            tags: (optional) a list of tags for the model
+            date_added: (optional) the datetime that the model was created
         """
         self.base_name = base_name
         self.base_filename = base_filename
@@ -939,7 +942,8 @@ class Model(Serializable):
         self.description = description
         self.default_deployment_config_dict = default_deployment_config_dict
         self.requirements = requirements
-        self.date_created = date_created
+        self.tags = tags
+        self.date_added = date_added
 
     @property
     def name(self):
@@ -997,6 +1001,25 @@ class Model(Serializable):
             return None
 
         return self.requirements.supports_gpu
+
+    @property
+    def has_tags(self):
+        """Whether this model has tags."""
+        return self.tags is not None
+
+    def has_tag(self, tag):
+        """Whether this model has the given tag.
+
+        Args:
+            tag: a tag
+
+        Returns:
+            True/False
+        """
+        if not self.has_tags:
+            return False
+
+        return tag in self.tags
 
     def install_requirements(self, error_level=0):
         """Installs any necessary requirement(s) for this model.
@@ -1182,7 +1205,8 @@ class Model(Serializable):
             "manager",
             "default_deployment_config_dict",
             "requirements",
-            "date_created",
+            "tags",
+            "date_added",
         ]
 
     @classmethod
@@ -1201,7 +1225,9 @@ class Model(Serializable):
         if requirements is not None:
             requirements = ModelRequirements.from_dict(requirements)
 
-        date_created = etau.parse_isotime(d.get("date_created"))
+        tags = d.get("tags", None)
+
+        date_added = etau.parse_isotime(d.get("date_added"))
 
         return cls(
             d["base_name"],
@@ -1213,7 +1239,8 @@ class Model(Serializable):
                 "default_deployment_config_dict", None
             ),
             requirements=requirements,
-            date_created=date_created,
+            tags=tags,
+            date_added=date_added,
         )
 
 

@@ -29,7 +29,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "date_added": "2018-06-23T23:17:26"
         },
         {
             "base_name": "efficientdet-d0-coco",
@@ -62,7 +62,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "date_added": "2020-03-22 21:44:00"
         },
         {
             "base_name": "efficientdet-d1-coco",
@@ -95,7 +95,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "date_added": "2020-03-22 21:44:00"
         },
         {
             "base_name": "efficientdet-d2-coco",
@@ -128,7 +128,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "date_added": "2020-03-22 21:44:00"
         },
         {
             "base_name": "efficientdet-d3-coco",
@@ -161,7 +161,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "date_added": "2020-03-22 21:44:00"
         },
         {
             "base_name": "efficientdet-d4-coco",
@@ -194,7 +194,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "date_added": "2020-03-22 21:44:00"
         },
         {
             "base_name": "efficientdet-d5-coco",
@@ -227,7 +227,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "date_added": "2020-03-22 21:44:00"
         },
         {
             "base_name": "efficientdet-d6-coco",
@@ -260,7 +260,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "date_added": "2020-03-22 21:44:00"
         },
         {
             "base_name": "faster-rcnn-inception-v2-coco",
@@ -290,7 +290,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "date_added": "2019-12-17 08:25:51"
         },
         {
             "base_name": "faster-rcnn-nas-coco",
@@ -320,7 +320,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-18 12:07:00"
+            "date_added": "2019-12-18 12:07:00"
         },
         {
             "base_name": "faster-rcnn-nas-lowproposals-coco",
@@ -350,7 +350,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-18 12:07:00"
+            "date_added": "2019-12-18 12:07:00"
         },
         {
             "base_name": "faster-rcnn-resnet50-coco",
@@ -380,7 +380,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "date_added": "2019-12-17 08:25:51"
         },
         {
             "base_name": "faster-rcnn-resnet50-lowproposals-coco",
@@ -410,7 +410,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "date_added": "2019-12-17 08:25:51"
         },
         {
             "base_name": "faster-rcnn-resnet101-coco",
@@ -440,7 +440,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "date_added": "2019-12-17 08:25:51"
         },
         {
             "base_name": "faster-rcnn-resnet101-lowproposals-coco",
@@ -470,7 +470,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "date_added": "2019-12-17 08:25:51"
         },
         {
             "base_name": "faster-rcnn-inception-resnet-atrous-v2-coco",
@@ -500,7 +500,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "date_added": "2019-12-17 08:25:51"
         },
         {
             "base_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco",
@@ -530,7 +530,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "date_added": "2019-12-17 08:25:51"
         },
         {
             "base_name": "inception-resnet-v2-imagenet",
@@ -562,7 +562,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-05-23 13:38:22"
+            "date_added": "2019-05-23 13:38:22"
         },
         {
             "base_name": "inception-v4-imagenet",
@@ -594,7 +594,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-05-23 13:42:33"
+            "date_added": "2019-05-23 13:42:33"
         },
         {
             "base_name": "mask-rcnn-inception-resnet-v2-atrous-coco",
@@ -615,7 +615,7 @@
                     "mask_thresh": 0.5
                 }
             },
-            "date_created": "2019-12-10 12:07:51"
+            "date_added": "2019-12-10 12:07:51"
         },
         {
             "base_name": "mask-rcnn-inception-v2-coco",
@@ -636,7 +636,7 @@
                     "mask_thresh": 0.5
                 }
             },
-            "date_created": "2019-12-10 12:07:51"
+            "date_added": "2019-12-10 12:07:51"
         },
         {
             "base_name": "mask-rcnn-resnet50-atrous-coco",
@@ -657,7 +657,7 @@
                     "mask_thresh": 0.5
                 }
             },
-            "date_created": "2019-12-10 12:07:51"
+            "date_added": "2019-12-10 12:07:51"
         },
         {
             "base_name": "mask-rcnn-resnet101-atrous-coco",
@@ -678,7 +678,7 @@
                     "mask_thresh": 0.5
                 }
             },
-            "date_created": "2019-12-10 12:07:51"
+            "date_added": "2019-12-10 12:07:51"
         },
         {
             "base_name": "mobilenet-v2-imagenet",
@@ -710,7 +710,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-05-23 11:43:51"
+            "date_added": "2019-05-23 11:43:51"
         },
         {
             "base_name": "resnet-v1-50-imagenet",
@@ -742,7 +742,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-05-23 13:49:04"
+            "date_added": "2019-05-23 13:49:04"
         },
         {
             "base_name": "resnet-v2-50-imagenet",
@@ -774,7 +774,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-05-23 12:19:17"
+            "date_added": "2019-05-23 12:19:17"
         },
         {
             "base_name": "rfcn-resnet101-coco",
@@ -804,7 +804,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2018-12-23 14:37:47"
+            "date_added": "2018-12-23 14:37:47"
         },
         {
             "base_name": "ssd-inception-v2-coco",
@@ -834,7 +834,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2018-12-23 14:34:09"
+            "date_added": "2018-12-23 14:34:09"
         },
         {
             "base_name": "ssd-resnet50-fpn-coco",
@@ -864,7 +864,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-04-11 12:01:29"
+            "date_added": "2019-04-11 12:01:29"
         },
         {
             "base_name": "ssd-mobilenet-v1-coco",
@@ -894,7 +894,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2018-12-23 14:34:05"
+            "date_added": "2018-12-23 14:34:05"
         },
         {
             "base_name": "ssd-mobilenet-v1-fpn-coco",
@@ -924,7 +924,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-04-11 12:25:44"
+            "date_added": "2019-04-11 12:25:44"
         },
         {
             "base_name": "deeplabv3-cityscapes",
@@ -947,7 +947,7 @@
                     "output_name": "SemanticPredictions"
                 }
             },
-            "date_created": "2020-12-10 12:07:51"
+            "date_added": "2020-12-10 12:07:51"
         },
         {
             "base_name": "deeplabv3-mnv2-cityscapes",
@@ -970,7 +970,7 @@
                     "output_name": "SemanticPredictions"
                 }
             },
-            "date_created": "2020-12-10 12:07:51"
+            "date_added": "2020-12-10 12:07:51"
         },
         {
             "base_name": "vgg16-imagenet",
@@ -991,7 +991,7 @@
                     "labels_path": "{{eta-resources}}/vgg16-imagenet-labels.txt"
                 }
             },
-            "date_created": "2018-06-20 17:35:53"
+            "date_added": "2018-06-20 17:35:53"
         },
         {
             "base_name": "c3d-ucf101",
@@ -1005,7 +1005,7 @@
                 "type": "eta.core.models.ETAModelManager"
             },
             "default_deployment_config_dict": null,
-            "date_created": "2018-06-27 17:00:45"
+            "date_added": "2018-06-27 17:00:45"
         }
     ]
 }

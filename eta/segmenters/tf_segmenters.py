@@ -22,7 +22,7 @@ import logging
 
 import numpy as np
 
-from eta.core.config import Config, ConfigError
+from eta.core.config import Config
 import eta.core.data as etad
 import eta.core.image as etai
 import eta.core.learning as etal
@@ -87,9 +87,6 @@ class TFSemanticSegmenter(
 
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
     it automatically applies settings in your `eta.config.tf_config`.
-
-    Instances of this class must either use the context manager interface or
-    manually call `close()` when finished to release memory.
     """
 
     def __init__(self, config):
@@ -106,9 +103,8 @@ class TFSemanticSegmenter(
         model_path = self.config.model_path
 
         # Load model
-        logger.debug("Loading graph from '%s'", model_path)
         self._graph = etat.load_graph(model_path)
-        self._sess = self.make_tf_session(graph=self._graph)
+        self._sess = None
 
         # Load labels
         self._labels_map = None
@@ -116,9 +112,7 @@ class TFSemanticSegmenter(
             self._labels_map = etal.load_labels_map(self.config.labels_path)
 
         # Setup preprocessing
-        self._preprocessing_fcn = None
-        if self.config.preprocessing_fcn:
-            self._make_preprocessing_fcn(self.config.preprocessing_fcn)
+        self._transforms = self._make_preprocessing(config)
 
         # Get operations
         self._input_op = self._graph.get_operation_by_name(
@@ -129,10 +123,26 @@ class TFSemanticSegmenter(
         )
 
     def __enter__(self):
+        self._sess = self.make_tf_session(graph=self._graph)
         return self
 
     def __exit__(self, *args):
         self.close()
+
+    @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`segment_all` is not allowed.
+        """
+        return True  # no guarantees on preprocessing output sizes
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before segmentation, or ``None`` if no preprocessing is performed.
+        """
+        return self._transforms
 
     @property
     def exposes_mask_index(self):
@@ -176,7 +186,7 @@ class TFSemanticSegmenter(
         return self._segment(imgs)
 
     def _segment(self, imgs):
-        imgs = self._preprocess(imgs)
+        imgs = self._preprocess_batch(imgs)
 
         masks = self._evaluate(imgs, [self._output_op])[0]
 
@@ -187,15 +197,9 @@ class TFSemanticSegmenter(
         masks = np.asarray(masks, dtype=np.uint8)
         return [etai.ImageLabels(mask=mask) for mask in masks]
 
-    def _preprocess(self, imgs):
-        if self.config.resize_to_max_dim is not None:
-            imgs = [
-                etai.resize_to_fit_max(img, self.config.resize_to_max_dim)
-                for img in imgs
-            ]
-
-        if self._preprocessing_fcn is not None:
-            imgs = self._preprocessing_fcn(imgs)
+    def _preprocess_batch(self, imgs):
+        if self._transforms is not None:
+            imgs = [self._transforms(img) for img in imgs]
 
         return imgs
 
@@ -204,6 +208,19 @@ class TFSemanticSegmenter(
         out_tensors = [op.outputs[0] for op in ops]
         return self._sess.run(out_tensors, feed_dict={in_tensor: imgs})
 
-    def _make_preprocessing_fcn(self, preprocessing_fcn):
-        logger.debug("Using preprocessing function '%s'", preprocessing_fcn)
-        self._preprocessing_fcn = etau.get_function(preprocessing_fcn)
+    def _make_preprocessing(self, config):
+        if self.config.resize_to_max_dim is not None:
+            transform = lambda img: etai.resize_to_fit_max(
+                img, config.resize_to_max_dim
+            )
+        else:
+            transform = None
+
+        if config.preprocessing_fcn:
+            user_fcn = etau.get_function(config.preprocessing_fcn)
+            if transform is not None:
+                transform = lambda img: user_fcn(transform(img))
+            else:
+                transform = lambda img: user_fcn(img)
+
+        return transform

@@ -56,9 +56,6 @@ class VGG16Classifier(
     etal.ImageClassifier, etal.ExposesFeatures, etal.ExposesProbabilities
 ):
     """Interface for evaluating an `eta.core.vgg16.VGG16` instance on images.
-
-    Instances of this class must either use the context manager interface or
-    manually call `close()` when finished to release memory.
     """
 
     def __init__(self, config):
@@ -77,15 +74,11 @@ class VGG16Classifier(
         self._last_probs = None
 
     def __enter__(self):
+        self._vgg16.__enter__()
         return self
 
     def __exit__(self, *args):
-        self.close()
-
-    def close(self):
-        """Closes the session and releases any memory."""
-        self._vgg16.close()
-        self._vgg16 = None
+        self._vgg16.__exit__(*args)
 
     @property
     def is_multilabel(self):
@@ -93,6 +86,21 @@ class VGG16Classifier(
         labels (True) per prediction.
         """
         return False
+
+    @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`predict_all` is not allowed.
+        """
+        return False
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before prediction, or `None` if no preprocessing is performed.
+        """
+        return VGG16.preprocess_image
 
     @property
     def exposes_features(self):
@@ -176,7 +184,7 @@ class VGG16Classifier(
 
     def _predict(self, imgs):
         # Perform preprocessing
-        imgs = [VGG16.preprocess_image(img) for img in imgs]
+        imgs = self._preprocess_batch(imgs)
 
         # Perform inference
         if self.exposes_features:
@@ -197,6 +205,9 @@ class VGG16Classifier(
         self._last_probs = probs[:, np.newaxis, :]  # n x 1 x num_classes
 
         return predictions
+
+    def _preprocess_batch(self, imgs):
+        return [self.transforms(img) for img in imgs]
 
     def _parse_prediction(self, probs):
         idx = np.argmax(probs)

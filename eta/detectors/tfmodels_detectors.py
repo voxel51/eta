@@ -22,8 +22,10 @@ import logging
 import os
 import sys
 
+import numpy as np
+
 import eta.constants as etac
-from eta.core.config import Config, ConfigError
+from eta.core.config import Config
 from eta.core.geometry import BoundingBox
 import eta.core.learning as etal
 from eta.core.objects import DetectedObject, DetectedObjectContainer
@@ -35,13 +37,18 @@ from .utils import reset_path
 
 def _setup():
     reset_path()
+
+    sys.path.insert(1, etac.TF_RESEARCH_DIR)
     sys.path.insert(1, os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
 
 
-_ensure_tf1 = lambda: etau.ensure_package("tensorflow<2")
+_ensure_tf1 = lambda: etau.ensure_import("tensorflow<2")
 tf = etau.lazy_import("tensorflow", callback=_ensure_tf1)
 
-gool = etau.lazy_import("label_map_util", callback=_ensure_tf1)
+_ERROR_MSG = "You must run `eta install models` in order to use this model"
+gool = etau.lazy_import(
+    "label_map_util", callback=_ensure_tf1, error_msg=_ERROR_MSG
+)
 
 
 logger = logging.getLogger(__name__)
@@ -143,9 +150,6 @@ class TFModelsDetector(
     Zoo must be re-exported in order for this node to be populated
     (https://stackoverflow.com/a/57536793). Unfortunately, as of December 2019,
     this re-export process only seemed to work for Faster R-CNN models.
-
-    Instances of this class must either use the context manager interface or
-    manually call `close()` when finished to release memory.
     """
 
     def __init__(self, config):
@@ -162,9 +166,8 @@ class TFModelsDetector(
         model_path = self.config.model_path
 
         # Load model
-        logger.debug("Loading graph from '%s'", model_path)
         self._graph = etat.load_graph(model_path)
-        self._sess = self.make_tf_session(graph=self._graph)
+        self._sess = None
 
         # Load labels
         self._category_index, self._class_labels = _parse_labels_map(
@@ -202,10 +205,26 @@ class TFModelsDetector(
         self._last_probs = None
 
     def __enter__(self):
+        self._sess = self.make_tf_session(graph=self._graph)
         return self
 
     def __exit__(self, *args):
         self.close()
+
+    @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`detect_all` is not allowed.
+        """
+        return True
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before detection, or ``None`` if no preprocessing is performed.
+        """
+        return None
 
     @property
     def exposes_features(self):
@@ -278,7 +297,7 @@ class TFModelsDetector(
             an `eta.core.objects.DetectedObjectContainer` describing the
                 detections
         """
-        return self._detect([img])[0]
+        return self._detect_all([img])[0]
 
     def detect_all(self, imgs):
         """Performs detection on the given tensor of images.
@@ -290,9 +309,9 @@ class TFModelsDetector(
             a list of `eta.core.objects.DetectedObjectContainer`s describing
                 the detections
         """
-        return self._detect(imgs)
+        return self._detect_all(imgs)
 
-    def _detect(self, imgs):
+    def _detect_all(self, imgs):
         output_ops = [self._boxes_op, self._scores_op, self._classes_op]
 
         if self.exposes_features and self.exposes_probabilities:
@@ -328,7 +347,7 @@ class TFModelsDetector(
                     classj in self._category_index
                     and scorej > self.config.confidence_thresh
                 ):
-                    # Construct DetectecObject for detection
+                    # Construct DetectedObject for detection
                     keep.append(j)
                     obj = _to_detected_object(
                         boxj, scorej, classj, self._category_index
@@ -470,9 +489,6 @@ class TFModelsInstanceSegmenter(
     Zoo must be re-exported in order for this node to be populated
     (https://stackoverflow.com/a/57536793). Unfortunately, as of December 2019,
     this re-export process only seemed to work for Faster R-CNN models.
-
-    Instances of this class must either use the context manager interface or
-    manually call `close()` when finished to release memory.
     """
 
     def __init__(self, config):
@@ -489,9 +505,8 @@ class TFModelsInstanceSegmenter(
         model_path = self.config.model_path
 
         # Load model
-        logger.debug("Loading graph from '%s'", model_path)
         self._graph = etat.load_graph(model_path)
-        self._sess = self.make_tf_session(graph=self._graph)
+        self._sess = None
 
         # Load labels
         self._category_index, self._class_labels = _parse_labels_map(
@@ -532,10 +547,26 @@ class TFModelsInstanceSegmenter(
         self._last_probs = None
 
     def __enter__(self):
+        self._sess = self.make_tf_session(graph=self._graph)
         return self
 
     def __exit__(self, *args):
         self.close()
+
+    @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`detect_all` is not allowed.
+        """
+        return True
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before detection, or ``None`` if no preprocessing is performed.
+        """
+        return None
 
     @property
     def exposes_features(self):
@@ -608,7 +639,7 @@ class TFModelsInstanceSegmenter(
             an `eta.core.objects.DetectedObjectContainer` describing the
                 detections
         """
-        return self._detect([img])[0]
+        return self._detect_all([img])[0]
 
     def detect_all(self, imgs):
         """Performs detection on the given tensor of images.
@@ -620,9 +651,9 @@ class TFModelsInstanceSegmenter(
             a list of `eta.core.objects.DetectedObjectContainer`s describing
                 the detections
         """
-        return self._detect(imgs)
+        return self._detect_all(imgs)
 
-    def _detect(self, imgs):
+    def _detect_all(self, imgs):
         output_ops = [
             self._boxes_op,
             self._scores_op,

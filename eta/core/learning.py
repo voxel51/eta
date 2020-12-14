@@ -485,6 +485,21 @@ class ImageClassifier(Classifier):
     that featurizes the input images.
     """
 
+    @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`predict_all` is not allowed.
+        """
+        raise NotImplementedError("subclasses must implement ragged_batches")
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before prediction, or ``None`` if no preprocessing is performed.
+        """
+        raise NotImplementedError("subclasses must implement transforms")
+
     def predict(self, img):
         """Peforms prediction on the given image.
 
@@ -666,6 +681,21 @@ class ObjectDetector(Detector):
     perform any necessary setup and teardown, e.g., operating a `Featurizer`
     that featurizes the input images.
     """
+
+    @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`detect_all` is not allowed.
+        """
+        raise NotImplementedError("subclasses must implement ragged_batches")
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before detection, or ``None`` if no preprocessing is performed.
+        """
+        raise NotImplementedError("subclasses must implement transforms")
 
     def detect(self, img):
         """Detects objects in the given image.
@@ -881,6 +911,21 @@ class ImageSemanticSegmenter(SemanticSegmenter):
     perform any necessary setup and teardown, e.g., operating a `Featurizer`
     that featurizes the input images.
     """
+
+    @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`segment_all` is not allowed.
+        """
+        raise NotImplementedError("subclasses must implement ragged_batches")
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before segmentation, or ``None`` if no preprocessing is performed.
+        """
+        raise NotImplementedError("subclasses must implement transforms")
 
     def segment(self, img):
         """Peforms segmentation on the given image.

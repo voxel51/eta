@@ -24,7 +24,7 @@ import sys
 import numpy as np
 
 import eta.constants as etac
-from eta.core.config import Config, ConfigError
+from eta.core.config import Config
 import eta.core.data as etad
 from eta.core.features import ImageFeaturizer
 import eta.core.learning as etal
@@ -33,11 +33,14 @@ import eta.core.utils as etau
 
 sys.path.insert(1, etac.TF_SLIM_DIR)
 
-_ensure_tf1 = lambda: etau.ensure_package("tensorflow<2")
+_ensure_tf1 = lambda: etau.ensure_import("tensorflow<2")
 tf = etau.lazy_import("tensorflow", callback=_ensure_tf1)
 
-pf = etau.lazy_import("preprocessing.preprocessing_factory")
-nf = etau.lazy_import("nets.nets_factory")
+_ERROR_MSG = "You must run `eta install models` in order to use this model"
+pf = etau.lazy_import(
+    "preprocessing.preprocessing_factory", error_msg=_ERROR_MSG
+)
+nf = etau.lazy_import("nets.nets_factory", error_msg=_ERROR_MSG)
 
 
 logger = logging.getLogger(__name__)
@@ -53,12 +56,12 @@ _NUMPY_PREPROC_FUNCTIONS = {
     "inception_resnet_v2": etat.inception_preprocessing_numpy,
 }
 
-# Networks for which we provicde default `features_name`s
+# Networks for which we provide default `features_name`s
 _DEFAULT_FEATURES_NAMES = {
     "resnet_v1_50": "resnet_v1_50/pool5",
     "resnet_v2_50": "resnet_v2_50/pool5",
     "mobilenet_v2": "MobilenetV2/Logits/AvgPool",
-    "inception_v4": "InceptionV4/Logits/PreLogitsFlatten/flatten",
+    "inception_v4": "InceptionV4/Logits/PreLogitsFlatten/flatten/Reshape",
     "inception_resnet_v2": "InceptionResnetV2/Logits/Dropout/Identity",
 }
 
@@ -141,9 +144,6 @@ class TFSlimClassifier(
 
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
     it automatically applies settings in your `eta.config.tf_config`.
-
-    Instances of this class must either use the context manager interface or
-    manually call `close()` when finished to release memory.
     """
 
     def __init__(self, config):
@@ -160,10 +160,9 @@ class TFSlimClassifier(
         model_path = self.config.model_path
 
         # Load model
-        logger.debug("Loading graph from '%s'", model_path)
         self._prefix = "main"
         self._graph = etat.load_graph(model_path, prefix=self._prefix)
-        self._sess = self.make_tf_session(graph=self._graph)
+        self._sess = None
 
         # Load class labels
         labels_map = etal.load_labels_map(self.config.labels_path)
@@ -211,9 +210,7 @@ class TFSlimClassifier(
         )
 
         # Setup preprocessing
-        self._preprocessing_fcn = None
-        self._preprocessing_sess = None
-        self.preprocessing_fcn = self._make_preprocessing_fcn(
+        self._transforms = self._make_preprocessing_fcn(
             network_name, self.config.preprocessing_fcn
         )
 
@@ -221,6 +218,7 @@ class TFSlimClassifier(
         self._last_probs = None
 
     def __enter__(self):
+        self._sess = self.make_tf_session(graph=self._graph)
         return self
 
     def __exit__(self, *args):
@@ -232,6 +230,21 @@ class TFSlimClassifier(
         labels (True) per prediction.
         """
         return False
+
+    @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`predict_all` is not allowed.
+        """
+        return False  # all preprocessing returns `img_size x img_size`
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before prediction, or `None` if no preprocessing is performed.
+        """
+        return self._transforms
 
     @property
     def exposes_features(self):
@@ -321,7 +334,7 @@ class TFSlimClassifier(
 
     def _predict(self, imgs):
         # Perform preprocessing
-        imgs = self.preprocessing_fcn(imgs)
+        imgs = self._preprocess_batch(imgs)
 
         # Perform inference
         if self.exposes_features:
@@ -351,9 +364,13 @@ class TFSlimClassifier(
         # Save data, if necessary
         if self.exposes_features:
             self._last_features = features  # n x features_dim
+
         self._last_probs = probs  # n x 1 x num_classes
 
         return predictions
+
+    def _preprocess_batch(self, imgs):
+        return [self.transforms(img) for img in imgs]
 
     def _evaluate(self, imgs, ops):
         in_tensor = self._input_op.outputs[0]
@@ -377,55 +394,34 @@ class TFSlimClassifier(
         return attrs, keep
 
     def _make_preprocessing_fcn(self, network_name, preprocessing_fcn):
+        dim = self.img_size
+
         # Use user-specified preprocessing, if provided
         if preprocessing_fcn:
             logger.debug(
-                "Using user-provided preprocessing function '%s'",
-                preprocessing_fcn,
+                "Using user-provided preprocessing '%s'", preprocessing_fcn
             )
-            preproc_fcn_user = etau.get_function(preprocessing_fcn)
-            return lambda imgs: preproc_fcn_user(
-                imgs, self.img_size, self.img_size
-            )
+            user_fcn = etau.get_function(preprocessing_fcn)
+            return lambda img: user_fcn(img, dim, dim)
 
         # Use numpy-based preprocessing if supported
-        preproc_fcn_np = _NUMPY_PREPROC_FUNCTIONS.get(network_name, None)
-        if preproc_fcn_np is not None:
+        numpy_fcn = _NUMPY_PREPROC_FUNCTIONS.get(network_name, None)
+        if numpy_fcn is not None:
             logger.debug(
-                "Found numpy-based preprocessing implementation for network "
-                "'%s'",
+                "Using numpy-based preprocessing for network '%s'",
                 network_name,
             )
-            return lambda imgs: preproc_fcn_np(
-                imgs, self.img_size, self.img_size
-            )
+            return lambda img: numpy_fcn(img, dim, dim)
 
-        # Fallback to TF-slim preprocessing
+        # TF-slim preprocessing
         logger.debug(
-            "Using TF-based preprocessing for network '%s'", network_name,
+            "Using TF-based preprocessing for network '%s'", network_name
         )
-        self._preprocessing_fcn = pf.get_preprocessing(
-            network_name, is_training=False
-        )
-        self._preprocessing_sess = self.make_tf_session()
-
-        return self._builtin_preprocessing_tf
-
-    def _builtin_preprocessing_tf(self, imgs):
-        _imgs = tf.placeholder("uint8", [None, None, 3])
-        _imgs_proc = tf.expand_dims(
-            self._preprocessing_fcn(_imgs, self.img_size, self.img_size), 0
-        )
-
-        imgs_out = []
-        for img in imgs:
-            imgs_out.append(
-                self._preprocessing_sess.run(
-                    _imgs_proc, feed_dict={_imgs: img}
-                )
-            )
-
-        return imgs_out
+        tfslim_fcn = pf.get_preprocessing(network_name, is_training=False)
+        sess = self.make_tf_session()
+        _img = tf.placeholder("uint8", [None, None, 3])
+        _img_out = tfslim_fcn(_img, dim, dim)
+        return lambda img: sess.run(_img_out, feed_dict={_img: img})
 
 
 class TFSlimFeaturizerConfig(TFSlimClassifierConfig):

@@ -27,7 +27,7 @@ import os
 import sys
 
 import eta.constants as etac
-from eta.core.config import Config, ConfigError
+from eta.core.config import Config
 import eta.core.geometry as etag
 import eta.core.learning as etal
 import eta.core.objects as etao
@@ -37,26 +37,16 @@ import eta.core.utils as etau
 from .utils import reset_path
 
 
-_ERROR_MSG = """
-
-You must clone a GitHub repository in order to use an EfficientDet model:
-
-mkdir -p '{0}'
-git clone https://github.com/voxel51/automl '{0}'
-
-""".format(
-    etac.AUTOML_DIR
-)
-
-
 def _setup():
     reset_path()
+
     sys.path.insert(1, etac.EFFICIENTDET_DIR)
 
 
-_ensure_tf1 = lambda: etau.ensure_package("tensorflow>=1.14,<2")
+_ensure_tf1 = lambda: etau.ensure_import("tensorflow>=1.14,<2")
 tf = etau.lazy_import("tensorflow", callback=_ensure_tf1)
 
+_ERROR_MSG = "You must run `eta install automl` in order to use this model"
 efficientdet_arch = etau.lazy_import("efficientdet_arch", error_msg=_ERROR_MSG)
 hparams_config = etau.lazy_import("hparams_config", error_msg=_ERROR_MSG)
 inference = etau.lazy_import("inference", error_msg=_ERROR_MSG)
@@ -102,9 +92,6 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
 
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
     it automatically applies settings in your `eta.config.tf_config`.
-
-    Instances of this class must either use the context manager interface or
-    manually call `close()` when finished to release memory.
     """
 
     def __init__(self, config):
@@ -121,27 +108,42 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         model_path = self.config.model_path
 
         # Extract archive, if necessary
-        model_dir = etau.split_archive(model_path)[0]
-        if not os.path.isdir(model_dir):
+        self._model_dir = etau.split_archive(model_path)[0]
+        if not os.path.isdir(self._model_dir):
             logger.debug("Extracting archive '%s'", model_path)
             etau.extract_archive(model_path, delete_archive=True)
 
-        # Load model
-        logger.debug("Loading model from '%s'", model_dir)
-        self._sess = self.make_tf_session()
-        self._img_tensor, self._detections = _load_efficientdet_model(
-            self._sess, self.config.architecture_name, model_dir
-        )
-
         # Load class labels
-        logger.debug("Loading class labels from '%s'", self.config.labels_path)
         self._labels_map = etal.load_labels_map(self.config.labels_path)
 
+        self._sess = None
+        self._img = None
+        self._detections = None
+
     def __enter__(self):
+        sess, img, detections = self._load_model(self.config)
+        self._sess = sess
+        self._img = img
+        self._detections = detections
         return self
 
     def __exit__(self, *args):
         self.close()
+
+    @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`detect_all` is not allowed.
+        """
+        return True
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before detection, or ``None`` if no preprocessing is performed.
+        """
+        return None
 
     def detect(self, img):
         """Performs detection on the input image.
@@ -156,10 +158,8 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         return self._detect(img)
 
     def _detect(self, img):
-        # Perform inference
         detections = self._evaluate(img)
 
-        # Parse detections
         objects = etao.DetectedObjectContainer()
         for detection in detections:
             # detection = [image_id, x, y, width, height, score, class]
@@ -179,9 +179,19 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         return objects
 
     def _evaluate(self, img):
-        return self._sess.run(
-            self._detections, feed_dict={self._img_tensor: img}
-        )
+        return self._sess.run(self._detections, feed_dict={self._img: img})
+
+    def _load_model(self, config):
+        tf.reset_default_graph()
+        sess = self.make_tf_session()
+
+        with etat.TFLoggingLevel(tf.logging.ERROR):
+            with etau.CaptureStdout():
+                img, detections = _load_efficientdet_model(
+                    sess, config.architecture_name, self._model_dir
+                )
+
+        return sess, img, detections
 
 
 def _load_efficientdet_model(sess, architecture_name, model_dir):

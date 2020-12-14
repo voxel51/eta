@@ -467,6 +467,24 @@ class Config(etas.Serializable):
         return _parse_key(d, key, numbers.Number, default)[0]
 
     @staticmethod
+    def parse_int(d, key, default=no_default):
+        """Parses an integer attribute.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            default: a default integer value to return if key is not present
+
+        Returns:
+            an int
+
+        Raises:
+            ConfigError: if the field value was the wrong type or no default
+                value was provided and the key was not found in the dictionary
+        """
+        return _parse_key(d, key, int, default)[0]
+
+    @staticmethod
     def parse_bool(d, key, default=no_default):
         """Parses a boolean value.
 
@@ -727,6 +745,27 @@ class EnvConfig(etas.Serializable):
         )
 
     @staticmethod
+    def parse_int(d, key, env_var=None, default=no_default):
+        """Parses an integer attribute.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            env_var: an optional environment variable to load the attribute
+                from rather than using the JSON dictionary
+            default: an optional default integer value to return if key is not
+                present
+
+        Returns:
+            an int
+
+        Raises:
+            EnvConfigError: if the environment variable, the dictionary key, or
+                a default value was not provided
+        """
+        return _parse_env_var_or_key(d, key, int, env_var, int, False, default)
+
+    @staticmethod
     def parse_bool(d, key, env_var=None, default=no_default):
         """Parses a boolean value.
 
@@ -832,9 +871,8 @@ def _parse_env_var_or_key(d, key, t, env_var, env_t, sep, default):
             return [env_t(vi) for vi in val.split(":")] if sep else env_t(val)
         except:
             raise EnvConfigError(
-                "Failed to parse environment variable '%s' using %s",
-                env_var,
-                str(env_t),
+                "Failed to parse environment variable '%s=%s' using %s"
+                % (env_var, val, str(env_t))
             )
 
     if key in d:

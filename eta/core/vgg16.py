@@ -27,7 +27,6 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import logging
 import os
 
 import numpy as np
@@ -37,14 +36,10 @@ from eta.core.config import Config, Configurable
 import eta.core.image as etai
 from eta.core.features import ImageFeaturizer
 import eta.core.learning as etal
-import eta.core.models as etam
 import eta.core.tfutils as etat
 import eta.core.utils as etau
 
 tf = etat.import_tf1()
-
-
-logger = logging.getLogger(__name__)
 
 
 class VGG16Config(Config, etal.HasPublishedModel):
@@ -88,52 +83,44 @@ class VGG16(Configurable, etat.UsesTFSession):
 
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
     it automatically applies settings in your `eta.config.tf_config`.
-
-    Instances of this class must either use the context manager interface or
-    manually call `close()` when finished to release memory.
     """
 
-    def __init__(self, config=None, sess=None, imgs=None):
+    def __init__(self, config=None):
         """Creates a VGG16 instance.
 
         Args:
             config: an optional VGG16Config instance. If omitted, the default
                 ETA configuration will be used
-            sess: an optional tf.Session to use. If none is provided, a new
-                tf.Session instance is created, and you are responsible for
-                calling the close() method of this class when you are done
-                computing
-            imgs: an optional tf.placeholder of size [XXXX, 224, 224, 3] to
-                use. By default, a placeholder of size [None, 224, 224, 3] is
-                used so you can evaluate any number of images at once
         """
-        etat.UsesTFSession.__init__(self)
-
         if config is None:
             config = VGG16Config.default()
 
-        if sess is None:
-            sess = self.make_tf_session()
-
-        if imgs is None:
-            imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
-
         self.config = config
-        self.sess = sess
-        self.imgs = imgs
+        etat.UsesTFSession.__init__(self)
 
+        # Build network
+        self._imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
         self._build_conv_layers()
         self._build_fc_layers()
         self._build_output_layer()
 
         # Load model
         self.config.download_model_if_necessary()
-        self._load_model(self.config.model_path)
+        self._graph = self._load_model(self.config.model_path)
+        self._sess = None
 
         # Load labels
         labels_map = etal.load_labels_map(self.config.labels_path)
         self._class_labels = [labels_map[k] for k in sorted(labels_map.keys())]
         self._num_classes = len(self._class_labels)
+
+    def __enter__(self):
+        self._sess = self.make_tf_session()
+        self._sess.run(self._graph)
+        return self
+
+    def __exit__(self, *args):
+        self.close()
 
     @property
     def num_classes(self):
@@ -168,7 +155,7 @@ class VGG16(Configurable, etat.UsesTFSession):
             a list of outputs for the requested tensors. The first dimension of
                 each output will be XXXX
         """
-        return self.sess.run(tensors, feed_dict={self.imgs: imgs})
+        return self._sess.run(tensors, feed_dict={self._imgs: imgs})
 
     @staticmethod
     def preprocess_image(img):
@@ -198,7 +185,7 @@ class VGG16(Configurable, etat.UsesTFSession):
                 shape=[1, 1, 1, 3],
                 name="img_mean",
             )
-            images = self.imgs - mean
+            images = self._imgs - mean
 
         with tf.name_scope("conv1_1") as scope:
             kernel = tf.Variable(
@@ -541,8 +528,11 @@ class VGG16(Configurable, etat.UsesTFSession):
 
     def _load_model(self, model_path):
         weights = np.load(model_path)
-        for i, k in enumerate(sorted(weights)):
-            self.sess.run(self.parameters[i].assign(weights[k]))
+        graph = [
+            self.parameters[i].assign(weights[k])
+            for i, k in enumerate(sorted(weights))
+        ]
+        return graph
 
 
 class VGG16FeaturizerConfig(VGG16Config):
