@@ -29,9 +29,8 @@ def get_version():
         version = os.environ["RELEASE_VERSION"]
         if not version.startswith(VERSION):
             raise ValueError(
-                "Release version does not match version: %s and %s" % (
-                    version, VERSION
-                )
+                "Release version does not match version: %s and %s"
+                % (version, VERSION)
             )
         return version
 
@@ -61,7 +60,7 @@ setup(
         "opencv-python-headless<5,>=4.1",
         "packaging",
         "patool",
-        "Pillow<7,>=6.2",
+        "Pillow>=6.2",
         "python-dateutil",
         "pytz",
         "requests",
