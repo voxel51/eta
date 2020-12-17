@@ -5,8 +5,12 @@ Installs ETA.
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 """
+import os
 from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
+
+
+VERSION = "0.1.13"
 
 
 class BdistWheelCustom(bdist_wheel):
@@ -16,14 +20,33 @@ class BdistWheelCustom(bdist_wheel):
         self.universal = True
 
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
+
+def get_version():
+    if "RELEASE_VERSION" in os.environ:
+        version = os.environ["RELEASE_VERSION"]
+        if not version.startswith(VERSION):
+            raise ValueError(
+                "Release version does not match version: %s and %s"
+                % (version, VERSION)
+            )
+        return version
+
+    return VERSION
+
+
 setup(
     name="voxel51-eta",
-    version="0.1.12",
+    version=get_version(),
     description="Extensible Toolkit for Analytics",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/eta",
     license="Apache",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
@@ -37,7 +60,7 @@ setup(
         "opencv-python-headless<5,>=4.1",
         "packaging",
         "patool",
-        "Pillow<7,>=6.2",
+        "Pillow>=6.2",
         "python-dateutil",
         "pytz",
         "requests",
