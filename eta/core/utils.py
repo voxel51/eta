@@ -610,7 +610,7 @@ def install_package(requirement_str, error_level=0):
         )
 
 
-def ensure_package(requirement_str, error_level=0):
+def ensure_package(requirement_str, error_level=0, log_success=False):
     """Ensures that the given package is installed.
 
     This function uses `pkg_resources.get_distribution` to locate the package
@@ -629,6 +629,9 @@ def ensure_package(requirement_str, error_level=0):
             0: raise error if requirement is not satisfied
             1: log warning if requirement is not satisifed
             2: ignore unsatisifed requirements
+
+        log_success: whether to generate a log message if the requirement is
+            satisifed
     """
     req = Requirement(requirement_str)
 
@@ -639,10 +642,10 @@ def ensure_package(requirement_str, error_level=0):
         version = None
         error = e
 
-    _ensure_requirement(req, version, error_level, error=error)
+    _ensure_requirement(req, version, error_level, log_success, error=error)
 
 
-def ensure_import(requirement_str, error_level=0):
+def ensure_import(requirement_str, error_level=0, log_success=False):
     """Ensures that the given package is installed and importable.
 
     This function imports the module the specified name and optionally enforces
@@ -660,6 +663,9 @@ def ensure_import(requirement_str, error_level=0):
             0: raise error if requirement is not satisfied
             1: log warning if requirement is not satisifed
             2: ignore unsatisifed requirements
+
+        log_success: whether to generate a log message if the requirement is
+            satisifed
     """
     req = Requirement(requirement_str)
 
@@ -672,11 +678,11 @@ def ensure_import(requirement_str, error_level=0):
         version = None
         error = e
 
-    _ensure_requirement(req, version, error_level, error=error)
+    _ensure_requirement(req, version, error_level, log_success, error=error)
 
 
 def _ensure_requirement(
-    req, version, error_level, error_cls=ImportError, error=None
+    req, version, error_level, log_success, error_cls=ImportError, error=None
 ):
     if version is None:
         handle_error(
@@ -687,7 +693,9 @@ def _ensure_requirement(
             error_level,
             error,
         )
-    elif not req.specifier.contains(version):
+        return
+
+    if not req.specifier.contains(version):
         handle_error(
             error_cls(
                 "The requested operation requires that '%s' is installed "
@@ -695,6 +703,12 @@ def _ensure_requirement(
                 % (str(req), req.name, version)
             ),
             error_level,
+        )
+        return
+
+    if log_success:
+        logger.info(
+            "Requirement satisfied: %s (found %s)" % (str(req), version)
         )
 
 
@@ -721,7 +735,7 @@ def handle_error(error, error_level, base_error=None):
         logger.warning(error)
 
 
-def ensure_cuda_version(requirement_str, error_level=0):
+def ensure_cuda_version(requirement_str, error_level=0, log_success=False):
     """Ensures that a compliant version of CUDA is installed.
 
     Args:
@@ -733,16 +747,21 @@ def ensure_cuda_version(requirement_str, error_level=0):
             1: log warning if the requirement is not satisifed
             2: ignore unsatisifed requirements
 
+        log_success: whether to generate a log message if the requirement is
+            satisifed
+
     Raises:
         CUDAError: if CUDA is not installed or does not meet the specified
             requirements and `error_level == 0`
     """
     req = Requirement("CUDA" + requirement_str)
     version = get_cuda_version()
-    _ensure_requirement(req, version, error_level, error_cls=CUDAError)
+    _ensure_requirement(
+        req, version, error_level, log_success, error_cls=CUDAError
+    )
 
 
-def ensure_cudnn_version(requirement_str, error_level=0):
+def ensure_cudnn_version(requirement_str, error_level=0, log_success=False):
     """Ensures that a compliant version of cuDNN is installed.
 
     Args:
@@ -754,13 +773,18 @@ def ensure_cudnn_version(requirement_str, error_level=0):
             1: log warning if the requirement is not satisifed
             2: ignore unsatisifed requirements
 
+        log_success: whether to generate a log message if the requirement is
+            satisifed
+
     Raises:
         CUDAError: if cuDNN is not installed or does not meet the specified
             requirements and `error_level == 0`
     """
     req = Requirement("cuDNN" + requirement_str)
     version = get_cudnn_version()
-    _ensure_requirement(req, version, error_level, error_cls=CUDAError)
+    _ensure_requirement(
+        req, version, error_level, log_success, error_cls=CUDAError
+    )
 
 
 class CUDAError(Exception):

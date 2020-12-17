@@ -795,7 +795,7 @@ class ModelRequirements(Serializable):
         for requirement_str in self.gpu.get("packages", []):
             etau.install_package(requirement_str, error_level=error_level)
 
-    def ensure_base_requirements(self, error_level=0):
+    def ensure_base_requirements(self, error_level=0, log_success=False):
         """Ensures that any base package requirements for the model are
         satisfied.
 
@@ -805,14 +805,21 @@ class ModelRequirements(Serializable):
                 0: raise error if a requirement is not satisfied
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
+
+            log_success: whether to generate a log message when a requirement
+                is satisifed
         """
         if self.packages is None or error_level >= 2:
             return
 
         for requirement_str in self.packages:
-            etau.ensure_package(requirement_str, error_level=error_level)
+            etau.ensure_package(
+                requirement_str,
+                error_level=error_level,
+                log_success=log_success,
+            )
 
-    def ensure_cpu_requirements(self, error_level=0):
+    def ensure_cpu_requirements(self, error_level=0, log_success=False):
         """Ensures that any CPU package requirements for the model are
         satisfied.
 
@@ -822,14 +829,21 @@ class ModelRequirements(Serializable):
                 0: raise error if a requirement is not satisfied
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
+
+            log_success: whether to generate a log message when a requirement
+                is satisifed
         """
         if self.cpu is None or error_level >= 2:
             return
 
         for requirement_str in self.cpu.get("packages", []):
-            etau.ensure_package(requirement_str, error_level=error_level)
+            etau.ensure_package(
+                requirement_str,
+                error_level=error_level,
+                log_success=log_success,
+            )
 
-    def ensure_gpu_requirements(self, error_level=0):
+    def ensure_gpu_requirements(self, error_level=0, log_success=False):
         """Ensures that any GPU package requirements for the model are
         satisfied.
 
@@ -839,13 +853,20 @@ class ModelRequirements(Serializable):
                 0: raise error if a requirement is not satisfied
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
+
+            log_success: whether to generate a log message when a requirement
+                is satisifed
         """
         if self.gpu is None or error_level >= 2:
             return
 
         self._ensure_cuda(error_level)
         for requirement_str in self.gpu.get("packages", []):
-            etau.ensure_package(requirement_str, error_level=error_level)
+            etau.ensure_package(
+                requirement_str,
+                error_level=error_level,
+                log_success=log_success,
+            )
 
     def _ensure_cuda(self, error_level):
         if self.gpu is None or error_level >= 2:
@@ -1034,19 +1055,16 @@ class Model(Serializable):
         if not self.has_requirements:
             return
 
-        # Install base requirements
         self.requirements.install_base_requirements(error_level=error_level)
 
         found_gpu = self._ensure_environment(error_level)
 
         if found_gpu:
-            # Install GPU requirements
             self.requirements.install_gpu_requirements(error_level=error_level)
         else:
-            # Install CPU requirements
             self.requirements.install_cpu_requirements(error_level=error_level)
 
-    def ensure_requirements(self, error_level=0):
+    def ensure_requirements(self, error_level=0, log_success=False):
         """Ensures that any requirement(s) for this model are satisfied.
 
         Args:
@@ -1055,21 +1073,27 @@ class Model(Serializable):
                 0: raise error if a requirement is not satisfied
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
+
+            log_success: whether to generate a log message when a requirement
+                is satisifed
         """
         if not self.has_requirements or error_level >= 2:
             return
 
-        # Ensure any base requirements
-        self.requirements.ensure_base_requirements(error_level=error_level)
+        self.requirements.ensure_base_requirements(
+            error_level=error_level, log_success=log_success
+        )
 
         found_gpu = self._ensure_environment(error_level)
 
         if found_gpu:
-            # Ensure GPU requirements
-            self.requirements.ensure_gpu_requirements(error_level=error_level)
+            self.requirements.ensure_gpu_requirements(
+                error_level=error_level, log_success=log_success
+            )
         else:
-            # Ensure CPU requirements
-            self.requirements.ensure_cpu_requirements(error_level=error_level)
+            self.requirements.ensure_cpu_requirements(
+                error_level=error_level, log_success=log_success
+            )
 
     def _ensure_environment(self, error_level):
         if not self.has_requirements:
