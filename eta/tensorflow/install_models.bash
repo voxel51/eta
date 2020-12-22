@@ -17,7 +17,7 @@ if ! command -v git &> /dev/null; then
     exit
 fi
 
-TENSORFLOW_DIR="$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)/models"
+TENSORFLOW_DIR="$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)"
 MODELS_DIR="${TENSORFLOW_DIR}/models"
 
 if [ ${SKIP_CLONE} = false ]; then
@@ -32,8 +32,7 @@ fi
 
 cd "${MODELS_DIR}"
 
-command -v protoc
-if [ $? -eq 0 ]; then
+if command -v protoc &> /dev/null; then
     echo "Found protoc"
 else
     echo "Installing protoc"
