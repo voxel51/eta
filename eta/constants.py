@@ -38,12 +38,11 @@ except metadata.PackageNotFoundError as e:
 # Directories
 ETA_DIR = os.path.abspath(os.path.dirname(__file__))
 ETA_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".eta")
-BASE_DIR = os.path.dirname(ETA_DIR)
-EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
+EXAMPLES_DIR = os.path.join(ETA_DIR, "examples")
 RESOURCES_DIR = os.path.join(ETA_DIR, "resources")
+TENSORFLOW_DIR = os.path.join(ETA_DIR, "tensorflow")
 
 # Submodules
-TENSORFLOW_DIR = os.path.join(BASE_DIR, "tensorflow")
 DARKFLOW_DIR = os.path.join(TENSORFLOW_DIR, "darkflow")
 AUTOML_DIR = os.path.join(TENSORFLOW_DIR, "automl")
 EFFICIENTDET_DIR = os.path.join(AUTOML_DIR, "efficientdet")
@@ -53,7 +52,7 @@ TF_OBJECT_DETECTION_DIR = os.path.join(TF_RESEARCH_DIR, "object_detection")
 TF_SLIM_DIR = os.path.join(TF_RESEARCH_DIR, "slim")
 
 # Paths
-CONFIG_JSON_PATH = os.path.join(BASE_DIR, "config.json")
+CONFIG_JSON_PATH = os.path.join(ETA_DIR, "config.json")
 ASCII_ART_PATH = os.path.join(RESOURCES_DIR, "eta-ascii.txt")
 DEFAULT_FONT_PATH = os.path.join(RESOURCES_DIR, "lato-regular.ttf")
 DEFAULT_LOGO_CONFIG_PATH = os.path.join(

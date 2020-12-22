@@ -13,21 +13,18 @@ __pycache__
 .project
 .pydevproject
 
+/eta/config.json
+/eta/configs
+/eta/examples/**/data
+/eta/examples/**/out
 /eta/models/**/*
 !/eta/models/manifest.json
-
-/config.json
-/configs
-/data
+/eta/out
 
 /docs/*.tex
 /docs/*.html
 /docs/*.pdf
-/examples/**/data
-/examples/**/out
 /external
-/out
-
 /sphinx/build/
 /sphinx/source/*.rst
 !/sphinx/source/index.rst

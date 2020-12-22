@@ -6,17 +6,15 @@
 #   TENSORFLOW_VERSION
 #
 # TensorFlow version notes:
-#   - For CPU-only images, use tensorflow==1.12.0
+#   - For CPU-only images, use tensorflow~=1.15
 #   - For GPU-enabled images, use the TensorFlow version compatible with the
 #     CUDA version you are using:
-#       - CUDA 8: tensorflow-gpu==1.4.0
-#       - CUDA 9: tensorflow-gpu==1.12.0
-#       - CUDA 10: tensorflow-gpu==1.14.0
+#       - CUDA 8: tensorflow-gpu~=1.4
+#       - CUDA 9: tensorflow-gpu~=1.12
+#       - CUDA 10: tensorflow-gpu~=1.15
 #
 # Copyright 2017-2020, Voxel51, Inc.
 # voxel51.com
-#
-# Brian Moore, brian@voxel51.com
 #
 
 #
@@ -84,7 +82,7 @@ RUN pip --no-cache-dir  install --upgrade pip setuptools \
     && mv protoc3/bin/* /usr/local/bin \
     && mv protoc3/include/* /usr/local/include \
     && rm -rf protoc3 \
-    && cd eta/tensorflow/models \
+    && cd eta/eta/tensorflow/models \
     && protoc research/object_detection/protos/*.proto \
         --proto_path=research \
         --python_out=research \

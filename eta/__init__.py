@@ -35,7 +35,7 @@ class ETAConfig(EnvConfig):
     """Sytem-wide ETA configuration settings.
 
     When an ETAConfig is loaded, any `{{eta}}` patterns are replaced with
-    `eta.constants.BASE_DIR`.
+    `eta.constants.ETA_DIR`.
     """
 
     def __init__(self, d):
@@ -123,7 +123,7 @@ class ETAConfig(EnvConfig):
         if "{{eta}}" in self.patterns:
             logger.warning("Overwriting existing {{eta}} pattern")
 
-        self.patterns["{{eta}}"] = etac.BASE_DIR
+        self.patterns["{{eta}}"] = etac.ETA_DIR
 
         if "{{eta-resources}}" in self.patterns:
             logger.warning("Overwriting existing {{eta-resources}} pattern")

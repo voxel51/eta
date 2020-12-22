@@ -16,7 +16,7 @@ ETA is very portable:
 -   Supports TensorFlow 1
 -   Supports OpenCV 2.4+ and OpenCV 3.0+
 -   Supports CPU-only and GPU-enabled installations
--   Supports CUDA 8, 9 and 10 (for GPU installations)
+-   Supports CUDA 8, 9 and 10 for GPU installations
 
 ## Docker Installation
 
@@ -25,7 +25,7 @@ If you prefer to operate via Docker, see the
 for simple instructions for building a Docker image with an ETA environment
 installed.
 
-## Local Installation
+## Installation from source
 
 ### Instructions
 
@@ -72,11 +72,11 @@ installer, as recommended by the
 
 | CUDA Version Found | TensorFlow Version Installed |
 | ------------------ | ---------------------------- |
-| CUDA 8             | `tensorflow-gpu==1.4.0`      |
-| CUDA 9             | `tensorflow-gpu==1.12.0`     |
-| CUDA 10            | `tensorflow-gpu==1.14.0`     |
-| Other CUDA         | `tensorflow-gpu==1.14.0`     |
-| No CUDA            | `tensorflow==1.12.0`         |
+| CUDA 8             | `tensorflow-gpu~=1.4`        |
+| CUDA 9             | `tensorflow-gpu~=1.12`       |
+| CUDA 10            | `tensorflow-gpu~=1.15`       |
+| Other CUDA         | `tensorflow-gpu~=1.15`       |
+| No CUDA            | `tensorflow~=1.15`           |
 
 ### Lite installation
 
@@ -111,7 +111,7 @@ environment to function.
 To setup your environment, create a copy the example configuration file:
 
 ```shell
-cp config-example.json config.json
+cp config-example.json eta/config.json
 ```
 
 If desired, you can edit your config file to customize the various paths,
@@ -121,15 +121,15 @@ change default constants, add environment variables, customize your default
 modules, pipelines, and models to your system.
 
 Note that, when the config file is loaded, any `{{eta}}` patterns in directory
-paths are replaced with the absolute path to the ETA repository on your
+paths are replaced with the absolute path to the `eta/` directory on your
 machine.
 
-The default config includes the `eta/modules`, `eta/pipelines`, and
-`eta/models` directories on your module, pipeline, and models search paths,
-respectively. These directories contain the necessary information to run the
-standard analytics exposed by the ETA library. In addition, the relative paths
-`./modules`, `./pipelines`, and `./models` are added to their respective paths
-to support the typical directory structure that we adopt for our custom
+The default config includes the `modules/`, `pipelines/`, and `models/`
+directories on your module, pipeline, and models search paths, respectively.
+These directories contain the necessary information to run the standard
+analytics exposed by the ETA library. In addition, the relative paths
+`./modules/`, `./pipelines/`, and `./models/` are added to their respective
+paths to support the typical directory structure that we adopt for our custom
 projects.
 
 ### CLI
@@ -169,7 +169,7 @@ the [docs folder](https://github.com/voxel51/eta/tree/develop/docs).
 | `eta/pipelines`   | library of video processing/analytics pipelines. See the [Pipeline developer's guide](https://github.com/voxel51/eta/blob/develop/docs/pipelines_dev_guide.md) for more information about ETA pipelines                                                                                      |
 | `eta/resources`   | resources such as media, templates, etc                                                                                                                                                                                                                                                      |
 | `eta/segmenters`  | wrappers for performing inference with common semantic segmenters                                                                                                                                                                                                                            |
-| `tensorflow`      | third-party TensorFlow repositories that ETA builds upon                                                                                                                                                                                                                                     |
+| `eta/tensorflow`  | third-party TensorFlow repositories that ETA builds upon                                                                                                                                                                                                                                     |
 
 ## Generating Documentation
 
@@ -192,7 +192,7 @@ browser.
 ## Uninstallation
 
 ```shell
-pip uninstall eta
+pip uninstall voxel51-eta
 ```
 
 ## Acknowledgements

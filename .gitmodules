@@ -1,12 +1,12 @@
-[submodule "tensorflow/models"]
-	path = tensorflow/models
+[submodule "eta/tensorflow/models"]
+	path = eta/tensorflow/models
 	url = https://github.com/voxel51/models
     ignore = dirty
-[submodule "tensorflow/darkflow"]
-	path = tensorflow/darkflow
+[submodule "eta/tensorflow/darkflow"]
+	path = eta/tensorflow/darkflow
 	url = https://github.com/voxel51/darkflow
     ignore = dirty
-[submodule "tensorflow/automl"]
-	path = tensorflow/automl
+[submodule "eta/tensorflow/automl"]
+	path = eta/tensorflow/automl
 	url = https://github.com/voxel51/automl
     ignore = dirty

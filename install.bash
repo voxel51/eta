@@ -208,24 +208,24 @@ fi
 if [ "${GCARD}" == "ON" ]; then
     if [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 8") -gt 0 ]; then
         # Found CUDA 8
-        MSG "Installing tensorflow-gpu 1.4.0"
-        CRITICAL pip install --upgrade tensorflow-gpu==1.4.0
+        MSG "Installing tensorflow-gpu 1.4"
+        CRITICAL pip install --upgrade tensorflow-gpu~=1.4
     elif [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 9") -gt 0 ]; then
         # Found CUDA 9
-        MSG "Installing tensorflow-gpu 1.12.0"
-        CRITICAL pip install --upgrade tensorflow-gpu==1.12.0
+        MSG "Installing tensorflow-gpu 1.12"
+        CRITICAL pip install --upgrade tensorflow-gpu~=1.12
     elif [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 10") -gt 0 ]; then
         # Found CUDA 10
-        MSG "Installing tensorflow-gpu 1.14.0"
-        CRITICAL pip install --upgrade tensorflow-gpu==1.14.0
+        MSG "Installing tensorflow-gpu 1.15"
+        CRITICAL pip install --upgrade tensorflow-gpu~=1.15
     else
         # Couldn't find CUDA
-        MSG "Installing tensorflow-gpu 1.14.0"
-        CRITICAL pip install --upgrade tensorflow-gpu==1.14.0
+        MSG "Installing tensorflow-gpu 1.15"
+        CRITICAL pip install --upgrade tensorflow-gpu~=1.15
     fi
 else
-    MSG "Installing tensorflow 1.12.0"
-    CRITICAL pip install --upgrade tensorflow==1.12.0
+    MSG "Installing tensorflow 1.15"
+    CRITICAL pip install --upgrade tensorflow~=1.15
 fi
 
 
@@ -276,9 +276,11 @@ fi
 
 
 MSG "Initializing submodules"
-CRITICAL bash tensorflow/install_darkflow.bash
-CRITICAL bash tensorflow/install_automl.bash
-CRITICAL bash tensorflow/install_models.bash
+git submodule init
+git submodule update
+CRITICAL bash eta/tensorflow/install_darkflow.bash -s
+CRITICAL bash eta/tensorflow/install_automl.bash -s
+CRITICAL bash eta/tensorflow/install_models.bash -s
 
 
 EXIT "INSTALLATION COMPLETE"

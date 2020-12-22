@@ -1,17 +1,35 @@
 #!/usr/bin/env bash
-# Installs the `tensorflow/models` submodule.
+# Installs the `eta/tensorflow/models` submodule.
 #
 # Copyright 2017-2020, Voxel51, Inc.
 # voxel51.com
 #
 
-ETA_DIR="$(cd "$(dirname $(dirname "${BASH_SOURCE[0]}"))" && pwd)"
+SKIP_CLONE=false
+while getopts "s" FLAG; do
+    case "${FLAG}" in
+        s) SKIP_CLONE=true ;;
+    esac
+done
 
-echo "Updating submodule tensorflow/models"
-cd "${ETA_DIR}"
-git submodule update --init tensorflow/models
+if ! command -v git &> /dev/null; then
+    echo "You must install 'git' in order to run this script"
+    exit
+fi
 
-MODELS_DIR="${ETA_DIR}/tensorflow/models"
+TENSORFLOW_DIR="$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)/models"
+MODELS_DIR="${TENSORFLOW_DIR}/models"
+
+if [ ${SKIP_CLONE} = false ]; then
+    if [ -d "${MODELS_DIR}" ]; then
+        echo "Deleting existing directory ${MODELS_DIR}"
+        rm -rf "${MODELS_DIR}"
+    fi
+
+    echo "Cloning https://github.com/voxel51/models"
+    git clone https://github.com/voxel51/models "${MODELS_DIR}"
+fi
+
 cd "${MODELS_DIR}"
 
 command -v protoc
