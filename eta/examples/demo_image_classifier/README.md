@@ -4,7 +4,6 @@ This demo runs an image classification pipeline that uses various pre-trained
 classifiers to predict labels from the ImageNet dataset for a directory of
 images.
 
-
 ## Instructions
 
 To run the `image_classifier` pipeline, simply execute one of the following:
@@ -24,8 +23,6 @@ eta build -r classify-images-vgg16.json --run-now
 To visualize the results, open the images in the `out/images-XXX` folder
 corresponding to the model that you ran in your image viewer of choice.
 
-
 ## Copyright
 
-Copyright 2017-2020, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

@@ -2,15 +2,15 @@
     "config_dir": "{{eta}}/configs",
     "output_dir": "{{eta}}/out",
     "module_dirs": [
-        "{{eta}}/eta/modules",
+        "{{eta}}/modules",
         "./modules"
     ],
     "pipeline_dirs": [
-        "{{eta}}/eta/pipelines",
+        "{{eta}}/pipelines",
         "./pipelines"
     ],
     "models_dirs": [
-        "{{eta}}/eta/models",
+        "{{eta}}/models",
         "./models"
     ],
     "pythonpath_dirs": [
@@ -24,7 +24,7 @@
     "patterns": {},
     "max_model_versions_to_keep": -1,
     "allow_model_downloads": true,
-    "default_sequence_idx" : "%06d",
+    "default_sequence_idx": "%06d",
     "default_video_ext": ".mp4",
     "default_image_ext": ".jpg",
     "default_figure_ext": ".pdf"

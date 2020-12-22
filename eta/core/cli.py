@@ -111,11 +111,14 @@ class InstallCommand(Command):
     """Run ETA install scripts.
 
     Examples:
-        # List available scripts
+        # List available install scripts
         eta install --list
 
         # Run an install script
         eta install <name>
+
+        # Run all install scripts
+        eta install --all
     """
 
     @staticmethod
@@ -124,7 +127,10 @@ class InstallCommand(Command):
             "-l",
             "--list",
             action="store_true",
-            help="list the available scripts",
+            help="list the available install scripts",
+        )
+        parser.add_argument(
+            "-a", "--all", action="store_true", help="run all install scripts",
         )
         parser.add_argument(
             "name",
@@ -150,16 +156,28 @@ class InstallCommand(Command):
             ),
         }
 
-        if args.list or not args.name:
+        if args.list or (not args.name and not args.all):
             _print_install_table(_INSTALL_SCRIPTS)
 
+        if args.all:
+            for name in _INSTALL_SCRIPTS:
+                _run_install_script(name, _INSTALL_SCRIPTS)
+
+            return
+
         if args.name:
-            if args.name not in _INSTALL_SCRIPTS:
-                print("Script '%s' not found" % args.name)
+            name = args.name
+
+            if name not in _INSTALL_SCRIPTS:
+                print("Script '%s' not found" % name)
                 return
 
-            script_path = _INSTALL_SCRIPTS[args.name][0]
-            etau.call(["bash", script_path])
+            _run_install_script(name, _INSTALL_SCRIPTS)
+
+
+def _run_install_script(name, install_scripts):
+    script_path = install_scripts[name][0]
+    etau.call(["bash", script_path])
 
 
 def _print_install_table(d):
