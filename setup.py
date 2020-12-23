@@ -77,6 +77,7 @@ setup(
             "boto3",
             "google-api-python-client",
             "google-cloud-storage",
+            "httplib2<=0.15",
             "pysftp",
         ],
     },
