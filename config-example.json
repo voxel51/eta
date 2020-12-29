@@ -13,10 +13,7 @@
         "{{eta}}/models",
         "./models"
     ],
-    "pythonpath_dirs": [
-        "{{eta}}/tensorflow/models/research",
-        "{{eta}}/tensorflow/models/research/slim"
-    ],
+    "pythonpath_dirs": [],
     "environment_vars": {},
     "tf_config": {
         "gpu_options.per_process_gpu_memory_fraction": 0.90
@@ -27,5 +24,6 @@
     "default_sequence_idx": "%06d",
     "default_video_ext": ".mp4",
     "default_image_ext": ".jpg",
-    "default_figure_ext": ".pdf"
+    "default_figure_ext": ".pdf",
+    "show_progress_bars": true
 }
