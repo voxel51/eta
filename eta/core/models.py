@@ -746,6 +746,26 @@ class ModelRequirements(Serializable):
 
         return self.gpu.get("support", None)
 
+    @property
+    def cpu_packages(self):
+        """A list of `setuptools`-style package requirements in order to use
+        the model on CPU, or ``None`` otherwise.
+        """
+        if self.cpu is None:
+            return None
+
+        return self.cpu.get("packages", None)
+
+    @property
+    def gpu_packages(self):
+        """A list of `setuptools`-style package requirements in order to use
+        the model on GPU, or ``None`` otherwise.
+        """
+        if self.gpu is None:
+            return None
+
+        return self.gpu.get("packages", None)
+
     def install_base_requirements(self, error_level=0):
         """Installs any base package requirements for the model.
 
@@ -772,10 +792,10 @@ class ModelRequirements(Serializable):
                 1: log warning if a package install fails
                 2: ignore package install fails
         """
-        if self.cpu is None:
+        if self.cpu_packages is None:
             return
 
-        for requirement_str in self.cpu.get("packages", []):
+        for requirement_str in self.cpu_packages:
             etau.install_package(requirement_str, error_level=error_level)
 
     def install_gpu_requirements(self, error_level=0):
@@ -788,11 +808,10 @@ class ModelRequirements(Serializable):
                 1: log warning if a package install fails
                 2: ignore package install fails
         """
-        if self.gpu is None:
+        if self.gpu_packages is None:
             return
 
-        self._ensure_cuda(error_level)
-        for requirement_str in self.gpu.get("packages", []):
+        for requirement_str in self.gpu_packages:
             etau.install_package(requirement_str, error_level=error_level)
 
     def ensure_base_requirements(self, error_level=0, log_success=False):
@@ -833,10 +852,10 @@ class ModelRequirements(Serializable):
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
-        if self.cpu is None or error_level >= 2:
+        if self.cpu_packages is None or error_level >= 2:
             return
 
-        for requirement_str in self.cpu.get("packages", []):
+        for requirement_str in self.cpu_packages:
             etau.ensure_package(
                 requirement_str,
                 error_level=error_level,
@@ -857,11 +876,11 @@ class ModelRequirements(Serializable):
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
-        if self.gpu is None or error_level >= 2:
+        if self.gpu_packages is None or error_level >= 2:
             return
 
         self._ensure_cuda(error_level)
-        for requirement_str in self.gpu.get("packages", []):
+        for requirement_str in self.gpu_packages:
             etau.ensure_package(
                 requirement_str,
                 error_level=error_level,
