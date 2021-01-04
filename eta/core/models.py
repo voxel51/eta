@@ -920,7 +920,8 @@ class Model(Serializable):
         manager: the ModelManager instance that describes the remote storage
             location of the models_dir
         version: the version of the model (if any)
-        description: a description of the model (if any)
+        description: the description of the model (if any)
+        source: the source of the model (if any)
         default_deployment_config_dict: a dictionary representation of an
             `eta.core.learning.ModelConfig` describing the recommended settings
             for deploying the model
@@ -936,6 +937,7 @@ class Model(Serializable):
         manager,
         version=None,
         description=None,
+        source=None,
         default_deployment_config_dict=None,
         requirements=None,
         tags=None,
@@ -948,7 +950,8 @@ class Model(Serializable):
             base_filename: the base filename for the model
             manager: the ModelManager for the model
             version: (optional) the model version
-            description: (optional) a description of the model
+            description: (optional) the description of the model
+            source: (optional) the source of the model
             default_deployment_config_dict: (optional) a dictionary
                 representation of an `eta.core.learning.ModelConfig` describing
                 the recommended settings for deploying the model
@@ -961,6 +964,7 @@ class Model(Serializable):
         self.manager = manager
         self.version = version or None
         self.description = description
+        self.source = source
         self.default_deployment_config_dict = default_deployment_config_dict
         self.requirements = requirements
         self.tags = tags
@@ -1226,6 +1230,7 @@ class Model(Serializable):
             "base_filename",
             "version",
             "description",
+            "source",
             "manager",
             "default_deployment_config_dict",
             "requirements",
@@ -1259,6 +1264,7 @@ class Model(Serializable):
             model_manager,
             version=d.get("version", None),
             description=d.get("description", None),
+            source=d.get("source", None),
             default_deployment_config_dict=d.get(
                 "default_deployment_config_dict", None
             ),
