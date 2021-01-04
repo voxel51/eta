@@ -1987,6 +1987,24 @@ class Timer(object):
         return timeit.default_timer()
 
 
+def get_dir_size(dirpath):
+    """Returns the size, in bytes, of the given directory.
+
+    This method uses the system command `du -s <dirpath>`.
+
+    Args:
+        dirpath: the path to the directory
+
+    Returns:
+        the size, in bytes
+    """
+    if not os.path.isdir(dirpath):
+        raise OSError("Directory '%s' does not exist" % dirpath)
+
+    out = communicate_or_die(["du", "-s", "/Users/Brian/Desktop"])
+    return int(out.split()[0].decode())
+
+
 def guess_mime_type(filepath):
     """Guess the MIME type for the given file path. If no reasonable guess can
     be determined, `application/octet-stream` is returned.
