@@ -54,6 +54,279 @@ gool = etau.lazy_import(
 logger = logging.getLogger(__name__)
 
 
+class TF2ModelsDetectorConfig(Config, etal.HasPublishedModel):
+    """TF2ModelsDetector configuration settings.
+
+    Note that `labels_path` is passed through
+    `eta.core.utils.fill_config_patterns` at load time, so it can contain
+    patterns to be resolved.
+
+    Attributes:
+        model_name: the name of the published model to load. If this value is
+            provided, `model_path` does not need to be
+        model_path: the path to a frozen inference graph to load. If this value
+            is provided, `model_name` does not need to be
+        labels_path: the path to the labels map for the model
+        confidence_thresh: a confidence threshold to apply to candidate
+            detections
+        input_name: the name of the `tf.Operation` to use as input. If omitted,
+            the default value "image_tensor" is used
+        boxes_name: the name of the `tf.Operation` to use to extract the box
+            coordinates. If omitted, the default value "detection_boxes" is
+            used
+        scores_name: the name of the `tf.Operation` to use to extract the
+            detection scores. If omitted, the default value "detection_scores"
+            is used
+        classes_name: the name of the `tf.Operation` to use to extract the
+            class indices. If omitted, the default value "detection_classes"
+            is used
+        features_name: the name of the `tf.Operation` to use to extract
+            features for detections. If omitted, the default value
+            "detection_features" is used
+        class_probs_name: the name of the `tf.Operation` to use to extract
+            class probabilities for detections. If omitted, the default value
+            "detection_multiclass_scores" is used
+        generate_features: whether to generate features for detections. By
+            default, this is False
+        generate_class_probs: whether to generate class probabilities for
+            detections. By default, this is False
+    """
+
+    def __init__(self, d):
+        d = self.init(d)
+
+        self.labels_path = etau.fill_config_patterns(
+            self.parse_string(d, "labels_path")
+        )
+        self.confidence_thresh = self.parse_number(
+            d, "confidence_thresh", default=0
+        )
+        self.input_name = self.parse_number(
+            d, "input_name", default="image_tensor"
+        )
+        self.boxes_name = self.parse_number(
+            d, "boxes_name", default="detection_boxes"
+        )
+        self.scores_name = self.parse_number(
+            d, "scores_name", default="detection_scores"
+        )
+        self.classes_name = self.parse_number(
+            d, "classes_name", default="detection_classes"
+        )
+        self.features_name = self.parse_string(
+            d, "features_name", default="detection_features"
+        )
+        self.class_probs_name = self.parse_string(
+            d, "class_probs_name", default="detection_multiclass_scores"
+        )
+        self.generate_features = self.parse_bool(
+            d, "generate_features", default=False
+        )
+        self.generate_class_probs = self.parse_bool(
+            d, "generate_class_probs", default=False
+        )
+
+
+class TF2ModelsDetector(
+    etal.ObjectDetector,
+    etal.ExposesFeatures,
+    etal.ExposesProbabilities,
+):
+    """Interface to the TF2-Models object detection library at
+    https://github.com/tensorflow/models/tree/master/research/object_detection.
+
+    This class implements the `eta.core.learning.ExposesFeatures` mixin, so
+    it can expose features for its detections, if appropriately configured.
+    Unfortunately, none of the pre-trained models available in ETA support
+    featurization because the frozen graphs do not contain the expected
+    `detection_features` nodes. In July 2019, the `tensorflow/models`
+    repository was upgraded (https://github.com/tensorflow/models/pull/7208)
+    to support a `detection_features` node that generates features for all
+    models. It was also discovered that pre-trained models from the TF Models
+    Zoo must be re-exported in order for this node to be populated
+    (https://stackoverflow.com/a/57536793). Unfortunately, as of December 2019,
+    this re-export process only seemed to work for Faster R-CNN models.
+    """
+
+    def __init__(self, config):
+        """Creates a TF2ModelsDetector instance.
+
+        Args:
+            config: a TF2ModelsDetectorConfig instance
+        """
+        self.config = config
+
+        # Get path to model
+        self.config.download_model_if_necessary()
+        model_path = self.config.model_path
+
+        # Load model
+        self._detect_fn = etat.load_tf2_detection_model(self.config.model_path,
+                self.config.model_name)
+
+        # Load labels
+        self._category_index, self._class_labels = _parse_labels_map(
+            self.config.labels_path
+        )
+        self._num_classes = len(self._class_labels)
+
+    @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`detect_all` is not allowed.
+        """
+        return True
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before detection, or ``None`` if no preprocessing is performed.
+        """
+        return None
+
+    @property
+    def exposes_features(self):
+        """Whether this detector exposes features for its detections."""
+        return None
+
+    @property
+    def features_dim(self):
+        """The dimension of the features extracted by this detector, or None
+        if it cannot generate features.
+        """
+        return None
+
+    @property
+    def exposes_probabilities(self):
+        """Whether this detector exposes probabilities for predictions."""
+        return False
+
+    @property
+    def num_classes(self):
+        """The number of classes for the model."""
+        return self._num_classes
+
+    @property
+    def class_labels(self):
+        """The list of class labels generated by the detector."""
+        return self._class_labels
+
+    def get_features(self):
+        """Gets the features generated by the detector from its last detection.
+
+        Returns:
+            an array of features, or None if the detector has not (or does not)
+                generate features
+        """
+        return None
+
+    def get_probabilities(self):
+        """Gets the class probabilities generated by the detector from its last
+        detection.
+
+        Returns:
+            an array of class probabilities, or None if the detector has not
+                (or does not) generate probabilities
+        """
+        return None
+
+    def detect(self, img):
+        """Performs detection on the input image.
+
+        Args:
+            img: an image
+
+        Returns:
+            an `eta.core.objects.DetectedObjectContainer` describing the
+                detections
+        """
+        return self._detect_all([img])[0]
+
+    def detect_all(self, imgs):
+        """Performs detection on the given tensor of images.
+
+        Args:
+            imgs: a list (or n x h x w x 3 tensor) of images
+
+        Returns:
+            a list of `eta.core.objects.DetectedObjectContainer`s describing
+                the detections
+        """
+        return self._detect_all(imgs)
+
+    def _detect_all(self, imgs):
+        output_ops = [self._boxes_op, self._scores_op, self._classes_op]
+
+        if self.exposes_features and self.exposes_probabilities:
+            output_ops.extend([self._features_op, self._class_probs_op])
+            boxes, scores, classes, features, probs = self._evaluate(
+                imgs, output_ops
+            )
+        elif self.exposes_features:
+            output_ops.append(self._features_op)
+            boxes, scores, classes, features = self._evaluate(imgs, output_ops)
+            probs = None
+        elif self.exposes_probabilities:
+            output_ops.append(self._class_probs_op)
+            boxes, scores, classes, probs = self._evaluate(imgs, output_ops)
+            features = None
+        else:
+            boxes, scores, classes = self._evaluate(imgs, output_ops)
+            features = None
+            probs = None
+
+        if features is not None:
+            features = _avg_pool_features(features)
+
+        # Parse detections
+        max_num_objects = 0
+        detections = []
+        for i, (b, s, c) in enumerate(zip(boxes, scores, classes)):
+            keep = []
+            objects = DetectedObjectContainer()
+            for j, (boxj, scorej, classj) in enumerate(zip(b, s, c)):
+                # Filter detections, if necessary
+                if (
+                    classj in self._category_index
+                    and scorej > self.config.confidence_thresh
+                ):
+                    # Construct DetectedObject for detection
+                    keep.append(j)
+                    obj = _to_detected_object(
+                        boxj, scorej, classj, self._category_index
+                    )
+                    objects.add(obj)
+
+            # Record detections
+            detections.append(objects)
+
+            # Collect valid detections at beginning of arrays
+            num_objects = len(keep)
+            max_num_objects = max(num_objects, max_num_objects)
+            if self.exposes_features:
+                features[i, :num_objects, :] = features[i, keep, :]
+            if self.exposes_probabilities:
+                probs[i, :num_objects, :] = probs[i, keep, :]
+
+        # Trim unnecessary dimensions
+        if self.exposes_features:
+            features = features[:, :max_num_objects, :]
+        if self.exposes_probabilities:
+            probs = probs[:, :max_num_objects, :]
+
+        # Save data, if necessary
+        if self.exposes_features:
+            self._last_features = features  # n x num_objects x features_dim
+        if self.exposes_probabilities:
+            self._last_probs = probs  # n x num_objects x num_classes
+
+        return detections
+
+    def _evaluate(self, imgs):
+        return self._detect_fn(imgs)
+            
+
 class TFModelsDetectorConfig(Config, etal.HasPublishedModel):
     """TFModelsDetector configuration settings.
 
