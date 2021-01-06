@@ -85,30 +85,31 @@ def load_tf2_detection_model(model_path, model_name):
     Returns:
         the `tf.function` for detection with the loaded model
     """
-    pipeline_config = os.path.join('models/research/object_detection/configs/tf2/',
-                                            model_name + '.config')
+    pipeline_config = os.path.join(
+        "models/research/object_detection/configs/tf2/", model_name + ".config"
+    )
 
     # Load pipeline config and build a detection model
     configs = config_util.get_configs_from_pipeline_file(pipeline_config)
-    model_config = configs['model']
+    model_config = configs["model"]
     detection_model = model_builder.build(
-          model_config=model_config, is_training=False)
-    
+        model_config=model_config, is_training=False
+    )
+
     # Restore checkpoint
-    ckpt = tf.compat.v2.train.Checkpoint(
-          model=detection_model)
-    ckpt.restore(os.path.join(model_dir, 'ckpt-0')).expect_partial()
-    
+    ckpt = tf.compat.v2.train.Checkpoint(model=detection_model)
+    ckpt.restore(model_path).expect_partial()
+
     @tf.function
     def detect_fn(image):
         """Detect objects in image."""
-        
-        image, shapes = model.preprocess(image)
-        prediction_dict = model.predict(image, shapes)
-        detections = model.postprocess(prediction_dict, shapes)
-        
+
+        image, shapes = detection_model.preprocess(image)
+        prediction_dict = detection_model.predict(image, shapes)
+        detections = detection_model.postprocess(prediction_dict, shapes)
+
         return detections, prediction_dict, tf.reshape(shapes, [-1])
-    
+
     return detect_fn
 
 

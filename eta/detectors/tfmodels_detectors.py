@@ -128,9 +128,7 @@ class TF2ModelsDetectorConfig(Config, etal.HasPublishedModel):
 
 
 class TF2ModelsDetector(
-    etal.ObjectDetector,
-    etal.ExposesFeatures,
-    etal.ExposesProbabilities,
+    etal.ObjectDetector, etal.ExposesFeatures, etal.ExposesProbabilities,
 ):
     """Interface to the TF2-Models object detection library at
     https://github.com/tensorflow/models/tree/master/research/object_detection.
@@ -161,8 +159,9 @@ class TF2ModelsDetector(
         model_path = self.config.model_path
 
         # Load model
-        self._detect_fn = etat.load_tf2_detection_model(self.config.model_path,
-                self.config.model_name)
+        self._detect_fn = etat.load_tf2_detection_model(
+            self.config.model_path, self.config.model_name
+        )
 
         # Load labels
         self._category_index, self._class_labels = _parse_labels_map(
@@ -256,23 +255,16 @@ class TF2ModelsDetector(
         return self._detect_all(imgs)
 
     def _detect_all(self, imgs):
-        output_ops = [self._boxes_op, self._scores_op, self._classes_op]
-
         if self.exposes_features and self.exposes_probabilities:
-            output_ops.extend([self._features_op, self._class_probs_op])
-            boxes, scores, classes, features, probs = self._evaluate(
-                imgs, output_ops
-            )
+            boxes, scores, classes, features, probs = self._evaluate(imgs)
         elif self.exposes_features:
-            output_ops.append(self._features_op)
-            boxes, scores, classes, features = self._evaluate(imgs, output_ops)
+            boxes, scores, classes, features = self._evaluate(imgs)
             probs = None
         elif self.exposes_probabilities:
-            output_ops.append(self._class_probs_op)
-            boxes, scores, classes, probs = self._evaluate(imgs, output_ops)
+            boxes, scores, classes, probs = self._evaluate(imgs)
             features = None
         else:
-            boxes, scores, classes = self._evaluate(imgs, output_ops)
+            boxes, scores, classes = self._evaluate(imgs)
             features = None
             probs = None
 
@@ -325,7 +317,7 @@ class TF2ModelsDetector(
 
     def _evaluate(self, imgs):
         return self._detect_fn(imgs)
-            
+
 
 class TFModelsDetectorConfig(Config, etal.HasPublishedModel):
     """TFModelsDetector configuration settings.
