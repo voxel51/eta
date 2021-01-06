@@ -38,6 +38,7 @@ from .utils import reset_path
 def _setup():
     reset_path()
 
+    sys.path.insert(1, etac.TF_MODELS_DIR)
     sys.path.insert(1, etac.TF_RESEARCH_DIR)
     sys.path.insert(1, os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
     sys.path.insert(1, os.path.join(etac.TF_OBJECT_DETECTION_DIR, "builders"))
@@ -232,6 +233,7 @@ class TF2ModelsDetector(
         return self._detect_all(imgs)
 
     def _detect_all(self, imgs):
+        imgs = tf.convert_to_tensor(imgs, dtype=tf.float32)
         if self.exposes_features and self.exposes_probabilities:
             boxes, scores, classes, features, probs = self._evaluate(imgs)
         elif self.exposes_features:
@@ -255,6 +257,9 @@ class TF2ModelsDetector(
             keep = []
             objects = DetectedObjectContainer()
             for j, (boxj, scorej, classj) in enumerate(zip(b, s, c)):
+                boxj = boxj.numpy()
+                scorej = scorej.numpy()
+                classj = classj.numpy()
                 # Filter detections, if necessary
                 if (
                     classj in self._category_index
@@ -1055,15 +1060,14 @@ def _load_tf2_detection_model(model_path, model_name):
     ckpt = tf.compat.v2.train.Checkpoint(model=detection_model)
     ckpt.restore(model_path).expect_partial()
 
-    @tf.function
+    @tf.function(experimental_relax_shapes=True)
     def detect_fn(image):
         """Detect objects in image."""
-
         image, shapes = detection_model.preprocess(image)
         prediction_dict = detection_model.predict(image, shapes)
         detections = detection_model.postprocess(prediction_dict, shapes)
 
-        return detections, prediction_dict, tf.reshape(shapes, [-1])
+        return detections["detection_boxes"], detections["detection_scores"], detections["detection_classes"]
 
     return detect_fn
 
