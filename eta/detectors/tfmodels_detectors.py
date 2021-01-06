@@ -66,10 +66,6 @@ class TF2ModelsDetectorConfig(Config, etal.HasPublishedModel):
         labels_path: the path to the labels map for the model
         confidence_thresh: a confidence threshold to apply to candidate
             detections
-        generate_features: whether to generate features for detections. By
-            default, this is False
-        generate_class_probs: whether to generate class probabilities for
-            detections. By default, this is False
     """
 
     def __init__(self, d):
@@ -84,17 +80,9 @@ class TF2ModelsDetectorConfig(Config, etal.HasPublishedModel):
         self.confidence_thresh = self.parse_number(
             d, "confidence_thresh", default=0
         )
-        self.generate_features = self.parse_bool(
-            d, "generate_features", default=False
-        )
-        self.generate_class_probs = self.parse_bool(
-            d, "generate_class_probs", default=False
-        )
 
 
-class TF2ModelsDetector(
-    etal.ObjectDetector,
-):
+class TF2ModelsDetector(etal.ObjectDetector,):
     """Interface to the TF2-Models object detection library at
     https://github.com/tensorflow/models/tree/master/research/object_detection.
     """
@@ -178,7 +166,7 @@ class TF2ModelsDetector(
     def _detect_all(self, imgs):
         imgs = tf.convert_to_tensor(imgs, dtype=tf.uint8)
         boxes, scores, classes = self._evaluate(imgs)
-        
+
         # Parse detections
         max_num_objects = 0
         detections = []
@@ -957,8 +945,6 @@ def _load_tf2_detection_model(model_dir):
     Returns:
         the `tf.function` for detection with the loaded model
     """
-    _setup()
-
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
     detect_fn = tf.saved_model.load(os.path.join(model_dir, "saved_model"))
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
@@ -966,7 +952,11 @@ def _load_tf2_detection_model(model_dir):
     def filtered_detect_fn(image):
         detections = detect_fn(image)
 
-        return detections["detection_boxes"], detections["detection_scores"], detections["detection_classes"]
+        return (
+            detections["detection_boxes"],
+            detections["detection_scores"],
+            detections["detection_classes"],
+        )
 
     return filtered_detect_fn
 
