@@ -40,14 +40,24 @@ def _setup():
 
     sys.path.insert(1, etac.TF_RESEARCH_DIR)
     sys.path.insert(1, os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
+    sys.path.insert(1, os.path.join(etac.TF_OBJECT_DETECTION_DIR, "builders"))
 
 
 _ensure_tf1 = lambda: etau.ensure_import("tensorflow<2")
-tf = etau.lazy_import("tensorflow", callback=_ensure_tf1)
+_ensure_tf2 = lambda: etau.ensure_import("tensorflow>=2")
+# tf = etau.lazy_import("tensorflow", callback=_ensure_tf1)
+tf = etau.lazy_import("tensorflow")
 
 _ERROR_MSG = "You must run `eta install models` in order to use this model"
-gool = etau.lazy_import(
-    "label_map_util", callback=_ensure_tf1, error_msg=_ERROR_MSG
+# gool = etau.lazy_import(
+#    "label_map_util", callback=_ensure_tf1, error_msg=_ERROR_MSG
+# )
+gool = etau.lazy_import("label_map_util", error_msg=_ERROR_MSG)
+model_builder = etau.lazy_import(
+    "model_builder", callback=_ensure_tf2, error_msg=_ERROR_MSG
+)
+config_util = etau.lazy_import(
+    "config_util", callback=_ensure_tf2, error_msg=_ERROR_MSG
 )
 
 
@@ -69,23 +79,6 @@ class TF2ModelsDetectorConfig(Config, etal.HasPublishedModel):
         labels_path: the path to the labels map for the model
         confidence_thresh: a confidence threshold to apply to candidate
             detections
-        input_name: the name of the `tf.Operation` to use as input. If omitted,
-            the default value "image_tensor" is used
-        boxes_name: the name of the `tf.Operation` to use to extract the box
-            coordinates. If omitted, the default value "detection_boxes" is
-            used
-        scores_name: the name of the `tf.Operation` to use to extract the
-            detection scores. If omitted, the default value "detection_scores"
-            is used
-        classes_name: the name of the `tf.Operation` to use to extract the
-            class indices. If omitted, the default value "detection_classes"
-            is used
-        features_name: the name of the `tf.Operation` to use to extract
-            features for detections. If omitted, the default value
-            "detection_features" is used
-        class_probs_name: the name of the `tf.Operation` to use to extract
-            class probabilities for detections. If omitted, the default value
-            "detection_multiclass_scores" is used
         generate_features: whether to generate features for detections. By
             default, this is False
         generate_class_probs: whether to generate class probabilities for
@@ -98,26 +91,11 @@ class TF2ModelsDetectorConfig(Config, etal.HasPublishedModel):
         self.labels_path = etau.fill_config_patterns(
             self.parse_string(d, "labels_path")
         )
+        self.pipeline_path = etau.fill_config_patterns(
+            self.parse_string(d, "pipeline_path")
+        )
         self.confidence_thresh = self.parse_number(
             d, "confidence_thresh", default=0
-        )
-        self.input_name = self.parse_number(
-            d, "input_name", default="image_tensor"
-        )
-        self.boxes_name = self.parse_number(
-            d, "boxes_name", default="detection_boxes"
-        )
-        self.scores_name = self.parse_number(
-            d, "scores_name", default="detection_scores"
-        )
-        self.classes_name = self.parse_number(
-            d, "classes_name", default="detection_classes"
-        )
-        self.features_name = self.parse_string(
-            d, "features_name", default="detection_features"
-        )
-        self.class_probs_name = self.parse_string(
-            d, "class_probs_name", default="detection_multiclass_scores"
         )
         self.generate_features = self.parse_bool(
             d, "generate_features", default=False
@@ -157,11 +135,10 @@ class TF2ModelsDetector(
         # Get path to model
         self.config.download_model_if_necessary()
         model_path = self.config.model_path
+        pipeline_path = self.config.pipeline_path
 
         # Load model
-        self._detect_fn = etat.load_tf2_detection_model(
-            self.config.model_path, self.config.model_name
-        )
+        self._detect_fn = _load_tf2_detection_model(model_path, pipeline_path)
 
         # Load labels
         self._category_index, self._class_labels = _parse_labels_map(
@@ -1047,6 +1024,48 @@ def _avg_pool_features(features):
         return features.mean(axis=axes, keepdims=False)
 
     return features
+
+
+def _load_tf2_detection_model(model_path, model_name):
+    """Loads the inference function for a detection model from the TF2 Model 
+    Zoo.
+
+    Args:
+        model_path: path to the model checkpoint to load
+        model_name: name of the model to load pipeline config
+        pipeline_config: path to the pipeline config for the given model
+
+    Returns:
+        the `tf.function` for detection with the loaded model
+    """
+    _setup()
+
+    pipeline_config = os.path.join(
+        "models/research/object_detection/configs/tf2/", model_name + ".config"
+    )
+
+    # Load pipeline config and build a detection model
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config)
+    model_config = configs["model"]
+    detection_model = model_builder.build(
+        model_config=model_config, is_training=False
+    )
+
+    # Restore checkpoint
+    ckpt = tf.compat.v2.train.Checkpoint(model=detection_model)
+    ckpt.restore(model_path).expect_partial()
+
+    @tf.function
+    def detect_fn(image):
+        """Detect objects in image."""
+
+        image, shapes = detection_model.preprocess(image)
+        prediction_dict = detection_model.predict(image, shapes)
+        detections = detection_model.postprocess(prediction_dict, shapes)
+
+        return detections, prediction_dict, tf.reshape(shapes, [-1])
+
+    return detect_fn
 
 
 def _parse_labels_map(labels_path):

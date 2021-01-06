@@ -73,46 +73,6 @@ def is_gpu_available():
     return tf.test.is_gpu_available()
 
 
-def load_tf2_detection_model(model_path, model_name):
-    """Loads the inference function for a detection model from the TF2 Model 
-    Zoo.
-
-    Args:
-        model_path: path to the model checkpoint to load
-        model_name: name of the model to load pipeline config
-        pipeline_config: path to the pipeline config for the given model
-
-    Returns:
-        the `tf.function` for detection with the loaded model
-    """
-    pipeline_config = os.path.join(
-        "models/research/object_detection/configs/tf2/", model_name + ".config"
-    )
-
-    # Load pipeline config and build a detection model
-    configs = config_util.get_configs_from_pipeline_file(pipeline_config)
-    model_config = configs["model"]
-    detection_model = model_builder.build(
-        model_config=model_config, is_training=False
-    )
-
-    # Restore checkpoint
-    ckpt = tf.compat.v2.train.Checkpoint(model=detection_model)
-    ckpt.restore(model_path).expect_partial()
-
-    @tf.function
-    def detect_fn(image):
-        """Detect objects in image."""
-
-        image, shapes = detection_model.preprocess(image)
-        prediction_dict = detection_model.predict(image, shapes)
-        detections = detection_model.postprocess(prediction_dict, shapes)
-
-        return detections, prediction_dict, tf.reshape(shapes, [-1])
-
-    return detect_fn
-
-
 def load_graph(model_path, sess=None, prefix=""):
     """Loads the TF graph from the given `.pb` file.
 
