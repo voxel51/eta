@@ -944,9 +944,9 @@ def _load_tf2_detection_model(model_dir):
     Returns:
         the `tf.function` for detection with the loaded model
     """
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-    detect_fn = tf.saved_model.load(os.path.join(model_dir, "saved_model"))
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
+    with etat.TFLoggingLevel(tf.compat.v1.logging.ERROR):
+        with etau.CaptureStdout():
+            detect_fn = tf.saved_model.load(os.path.join(model_dir, "saved_model"))
 
     def filtered_detect_fn(image):
         detections = detect_fn(image)
