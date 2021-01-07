@@ -932,7 +932,7 @@
             "version": null,
             "description": "CenterNet architecture from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the hourglass backbone trained on COCO",
             "manager": {
-                "type": "fiftyone.core.models.ModelManager",
+                "type": "eta.core.models.ETAModelManager",
                 "config": {
                     "url": "http://download.tensorflow.org/models/object_detection/tf2/20200713/centernet_hg104_512x512_coco17_tpu-8.tar.gz",
                     "extract_archive": true,
@@ -940,13 +940,10 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "eta.detectors.TF2ModelsDetector",
                 "config": {
-                    "type": "eta.detectors.TF2ModelsDetector",
-                    "config": {
-                        "model_name": "centernet-hg105-512-coco-tf2",
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
-                    }
+                    "model_name": "centernet-hg105-512-coco-tf2",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "requirements": {
