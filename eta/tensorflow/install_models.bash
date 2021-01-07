@@ -53,4 +53,7 @@ protoc research/object_detection/protos/*.proto \
     --proto_path=research \
     --python_out=research
 
+echo "Installing tf_slim"
+pip install tf_slim
+
 echo "Installation complete"
