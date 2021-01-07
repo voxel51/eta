@@ -42,7 +42,9 @@ def _setup():
     sys.path.insert(1, os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
 
 
-tf = etau.lazy_import("tensorflow")
+_ensure_tf = lambda: etau.ensure_import("tensorflow")
+tf = etau.lazy_import("tensorflow", callback=_ensure_tf)
+tf1 = etat.import_tf1()
 
 _ERROR_MSG = "You must run `eta install models` in order to use this model"
 gool = etau.lazy_import("label_map_util", error_msg=_ERROR_MSG)
@@ -411,7 +413,7 @@ class TF2ModelsDetectorConfig(Config, etal.HasPublishedModel):
         )
 
 
-class TF2ModelsDetector(etal.ObjectDetector,):
+class TF2ModelsDetector(etal.ObjectDetector):
     """Interface to the TF 2.X models from the TF-Models object detection
     library at
     https://github.com/tensorflow/models/tree/master/research/object_detection.
@@ -435,14 +437,20 @@ class TF2ModelsDetector(etal.ObjectDetector,):
             logger.debug("Extracting archive '%s'", model_path)
             etau.extract_archive(model_path, delete_archive=True)
 
-        # Load model
-        self._detect_fn = _load_tf2_detection_model(self._model_dir)
-
         # Load labels
         self._category_index, self._class_labels = _parse_labels_map(
             self.config.labels_path
         )
         self._num_classes = len(self._class_labels)
+
+        self._detect_fn = None
+
+    def __enter__(self):
+        self._detect_fn = _load_tf2_detection_model(self._model_dir)
+        return self
+
+    def __exit__(self, *args):
+        pass
 
     @property
     def ragged_batches(self):
@@ -910,7 +918,7 @@ def export_frozen_inference_graph(
 
     # Load pipeline config
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
-    with tf.gfile.GFile(pipeline_config_path, "r") as f:
+    with tf1.gfile.GFile(pipeline_config_path, "r") as f:
         text_format.Merge(f.read(), pipeline_config)
 
     # Export inference graph
@@ -933,22 +941,27 @@ def _avg_pool_features(features):
 
 def _load_tf2_detection_model(model_dir):
     """Loads the inference function for a detection model from the TF2 Model
-    Zoo following the loading from
-    https://github.com/abdelrahman-gaber/tf2-object-detection-api-tutorial
-    which is more efficient than the example provided by the TF2 Model Zoo
-    https://github.com/tensorflow/models/blob/master/research/object_detection/colab_tutorials/inference_tf2_colab.ipynb
+    Zoo.
+
+    References:
+
+        -   https://github.com/abdelrahman-gaber/tf2-object-detection-api-tutorial
+        -   https://github.com/tensorflow/models/blob/master/research/object_detection/colab_tutorials/inference_tf2_colab.ipynb
 
     Args:
-        model_dir: path to the saved model to load
+        model_dir: a directory containing the saved model in a `saved_model`
+            subdirectory
 
     Returns:
-        the `tf.function` for detection with the loaded model
+        a `tf.function` that performs prediction on an image and returns a
+        `(boxes, scores, clases)` tuple
     """
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-    detect_fn = tf.saved_model.load(os.path.join(model_dir, "saved_model"))
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
+    saved_model_dir = os.path.join(model_dir, "saved_model")
+    with etat.TFLoggingLevel(tf1.logging.ERROR):
+        with etau.CaptureStdout():
+            detect_fn = tf.saved_model.load(saved_model_dir)
 
-    def filtered_detect_fn(image):
+    def predict(image):
         detections = detect_fn(image)
 
         return (
@@ -957,7 +970,7 @@ def _load_tf2_detection_model(model_dir):
             detections["detection_classes"],
         )
 
-    return filtered_detect_fn
+    return predict
 
 
 def _parse_labels_map(labels_path):
