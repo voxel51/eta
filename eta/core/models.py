@@ -941,6 +941,7 @@ class Model(Serializable):
         version: the version of the model (if any)
         description: the description of the model (if any)
         source: the source of the model (if any)
+        size_bytes: the size of the model on disk (if any)
         default_deployment_config_dict: a dictionary representation of an
             `eta.core.learning.ModelConfig` describing the recommended settings
             for deploying the model
@@ -957,6 +958,7 @@ class Model(Serializable):
         version=None,
         description=None,
         source=None,
+        size_bytes=None,
         default_deployment_config_dict=None,
         requirements=None,
         tags=None,
@@ -971,6 +973,7 @@ class Model(Serializable):
             version: (optional) the model version
             description: (optional) the description of the model
             source: (optional) the source of the model
+            size_bytes: (optional) the size of the model on disk
             default_deployment_config_dict: (optional) a dictionary
                 representation of an `eta.core.learning.ModelConfig` describing
                 the recommended settings for deploying the model
@@ -984,6 +987,7 @@ class Model(Serializable):
         self.version = version or None
         self.description = description
         self.source = source
+        self.size_bytes = size_bytes
         self.default_deployment_config_dict = default_deployment_config_dict
         self.requirements = requirements
         self.tags = tags
@@ -1250,6 +1254,7 @@ class Model(Serializable):
             "version",
             "description",
             "source",
+            "size_bytes",
             "manager",
             "default_deployment_config_dict",
             "requirements",
@@ -1284,6 +1289,7 @@ class Model(Serializable):
             version=d.get("version", None),
             description=d.get("description", None),
             source=d.get("source", None),
+            size_bytes=d.get("size_bytes", None),
             default_deployment_config_dict=d.get(
                 "default_deployment_config_dict", None
             ),
