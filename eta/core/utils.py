@@ -889,8 +889,6 @@ def lazy_object(_callable):
         def import_tf1():
             try:
                 import tensorflow.compat.v1 as tf
-
-                tf.disable_v2_behavior()
             except:
                 import tensorflow as tf
 
