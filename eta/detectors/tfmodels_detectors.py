@@ -392,7 +392,7 @@ class TF2ModelsDetectorConfig(Config, etal.HasPublishedModel):
     Attributes:
         model_name: the name of the published model to load. If this value is
             provided, `model_path` does not need to be
-        model_path: the path to a frozen inference graph to load. If this value
+        model_path: the path to the `saved_model` to load. If this value
             is provided, `model_name` does not need to be
         labels_path: the path to the labels map for the model
         confidence_thresh: a confidence threshold to apply to candidate
@@ -404,9 +404,6 @@ class TF2ModelsDetectorConfig(Config, etal.HasPublishedModel):
 
         self.labels_path = etau.fill_config_patterns(
             self.parse_string(d, "labels_path")
-        )
-        self.pipeline_path = etau.fill_config_patterns(
-            self.parse_string(d, "pipeline_path")
         )
         self.confidence_thresh = self.parse_number(
             d, "confidence_thresh", default=0
