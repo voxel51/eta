@@ -956,10 +956,11 @@ def _load_tf2_detection_model(model_dir):
         a `tf.function` that performs prediction on an image and returns a
         `(boxes, scores, clases)` tuple
     """
-    saved_model_dir = os.path.join(model_dir, "saved_model")
     with etat.TFLoggingLevel(tf1.logging.ERROR):
         with etau.CaptureStdout():
-            detect_fn = tf.saved_model.load(saved_model_dir)
+            detect_fn = tf.saved_model.load(
+                os.path.join(model_dir, "saved_model")
+            )
 
     def predict(image):
         detections = detect_fn(image)
