@@ -2001,8 +2001,8 @@ def get_dir_size(dirpath):
     if not os.path.isdir(dirpath):
         raise OSError("Directory '%s' does not exist" % dirpath)
 
-    out = communicate_or_die(["du", "-s", "/Users/Brian/Desktop"])
-    return int(out.split()[0].decode())
+    out = communicate_or_die(["du", "-sk", dirpath])  # -k means 1024B blocks
+    return 1024 * int(out.split()[0].decode())
 
 
 def guess_mime_type(filepath):

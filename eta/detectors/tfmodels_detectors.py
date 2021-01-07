@@ -130,7 +130,8 @@ class TFModelsDetector(
     etal.ExposesProbabilities,
     etat.UsesTFSession,
 ):
-    """Interface to the TF-Models object detection library at
+    """Interface to the TF 1.X models from the TF-Models object detection
+    library at
     https://github.com/tensorflow/models/tree/master/research/object_detection.
 
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
@@ -411,7 +412,8 @@ class TF2ModelsDetectorConfig(Config, etal.HasPublishedModel):
 
 
 class TF2ModelsDetector(etal.ObjectDetector,):
-    """Interface to the TF2-Models object detection library at
+    """Interface to the TF 2.X models from the TF-Models object detection
+    library at
     https://github.com/tensorflow/models/tree/master/research/object_detection.
     """
 
@@ -930,7 +932,7 @@ def _avg_pool_features(features):
 
 
 def _load_tf2_detection_model(model_dir):
-    """Loads the inference function for a detection model from the TF2 Model 
+    """Loads the inference function for a detection model from the TF2 Model
     Zoo following the loading from
     https://github.com/abdelrahman-gaber/tf2-object-detection-api-tutorial
     which is more efficient than the example provided by the TF2 Model Zoo
