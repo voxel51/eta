@@ -28,9 +28,6 @@ if [ ${SKIP_CLONE} = false ]; then
 
     echo "Cloning https://github.com/voxel51/models"
     git clone https://github.com/voxel51/models "${MODELS_DIR}"
-
-    cd "${MODELS_DIR}"
-    git checkout --track origin/tf2-upgrade
 fi
 
 cd "${MODELS_DIR}"
