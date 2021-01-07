@@ -947,13 +947,12 @@
                 }
             },
             "requirements": {
+                "packages": ["tensorflow>=2"],
                 "cpu": {
-                    "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "support": true
                 },
                 "gpu": {
-                    "support": true,
-                    "packages": ["tensorflow-gpu>=2"]
+                    "support": true
                 }
             },
             "date_added": "2021-01-6 11:01:34"
