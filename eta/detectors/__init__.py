@@ -9,6 +9,8 @@ from .efficientdet import EfficientDet, EfficientDetConfig
 from .tfmodels_detectors import (
     TFModelsDetector,
     TFModelsDetectorConfig,
+    TF2ModelsDetector,
+    TF2ModelsDetectorConfig,
     TFModelsInstanceSegmenter,
     TFModelsInstanceSegmenterConfig,
 )

@@ -283,11 +283,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -313,11 +313,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2019-12-18 12:07:00"
@@ -343,11 +343,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2019-12-18 12:07:00"
@@ -373,11 +373,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -403,11 +403,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -433,11 +433,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -463,11 +463,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -493,11 +493,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -523,11 +523,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -615,6 +615,16 @@
                     "mask_thresh": 0.5
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                }
+            },
             "date_added": "2019-12-10 12:07:51"
         },
         {
@@ -634,6 +644,16 @@
                     "model_name": "mask-rcnn-inception-v2-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
                     "mask_thresh": 0.5
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2019-12-10 12:07:51"
@@ -657,6 +677,16 @@
                     "mask_thresh": 0.5
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                }
+            },
             "date_added": "2019-12-10 12:07:51"
         },
         {
@@ -676,6 +706,16 @@
                     "model_name": "mask-rcnn-resnet101-atrous-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
                     "mask_thresh": 0.5
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2019-12-10 12:07:51"
@@ -797,11 +837,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2018-12-23 14:37:47"
@@ -827,11 +867,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2018-12-23 14:34:09"
@@ -857,11 +897,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2019-04-11 12:01:29"
@@ -887,11 +927,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2018-12-23 14:34:05"
@@ -917,14 +957,46 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2019-04-11 12:25:44"
+        },
+        {
+            "base_name": "centernet-hg104-512-coco",
+            "base_filename": "centernet_hg104_512x512_coco17_tpu-8.tar.gz",
+            "version": null,
+            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Hourglass-104 backbone trained on COCO resized to 512x512",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200713/centernet_hg104_512x512_coco17_tpu-8.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TF2ModelsDetector",
+                "config": {
+                    "model_name": "centernet-hg104-512-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2|tensorflow-gpu>=2"]
+                }
+            },
+            "date_added": "2021-01-6 11:01:34"
         },
         {
             "base_name": "deeplabv3-cityscapes",
@@ -945,6 +1017,16 @@
                     "resize_to_max_dim": 513,
                     "input_name": "ImageTensor",
                     "output_name": "SemanticPredictions"
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2020-12-10 12:07:51"
@@ -970,6 +1052,16 @@
                     "output_name": "SemanticPredictions"
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                }
+            },
             "date_added": "2020-12-10 12:07:51"
         },
         {
@@ -989,6 +1081,16 @@
                     "attr_name": "imagenet",
                     "model_name": "vgg16-imagenet",
                     "labels_path": "{{eta-resources}}/vgg16-imagenet-labels.txt"
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "date_added": "2018-06-20 17:35:53"

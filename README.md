@@ -13,7 +13,7 @@ ETA is very portable:
 
 -   Installable on Mac or Linux
 -   Supports Python 2.7 and Python 3.6 or later
--   Supports TensorFlow 1
+-   Supports TensorFlow 1.X and 2.X
 -   Supports OpenCV 2.4+ and OpenCV 3.0+
 -   Supports CPU-only and GPU-enabled installations
 -   Supports CUDA 8, 9 and 10 for GPU installations
@@ -77,6 +77,13 @@ installer, as recommended by the
 | CUDA 10            | `tensorflow-gpu~=1.15`       |
 | Other CUDA         | `tensorflow-gpu~=1.15`       |
 | No CUDA            | `tensorflow~=1.15`           |
+
+> Note that ETA also supports TensorFlow 2.X. The only problems you may face
+> are when trying to run inference with
+> [ETA models](https://github.com/voxel51/eta/blob/develop/eta/models/manifest.json)
+> that only support TensorFlow 1. A notable case here are TF-slim models. In
+> such cases, you should see an informative error message alerting you of the
+> requirement mismatch.
 
 ### Lite installation
 
