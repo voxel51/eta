@@ -633,6 +633,10 @@ def ensure_package(requirement_str, error_level=0, log_success=False):
         log_success: whether to generate a log message if the requirement is
             satisifed
     """
+    if "|" in requirement_str:
+        _ensure_packages(requirement_str, error_level, log_success)
+        return
+
     req = Requirement(requirement_str)
 
     try:
@@ -643,6 +647,23 @@ def ensure_package(requirement_str, error_level=0, log_success=False):
         error = e
 
     _ensure_requirement(req, version, error_level, log_success, error=error)
+
+
+def _ensure_packages(requirement_str, error_level, log_success):
+    results = []
+    for req_str in requirement_str.split("|"):
+        req = Requirement(req_str)
+
+        try:
+            version = pkg_resources.get_distribution(req.name).version
+            error = None
+        except pkg_resources.DistributionNotFound as e:
+            version = None
+            error = e
+
+        results.append((req, version, error))
+
+    _ensure_one_requirement(results, error_level, log_success)
 
 
 def ensure_import(requirement_str, error_level=0, log_success=False):
@@ -691,7 +712,7 @@ def _ensure_requirement(
                 "your machine" % str(req)
             ),
             error_level,
-            error,
+            base_error=error,
         )
         return
 
@@ -710,6 +731,50 @@ def _ensure_requirement(
         logger.info(
             "Requirement satisfied: %s (found %s)" % (str(req), version)
         )
+
+
+def _ensure_one_requirement(
+    results, error_level, log_success, error_cls=ImportError
+):
+    successes = []
+    fails = []
+    for req, version, error in results:
+        if version is None or not req.specifier.contains(version):
+            fails.append((req, version, error))
+        else:
+            successes.append((req, version))
+
+    if successes:
+        if log_success:
+            for req, version in successes:
+                logger.info(
+                    "Requirement satisfied: %s (found %s)"
+                    % (str(req), version)
+                )
+
+        return
+
+    req_strs = []
+    found_strs = []
+    last_error = None
+    for req, version, error in fails:
+        req_strs.append(str(req))
+        if version is not None:
+            found_strs.append("%s==%s" % (req.name, version))
+
+        if error is not None:
+            last_error = error
+
+    req_str = "\n".join("-   %s" % r for r in req_strs)
+    found_str = "\n".join("-   %s" % f for f in found_strs)
+    error = error_cls(
+        (
+            "The requested operation requires that one of the following is "
+            "installed on your machine:\n%s\n\nbut found:\n%s"
+        )
+        % (req_str, found_str)
+    )
+    handle_error(error, error_level, base_error=last_error)
 
 
 def handle_error(error, error_level, base_error=None):

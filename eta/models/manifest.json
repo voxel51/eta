@@ -287,7 +287,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -317,7 +317,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2019-12-18 12:07:00"
@@ -347,7 +347,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2019-12-18 12:07:00"
@@ -377,7 +377,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -407,7 +407,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -437,7 +437,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -467,7 +467,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -497,7 +497,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -527,7 +527,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2019-12-17 08:25:51"
@@ -801,7 +801,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2018-12-23 14:37:47"
@@ -831,7 +831,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2018-12-23 14:34:09"
@@ -861,7 +861,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2019-04-11 12:01:29"
@@ -891,7 +891,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2018-12-23 14:34:05"
@@ -921,7 +921,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow>=2|tensorflow-gpu<2"]
                 }
             },
             "date_added": "2019-04-11 12:25:44"
@@ -947,12 +947,13 @@
                 }
             },
             "requirements": {
-                "packages": ["tensorflow>=2"],
                 "cpu": {
-                    "support": true
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
                 },
                 "gpu": {
-                    "support": true
+                    "support": true,
+                    "packages": ["tensorflow>=2|tensorflow-gpu>=2"]
                 }
             },
             "date_added": "2021-01-6 11:01:34"
