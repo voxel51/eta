@@ -967,10 +967,10 @@
             "date_added": "2019-04-11 12:25:44"
         },
         {
-            "base_name": "centernet-hg105-512-coco-tf2",
+            "base_name": "centernet-hg104-512-coco",
             "base_filename": "centernet_hg104_512x512_coco17_tpu-8.tar.gz",
             "version": null,
-            "description": "CenterNet architecture from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the hourglass backbone trained on COCO",
+            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Hourglass-104 backbone trained on COCO resized to 512x512",
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
@@ -982,7 +982,7 @@
             "default_deployment_config_dict": {
                 "type": "eta.detectors.TF2ModelsDetector",
                 "config": {
-                    "model_name": "centernet-hg105-512-coco-tf2",
+                    "model_name": "centernet-hg104-512-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
