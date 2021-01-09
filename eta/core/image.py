@@ -1387,26 +1387,41 @@ def scale_frame_size(frame_size, scale):
     return tuple(int(round(scale * d)) for d in frame_size)
 
 
-def clamp_frame_size(frame_size, max_size):
-    """Clamps the frame size to the given maximum size.
+def clip_frame_size(frame_size, min_size=None, max_size=None):
+    """Clips the frame size to the given minimum and maximum sizes, if
+    necessary.
 
     The aspect ratio of the input frame size is preserved.
 
     Args:
         frame_size: a (width, height) tuple
-        max_size: a (max width, max height) tuple. One or both dimensions can
-            be -1, in which case no constraint is applied that dimension
+        min_size: an optional (min width, min height) tuple. One or both
+            dimensions can be -1, in which case no constraint is applied that
+            dimension
+        max_size: an optional (max width, max height) tuple. One or both
+            dimensions can be -1, in which case no constraint is applied that
+            dimension
 
     Returns:
-        the (width, height) scaled down if necessary so that width <= max width
-            and height <= max height
+        the (width, height) scaled if necessary so that
+            min width <= width <= max width and
+            min height <= height <= max height
     """
     alpha = 1
-    if max_size[0] > 0:
-        alpha = min(alpha, max_size[0] / frame_size[0])
 
-    if max_size[1] > 0:
-        alpha = min(alpha, max_size[1] / frame_size[1])
+    if min_size is not None:
+        if min_size[0] > 0:
+            alpha = max(alpha, min_size[0] / frame_size[0])
+
+        if min_size[1] > 0:
+            alpha = max(alpha, min_size[1] / frame_size[1])
+
+    if max_size is not None:
+        if max_size[0] > 0:
+            alpha = min(alpha, max_size[0] / frame_size[0])
+
+        if max_size[1] > 0:
+            alpha = min(alpha, max_size[1] / frame_size[1])
 
     return scale_frame_size(frame_size, alpha)
 

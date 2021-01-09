@@ -215,7 +215,7 @@ def _process_video(input_path, output_path, parameters):
     # Apply size limit, if requested
     if max_size:
         msize = etai.parse_frame_size(max_size)
-        osize = etai.clamp_frame_size(osize, msize)
+        osize = etai.clip_frame_size(osize, max_size=msize)
 
     #
     # Handle no-ops efficiently

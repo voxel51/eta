@@ -218,7 +218,7 @@ def _compute_output_frame_size(video_metadata, parameters):
 
     if max_size is not None:
         msize = etai.parse_frame_size(max_size)
-        osize = etai.clamp_frame_size(osize, msize)
+        osize = etai.clip_frame_size(osize, max_size=msize)
 
     # Avoid resizing if possible
     resize_frames = osize != isize
