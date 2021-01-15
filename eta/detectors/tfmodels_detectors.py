@@ -2,7 +2,7 @@
 Interface to the TF-Models Object Detection Library available at
 https://github.com/voxel51/models/tree/master/research/object_detection.
 
-Copyright 2017-2020, Voxel51, Inc.
+Copyright 2017-2021, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
