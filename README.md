@@ -1,11 +1,21 @@
-# ETA: Extensible Toolkit for Analytics
+<div align="center">
 
+<h1>
+    ETA: Extensible Toolkit for Analytics
+</h1>
+
+**An open and extensible computer vision, machine learning and video analytics
+infrastructure.**
+
+[![PyPI python](https://img.shields.io/pypi/pyversions/voxel51-eta)](https://pypi.org/project/voxel51-eta)
+[![PyPI version](https://badge.fury.io/py/voxel51-eta.svg)](https://pypi.org/project/voxel51-eta)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
-
-An open and extensible computer vision, machine learning and video analytics
-infrastructure.
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
 
 <img src="https://user-images.githubusercontent.com/25985824/78944107-2d766c80-7a8b-11ea-8863-fcb4897eecb5.png" alt="eta-infrastructure.png" width="75%"/>
+
+</div>
 
 ## Requirements
 
@@ -18,6 +28,18 @@ ETA is very portable:
 -   Supports CPU-only and GPU-enabled installations
 -   Supports CUDA 8, 9 and 10 for GPU installations
 
+## Installation
+
+You can install the latest release of ETA via `pip`:
+
+```shell
+pip install voxel51-eta
+```
+
+This will perform a [lite installation of ETA](#lite-installation). If you use
+an ETA feature that requires additional dependencies (e.g., `ffmpeg` or
+`tensorflow`), you will be prompted to install the relevant packages.
+
 ## Docker Installation
 
 If you prefer to operate via Docker, see the
@@ -27,19 +49,15 @@ installed.
 
 ## Installation from source
 
-### Instructions
-
-The following instructions describe how to install ETA locally on your machine.
-
 #### Step 0: Setup your Python environment
 
 It is assumed that you already have
 [Python installed](https://www.python.org/downloads) on your machine.
 
-**IMPORTANT:** ETA assumes that the version of Python that you intend to use is
-accessible via `python` and `pip` on your path. In particular, for Python 3
-users, this means that you may need to alias `python3` and `pip3` to `python`
-and `pip`, respectively.
+> **IMPORTANT:** ETA assumes that the version of Python that you intend to use
+> is accessible via `python` and `pip` on your path. In particular, for Python
+> 3 users, this means that you may need to alias `python3` and `pip3` to
+> `python` and `pip`, respectively.
 
 We strongly recommend that you install ETA
 [in a virtual environment](https://github.com/voxel51/eta/blob/develop/docs/virtualenv_guide.md)
@@ -79,7 +97,7 @@ installer, as recommended by the
 | No CUDA            | `tensorflow~=1.15`           |
 
 > Note that ETA also supports TensorFlow 2.X. The only problems you may face
-> are when trying to run inference with
+> when using ETA with TensorFlow 2 are when trying to run inference with
 > [ETA models](https://github.com/voxel51/eta/blob/develop/eta/models/manifest.json)
 > that only support TensorFlow 1. A notable case here are TF-slim models. In
 > such cases, you should see an informative error message alerting you of the
@@ -96,7 +114,9 @@ bash install.bash -l
 ```
 
 Lite installation omits submodules and other large dependencies that are not
-required in order for the core library to function.
+required in order for the core library to function. If you use an ETA feature
+that requires additional dependencies (e.g., `ffmpeg` or `tensorflow`), you
+will be prompted to install the relevant packages.
 
 ### Developer installation
 
@@ -108,7 +128,7 @@ the install script:
 bash install.bash -d
 ```
 
-### Setting up your execution environment
+## Setting up your execution environment
 
 When the root `eta` package is imported, it tries to read the `eta/config.json`
 file to configure various package-level constants. Many advanced ETA features
@@ -207,6 +227,16 @@ pip uninstall voxel51-eta
 This project was gratefully supported by the
 [NIST Public Safety Innovation Accelerator Program](https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-accelerate-public-safety-communications).
 
-## Copyright
+## Citation
 
-Copyright 2017-2021, Voxel51, Inc.<br> voxel51.com
+If you use ETA in your research, feel free to cite the project (but only if you
+love it 😊):
+
+```bibtex
+@article{moore2017eta,
+  title={ETA: Extensible Toolkit for Analytics},
+  author={Moore, B. E. and Corso, J. J.},
+  journal={GitHub. Note: https://github.com/voxel51/eta},
+  year={2017}
+}
+```
