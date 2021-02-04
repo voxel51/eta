@@ -173,6 +173,7 @@ class CategoricalAttribute(Attribute):
         name: the name of the attribute
         value: the value of the attribute
         confidence: (optional) the confidence of the attribute, in ``[0, 1]``
+        target (None): an integer in the range ``[0, 255]``
         top_k_probs: (optional) an optional dictionary mapping values to
             probabilities
         constant: whether this attribute is constant, i.e., all attributes of
@@ -181,7 +182,7 @@ class CategoricalAttribute(Attribute):
     """
 
     def __init__(
-        self, name, value, confidence=None, top_k_probs=None, constant=False
+        self, name, value, confidence=None, target=None, top_k_probs=None, constant=False
     ):
         """Creates a CategoricalAttribute instance.
 
@@ -191,6 +192,7 @@ class CategoricalAttribute(Attribute):
             confidence: an optional confidence of the value, in ``[0, 1]``
             top_k_probs: an optional dictionary mapping values to
                 probabilities. By default, no probabilities are stored
+            target (None): an integer in the range ``[0, 255]``
             constant: whether this attribute is constant, i.e., all attributes
                 of the same `name` must be identical to this attribute
                 throughout the life of its parent entity. By default, this is

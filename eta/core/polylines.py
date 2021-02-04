@@ -46,6 +46,7 @@ class Polyline(etal.Labels):
             from the last vertex to the first vertex of each shape
         filled: whether the polyline represents polygons, i.e., shapes that
             should be filled when rendering them
+        target (None): an integer in the range ``[0, 255]``
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
             attributes for the polyline
 
@@ -63,6 +64,7 @@ class Polyline(etal.Labels):
             shape
         filled (False): whether the polyline contains polygons, i.e., shapes
             that should be filled when rendering them
+        target (None): an integer in the range ``[0, 255]``
         attrs (None): an :class:`eta.core.data.AttributeContainer` of
             attributes for the polyline
     """
@@ -76,6 +78,7 @@ class Polyline(etal.Labels):
         points=None,
         closed=False,
         filled=False,
+        target=None,
         attrs=None,
     ):
         self.type = etau.get_class_name(self)
@@ -95,6 +98,7 @@ class Polyline(etal.Labels):
             self.has_label
             or self.has_name
             or self.has_vertices
+            or self.has_target
             or self.has_attributes
         )
 
@@ -122,6 +126,11 @@ class Polyline(etal.Labels):
     def has_index(self):
         """Whether the polyline has an ``index``."""
         return self.index is not None
+
+    @property
+    def has_target(self):
+        """Whether the polyine has a ``target``."""
+        return self.target is not None
 
     @property
     def has_attributes(self):
@@ -327,6 +336,7 @@ class Polyline(etal.Labels):
         points = d.get("points", None)
         closed = d.get("closed", False)
         filled = d.get("filled", False)
+        target = d.get("target", None)
 
         attrs = d.get("attrs", None)
         if attrs is not None:
@@ -340,6 +350,7 @@ class Polyline(etal.Labels):
             points=points,
             closed=closed,
             filled=filled,
+            target=target,
             attrs=attrs,
         )
 

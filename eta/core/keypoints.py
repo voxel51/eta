@@ -40,6 +40,7 @@ class Keypoints(etal.Labels):
         confidence: (optional) a confidence for the keypoints, in ``[0, 1]``
         index: (optional) an index assigned to the keypoints
         points: a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
+        target (None): an integer in the range ``[0, 255]``
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
             attributes for the keypoints
 
@@ -50,6 +51,7 @@ class Keypoints(etal.Labels):
         confidence (None): a confidence for the keypoints, in ``[0, 1]``
         index (None): an integer index assigned to the keypoints
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
+        target (None): an integer in the range ``[0, 255]``
         attrs (None): an :class:`eta.core.data.AttributeContainer` of
             attributes for the keypoints
     """
@@ -61,6 +63,7 @@ class Keypoints(etal.Labels):
         confidence=None,
         index=None,
         points=None,
+        target=None,
         attrs=None,
     ):
         self.type = etau.get_class_name(self)
@@ -69,6 +72,7 @@ class Keypoints(etal.Labels):
         self.confidence = confidence
         self.index = index
         self.points = points or []
+        self.target = target
         self.attrs = attrs or etad.AttributeContainer()
 
     @property
@@ -78,6 +82,7 @@ class Keypoints(etal.Labels):
             self.has_label
             or self.has_name
             or self.has_points
+            or self.has_target
             or self.has_attributes
         )
 
@@ -105,6 +110,11 @@ class Keypoints(etal.Labels):
     def has_name(self):
         """Whether the keypoints has a ``name``."""
         return self.name is not None
+
+    @property
+    def has_target(self):
+        """Whether the keypoints has a ``target``."""
+        return self.target is not None
 
     @property
     def has_attributes(self):
@@ -295,6 +305,7 @@ class Keypoints(etal.Labels):
         confidence = d.get("confidence", None)
         index = (d.get("index", None),)
         points = d.get("points", None)
+        target = d.get("target", None)
 
         attrs = d.get("attrs", None)
         if attrs is not None:
@@ -306,6 +317,7 @@ class Keypoints(etal.Labels):
             confidence=confidence,
             index=index,
             points=points,
+            target=target,
             attrs=attrs,
         )
 

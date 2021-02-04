@@ -59,6 +59,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         index_in_frame: (optional) the index of the object in the frame where
             it was detected
         eval_type: (optional) an :class:`EvaluationType` value
+        target (None): an integer in the range ``[0, 255]``
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
             attributes for the object
 
@@ -78,6 +79,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         index_in_frame (None): the index of the object in the frame where it
             was detected
         eval_type (None): an :class:`EvaluationType` for the object
+        target (None): an integer in the range ``[0, 255]``
         attrs (None): an :class:`eta.core.data.AttributeContainer` of
             attributes for the object
     """
@@ -95,6 +97,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         frame_number=None,
         index_in_frame=None,
         eval_type=None,
+        target=None,
         attrs=None,
     ):
         self.type = etau.get_class_name(self)
@@ -109,6 +112,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         self.frame_number = frame_number
         self.index_in_frame = index_in_frame
         self.eval_type = eval_type
+        self.target = target
         self.attrs = attrs or etad.AttributeContainer()
         self._meta = None  # Usable by clients to store temporary metadata
 
@@ -119,6 +123,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             self.has_label
             or self.has_bounding_box
             or self.has_mask
+            or self.has_target
             or self.has_attributes
         )
 
@@ -161,6 +166,11 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
     def has_frame_number(self):
         """Whether the object has a ``frame_number``."""
         return self.frame_number is not None
+
+    @property
+    def has_target(self):
+        """Whether the object has a ``target``."""
+        return self.target is not None
 
     @property
     def has_attributes(self):
@@ -285,6 +295,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             "frame_number",
             "index_in_frame",
             "eval_type",
+            "target"
         ]
         _attrs.extend(
             [a for a in _noneable_attrs if getattr(self, a) is not None]
@@ -329,6 +340,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             score=d.get("score", None),
             frame_number=d.get("frame_number", None),
             index_in_frame=d.get("index_in_frame", None),
+            target=d.get("target", None),
             attrs=attrs,
             eval_type=d.get("eval_type", None),
         )
@@ -511,6 +523,7 @@ class VideoObject(
         name: (optional) the name of the object, e.g., ``ground_truth`` or the
             name of the model that generated it
         index: (optional) an index assigned to the object
+        target (None): an integer in the range ``[0, 255]``
         support: a :class:`eta.core.frameutils.FrameRanges` instance describing
             the support of the object
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
@@ -524,6 +537,7 @@ class VideoObject(
         name (None): a name for the object, e.g., ``ground_truth`` or the name
             of the model that generated it
         index (None): an index assigned to the object
+        target (None): an integer in the range ``[0, 255]``
         support (None): a :class:`eta.core.frameutils.FrameRanges` instance
             describing the frozen support of the object
         attrs (None): an :class:`eta.core.data.AttributeContainer` of
@@ -538,6 +552,7 @@ class VideoObject(
         confidence=None,
         name=None,
         index=None,
+        target=None,
         support=None,
         attrs=None,
         frames=None,
@@ -547,6 +562,7 @@ class VideoObject(
         self.confidence = confidence
         self.name = name
         self.index = index
+        self.target = target
         self.attrs = attrs or etad.AttributeContainer()
         self.frames = frames or {}
         etal.HasLabelsSupport.__init__(self, support=support)
@@ -577,6 +593,11 @@ class VideoObject(
     def has_index(self):
         """Whether the object has an ``index``."""
         return self.index is not None
+
+    @property
+    def has_target(self):
+        """Whether the object has a ``target``."""
+        return self.target is not None
 
     @property
     def has_object_attributes(self):
@@ -814,6 +835,7 @@ class VideoObject(
         label = objects[0].label
         name = objects[0].name
         index = objects[0].index
+        target = objects[0].target
 
         for dobj in objects:
             if dobj.label != label:
@@ -834,6 +856,12 @@ class VideoObject(
                     % (dobj.index, index)
                 )
 
+            if dobj.index != index:
+                raise ValueError(
+                    "Object target '%s' does not match first target '%s'"
+                    % (dobj.target, target
+                )
+
         # Strip constant attributes
         obj_attrs = strip_spatiotemporal_content_from_objects(objects)
 
@@ -841,7 +869,7 @@ class VideoObject(
         objects.remove_empty_labels()
 
         # Build VideoObject
-        obj = cls(label=label, name=name, index=index, attrs=obj_attrs)
+        obj = cls(label=label, name=name, index=index, target=target, attrs=obj_attrs)
         obj.add_detections(objects)
         return obj
 
@@ -878,6 +906,7 @@ class VideoObject(
             confidence=d.get("confidence", None),
             name=d.get("name", None),
             index=d.get("index", None),
+            target=d.get("target", None),
             support=support,
             frames=frames,
             attrs=attrs,
@@ -934,9 +963,18 @@ class VideoObject(
                 self.index,
             )
 
+        if dobj.target is not None and dobj.target != self.target:
+            logger.warning(
+                "DetectedObject target '%s' does not match VideoObject target "
+                "'%s'",
+                dobj.target,
+                self.target,
+            )
+
         dobj.label = None
         dobj.name = None
         dobj.index = None
+        dobj.target = None
         dobj.frame_number = frame_number
         self.frames[frame_number] = dobj
 
