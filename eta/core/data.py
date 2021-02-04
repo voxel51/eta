@@ -182,7 +182,13 @@ class CategoricalAttribute(Attribute):
     """
 
     def __init__(
-        self, name, value, confidence=None, target=None, top_k_probs=None, constant=False
+        self,
+        name,
+        value,
+        confidence=None,
+        target=None,
+        top_k_probs=None,
+        constant=False,
     ):
         """Creates a CategoricalAttribute instance.
 

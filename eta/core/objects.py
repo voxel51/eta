@@ -295,7 +295,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             "frame_number",
             "index_in_frame",
             "eval_type",
-            "target"
+            "target",
         ]
         _attrs.extend(
             [a for a in _noneable_attrs if getattr(self, a) is not None]
@@ -859,7 +859,7 @@ class VideoObject(
             if dobj.index != index:
                 raise ValueError(
                     "Object target '%s' does not match first target '%s'"
-                    % (dobj.target, target
+                    % (dobj.target, target)
                 )
 
         # Strip constant attributes
@@ -869,7 +869,9 @@ class VideoObject(
         objects.remove_empty_labels()
 
         # Build VideoObject
-        obj = cls(label=label, name=name, index=index, target=target, attrs=obj_attrs)
+        obj = cls(
+            label=label, name=name, index=index, target=target, attrs=obj_attrs
+        )
         obj.add_detections(objects)
         return obj
 
