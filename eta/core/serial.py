@@ -2900,7 +2900,7 @@ class ETAJSONEncoder(json.JSONEncoder):
         if isinstance(obj, np.floating):
             return float(obj)
         if isinstance(obj, np.ndarray):
-            return obj.tolist()
+            return serialize_numpy_array(obj)
         if isinstance(obj, (dt.datetime, dt.date)):
             return obj.isoformat()
         if isinstance(obj, bytes):
