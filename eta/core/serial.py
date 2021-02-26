@@ -271,11 +271,13 @@ def serialize_numpy_array(array):
     return b64encode(bytes_str).decode("ascii")
 
 
-def deserialize_numpy_array(numpy_str):
+def deserialize_numpy_array(numpy_str, allow_pickle=False):
     """Loads a serialized numpy array from string.
 
     Args:
         numpy_str: serialized numpy array string
+        allow_pickle: whether to allow loading pickled objects, which is
+            necessary if the array has ``dtype=object``
 
     Returns:
         the numpy array
@@ -286,7 +288,7 @@ def deserialize_numpy_array(numpy_str):
     #
     bytes_str = zlib.decompress(b64decode(numpy_str.encode("ascii")))
     with io.BytesIO(bytes_str) as f:
-        return np.load(f)
+        return np.load(f, allow_pickle=allow_pickle)
 
 
 class Serializable(object):
