@@ -77,6 +77,21 @@ def is_numeric(val):
     return isinstance(val, numbers.Number)
 
 
+def is_container(val):
+    """Returns True/False whether the given value is a container.
+
+    Here "container" means any non-string iterable object.
+    """
+    if is_str(val):
+        return False
+
+    try:
+        iter(val)
+        return True
+    except:
+        return False
+
+
 def standarize_strs(arg):
     """Standardizes any strings in the given object by casting them via
     `str()`. Dictionaries and lists are processed recursively.
