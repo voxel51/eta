@@ -264,7 +264,8 @@ def serialize_numpy_array(array):
     # were `pickle.dumps(array)` and HDF5
     #
     with io.BytesIO() as f:
-        np.save(f, array, allow_pickle=False)
+        allow_pickle = array.dtype == object
+        np.save(f, array, allow_pickle=allow_pickle)
         bytes_str = zlib.compress(f.getvalue())
 
     return b64encode(bytes_str).decode("ascii")
