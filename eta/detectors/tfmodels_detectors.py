@@ -203,6 +203,7 @@ class TFModelsDetector(
 
         self._last_features = None
         self._last_probs = None
+        self._preprocess = False
 
     def __enter__(self):
         self._sess = self.make_tf_session(graph=self._graph)
@@ -225,6 +226,17 @@ class TFModelsDetector(
         before detection, or ``None`` if no preprocessing is performed.
         """
         return None
+
+    @property
+    def preprocess(self):
+        """Whether to apply :meth:`transforms` during inference (True) or to
+        assume that they have already been applied (False).
+        """
+        return self._preprocess
+
+    @preprocess.setter
+    def preprocess(self, value):
+        pass
 
     @property
     def exposes_features(self):
@@ -444,6 +456,7 @@ class TF2ModelsDetector(etal.ObjectDetector):
         self._num_classes = len(self._class_labels)
 
         self._detect_fn = None
+        self._preprocess = False
 
     def __enter__(self):
         self._detect_fn = _load_tf2_detection_model(self._model_dir)
@@ -466,6 +479,17 @@ class TF2ModelsDetector(etal.ObjectDetector):
         before detection, or ``None`` if no preprocessing is performed.
         """
         return None
+
+    @property
+    def preprocess(self):
+        """Whether to apply :meth:`transforms` during inference (True) or to
+        assume that they have already been applied (False).
+        """
+        return self._preprocess
+
+    @preprocess.setter
+    def preprocess(self, value):
+        pass
 
     @property
     def num_classes(self):
@@ -700,6 +724,7 @@ class TFModelsInstanceSegmenter(
 
         self._last_features = None
         self._last_probs = None
+        self._preprocess = False
 
     def __enter__(self):
         self._sess = self.make_tf_session(graph=self._graph)
@@ -722,6 +747,17 @@ class TFModelsInstanceSegmenter(
         before detection, or ``None`` if no preprocessing is performed.
         """
         return None
+
+    @property
+    def preprocess(self):
+        """Whether to apply :meth:`transforms` during inference (True) or to
+        assume that they have already been applied (False).
+        """
+        return self._preprocess
+
+    @preprocess.setter
+    def preprocess(self, value):
+        pass
 
     @property
     def exposes_features(self):

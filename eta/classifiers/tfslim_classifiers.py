@@ -213,6 +213,7 @@ class TFSlimClassifier(
         self._transforms = self._make_preprocessing_fcn(
             network_name, self.config.preprocessing_fcn
         )
+        self._preprocess = True
 
         self._last_features = None
         self._last_probs = None
@@ -245,6 +246,17 @@ class TFSlimClassifier(
         before prediction, or `None` if no preprocessing is performed.
         """
         return self._transforms
+
+    @property
+    def preprocess(self):
+        """Whether to apply :meth:`transforms` during inference (True) or to
+        assume that they have already been applied (False).
+        """
+        return self._preprocess
+
+    @preprocess.setter
+    def preprocess(self, value):
+        self._preprocess = value
 
     @property
     def exposes_features(self):
@@ -334,7 +346,8 @@ class TFSlimClassifier(
 
     def _predict(self, imgs):
         # Perform preprocessing
-        imgs = self._preprocess_batch(imgs)
+        if self.preprocess:
+            imgs = self._preprocess_batch(imgs)
 
         # Perform inference
         if self.exposes_features:

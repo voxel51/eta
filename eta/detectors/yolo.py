@@ -108,6 +108,8 @@ class YOLODetector(etal.ObjectDetector):
                     }
                 )
 
+        self._preprocess = False
+
     @property
     def ragged_batches(self):
         """True/False whether :meth:`transforms` may return images of different
@@ -122,6 +124,17 @@ class YOLODetector(etal.ObjectDetector):
         before detection, or ``None`` if no preprocessing is performed.
         """
         return None
+
+    @property
+    def preprocess(self):
+        """Whether to apply :meth:`transforms` during inference (True) or to
+        assume that they have already been applied (False).
+        """
+        return self._preprocess
+
+    @preprocess.setter
+    def preprocess(self, value):
+        pass
 
     def detect(self, img):
         """Performs object detection on the input image.

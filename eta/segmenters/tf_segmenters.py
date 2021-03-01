@@ -113,6 +113,7 @@ class TFSemanticSegmenter(
 
         # Setup preprocessing
         self._transforms = self._make_preprocessing(config)
+        self._preprocess = True
 
         # Get operations
         self._input_op = self._graph.get_operation_by_name(
@@ -143,6 +144,17 @@ class TFSemanticSegmenter(
         before segmentation, or ``None`` if no preprocessing is performed.
         """
         return self._transforms
+
+    @property
+    def preprocess(self):
+        """Whether to apply :meth:`transforms` during inference (True) or to
+        assume that they have already been applied (False).
+        """
+        return self._preprocess
+
+    @preprocess.setter
+    def preprocess(self, value):
+        self._preprocess = value
 
     @property
     def exposes_mask_index(self):
@@ -186,7 +198,8 @@ class TFSemanticSegmenter(
         return self._segment(imgs)
 
     def _segment(self, imgs):
-        imgs = self._preprocess_batch(imgs)
+        if self.preprocess:
+            imgs = self._preprocess_batch(imgs)
 
         masks = self._evaluate(imgs, [self._output_op])[0]
 

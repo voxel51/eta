@@ -119,6 +119,7 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         self._sess = None
         self._img = None
         self._detections = None
+        self._preprocess = False
 
     def __enter__(self):
         sess, img, detections = self._load_model(self.config)
@@ -144,6 +145,17 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         before detection, or ``None`` if no preprocessing is performed.
         """
         return None
+
+    @property
+    def preprocess(self):
+        """Whether to apply :meth:`transforms` during inference (True) or to
+        assume that they have already been applied (False).
+        """
+        return self._preprocess
+
+    @preprocess.setter
+    def preprocess(self, value):
+        pass
 
     def detect(self, img):
         """Performs detection on the input image.

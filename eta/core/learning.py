@@ -500,6 +500,17 @@ class ImageClassifier(Classifier):
         """
         raise NotImplementedError("subclasses must implement transforms")
 
+    @property
+    def preprocess(self):
+        """Whether to apply :meth:`transforms` during inference (True) or to
+        assume that they have already been applied (False).
+        """
+        raise NotImplementedError("subclasses must implement preprocess")
+
+    @preprocess.setter
+    def preprocess(self, value):
+        raise NotImplementedError("subclasses must implement preprocess")
+
     def predict(self, img):
         """Peforms prediction on the given image.
 
@@ -696,6 +707,17 @@ class ObjectDetector(Detector):
         before detection, or ``None`` if no preprocessing is performed.
         """
         raise NotImplementedError("subclasses must implement transforms")
+
+    @property
+    def preprocess(self):
+        """Whether to apply :meth:`transforms` during inference (True) or to
+        assume that they have already been applied (False).
+        """
+        raise NotImplementedError("subclasses must implement preprocess")
+
+    @preprocess.setter
+    def preprocess(self, value):
+        raise NotImplementedError("subclasses must implement preprocess")
 
     def detect(self, img):
         """Detects objects in the given image.
@@ -926,6 +948,17 @@ class ImageSemanticSegmenter(SemanticSegmenter):
         before segmentation, or ``None`` if no preprocessing is performed.
         """
         raise NotImplementedError("subclasses must implement transforms")
+
+    @property
+    def preprocess(self):
+        """Whether to apply :meth:`transforms` during inference (True) or to
+        assume that they have already been applied (False).
+        """
+        raise NotImplementedError("subclasses must implement preprocess")
+
+    @preprocess.setter
+    def preprocess(self, value):
+        raise NotImplementedError("subclasses must implement preprocess")
 
     def segment(self, img):
         """Peforms segmentation on the given image.

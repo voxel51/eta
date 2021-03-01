@@ -72,6 +72,7 @@ class VGG16Classifier(
         self._vgg16 = VGG16(config=VGG16Config(self.config.serialize()))
         self._last_features = None
         self._last_probs = None
+        self._preprocess = True
 
     def __enter__(self):
         self._vgg16.__enter__()
@@ -101,6 +102,17 @@ class VGG16Classifier(
         before prediction, or `None` if no preprocessing is performed.
         """
         return VGG16.preprocess_image
+
+    @property
+    def preprocess(self):
+        """Whether to apply :meth:`transforms` during inference (True) or to
+        assume that they have already been applied (False).
+        """
+        return self._preprocess
+
+    @preprocess.setter
+    def preprocess(self, value):
+        self._preprocess = value
 
     @property
     def exposes_features(self):
@@ -184,7 +196,8 @@ class VGG16Classifier(
 
     def _predict(self, imgs):
         # Perform preprocessing
-        imgs = self._preprocess_batch(imgs)
+        if self.preprocess:
+            imgs = self._preprocess_batch(imgs)
 
         # Perform inference
         if self.exposes_features:
