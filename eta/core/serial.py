@@ -546,7 +546,7 @@ _SERIALIZERS = {np.ndarray: serialize_numpy_array}
 
 def _recurse(v, reflective, serializers=_SERIALIZERS):
     if isinstance(v, Serializable):
-        return v.serialize(reflective=reflective)
+        return v.serialize(reflective=reflective, serializers=serializers)
 
     if isinstance(v, set):
         v = list(v)  # convert sets to lists
