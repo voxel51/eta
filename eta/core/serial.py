@@ -396,7 +396,7 @@ class Serializable(object):
             attrs = [a for a in attrs if not a.startswith("_")]
         return attrs
 
-    def serialize(self, reflective=False):
+    def serialize(self, reflective=False, serializers=None):
         """Serializes the object into a dictionary.
 
         Serialization is applied recursively to all attributes in the object,
@@ -405,13 +405,19 @@ class Serializable(object):
         Args:
             reflective: whether to include reflective attributes when
                 serializing the object. By default, this is False
+            serializes: a `dict` of primitive types mapping to custom
+                serialization methods to override the default. Currently, only
+                `np.ndarray` is supported
 
         Returns:
             a JSON dictionary representation of the object
         """
+        if serializers is None:
+            serializers = _SERIALIZERS
+
         d = self._prepare_serial_dict(reflective)
         for a in self.attributes():
-            d[a] = _recurse(getattr(self, a), reflective)
+            d[a] = _recurse(getattr(self, a), reflective, serializers)
         return d
 
     def _prepare_serial_dict(self, reflective):
@@ -535,7 +541,10 @@ class ExcludeNoneAttributes(Serializable):
         return [a for a in attrs if getattr(self, a) is not None]
 
 
-def _recurse(v, reflective):
+_SERIALIZERS = {np.ndarray: serialize_numpy_array}
+
+
+def _recurse(v, reflective, serializers=_SERIALIZERS):
     if isinstance(v, Serializable):
         return v.serialize(reflective=reflective)
 
@@ -543,15 +552,16 @@ def _recurse(v, reflective):
         v = list(v)  # convert sets to lists
 
     if isinstance(v, list):
-        return [_recurse(vi, reflective) for vi in v]
+        return [_recurse(vi, reflective, serializers) for vi in v]
 
     if isinstance(v, dict):
         return OrderedDict(
-            (str(ki), _recurse(vi, reflective)) for ki, vi in iteritems(v)
+            (str(ki), _recurse(vi, reflective, serializers))
+            for ki, vi in iteritems(v)
         )
 
     if isinstance(v, np.ndarray):
-        return serialize_numpy_array(v)
+        return serializers[np.ndarray](v)
 
     if hasattr(v, "serialize") and callable(v.serialize):
         return v.serialize()
