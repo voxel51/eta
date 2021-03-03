@@ -551,7 +551,7 @@ def _recurse(v, reflective):
         )
 
     if isinstance(v, np.ndarray):
-        return serialize_numpy_array(v)
+        return v.tolist()
 
     if hasattr(v, "serialize") and callable(v.serialize):
         return v.serialize()
