@@ -611,6 +611,16 @@ def install_package(requirement_str, error_level=0):
             1: log warning if the install fails
             2: ignore install fails
     """
+    if "|" in requirement_str:
+        full_requirement_str = requirement_str
+        requirement_str = full_requirement_str.split("|", 1)[0]
+        logger.warning(
+            "***** Requirement '%s' has multiple options. We're going to "
+            "install the first one: '%s' *****",
+            full_requirement_str,
+            requirement_str,
+        )
+
     args = [sys.executable, "-m", "pip", "install", requirement_str]
     p = subprocess.Popen(args, stderr=subprocess.PIPE)
     _, err = p.communicate()
