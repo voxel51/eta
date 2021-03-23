@@ -230,7 +230,11 @@ fi
 
 
 MSG "Installing ETA"
-CRITICAL pip install -e .
+if [ ${DEV_INSTALL} = true ]; then
+    CRITICAL pip install -e .
+else
+    CRITICAL pip install .
+fi
 
 
 # Install ffmpeg
