@@ -173,7 +173,7 @@ complete information.
 ## Quickstart
 
 Get your feet wet with ETA by running some of examples in the
-[examples folder](https://github.com/voxel51/eta/tree/develop/examples).
+[examples folder](https://github.com/voxel51/eta/tree/develop/eta/examples).
 
 Also, see the [docs folder](https://github.com/voxel51/eta/tree/develop/docs)
 for more documentation about the various components of the ETA library.
