@@ -3165,7 +3165,7 @@ def _get_archive_format(archive_path):
     raise ValueError("Unsupported archive format '%s'" % archive_path)
 
 
-def make_archive(dir_path, archive_path):
+def make_archive(dir_path, archive_path, delete_dir=False):
     """Makes an archive containing the given directory.
 
     Supported formats include `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`,
@@ -3174,6 +3174,8 @@ def make_archive(dir_path, archive_path):
     Args:
         dir_path: the directory to archive
         archive_path: the path + filename of the archive to create
+        delete_dir: whether to delete the directory after archiving it. By
+            default, this is False
     """
     outpath, format = _get_archive_format(archive_path)
     if format == "zip" and eta.is_python2():
@@ -3182,9 +3184,11 @@ def make_archive(dir_path, archive_path):
 
     rootdir, basedir = os.path.split(os.path.realpath(dir_path))
     shutil.make_archive(outpath, format, rootdir, basedir)
+    if delete_dir:
+        delete_dir(dir_path)
 
 
-def make_tar(dir_path, tar_path):
+def make_tar(dir_path, tar_path, delete_dir=False):
     """Makes a tarfile containing the given directory.
 
     Supported formats include `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, and `.tbz`.
@@ -3192,11 +3196,15 @@ def make_tar(dir_path, tar_path):
     Args:
         dir_path: the directory to tar
         tar_path: the path + filename of the .tar.gz file to create
+        delete_dir: whether to delete the directory after tarring it. By
+            default, this is False
     """
     make_archive(dir_path, tar_path)
+    if delete_dir:
+        delete_dir(dir_path)
 
 
-def make_zip(dir_path, zip_path):
+def make_zip(dir_path, zip_path, delete_dir=False):
     """Makes a zipfile containing the given directory.
 
     Python 2 users must use `make_zip64` when making large zip files.
@@ -3206,16 +3214,22 @@ def make_zip(dir_path, zip_path):
     Args:
         dir_path: the directory to zip
         zip_path: the path + filename of the zip file to create
+        delete_dir: whether to delete the directory after zipping it. By
+            default, this is False
     """
     make_archive(dir_path, zip_path)
+    if delete_dir:
+        delete_dir(dir_path)
 
 
-def make_zip64(dir_path, zip_path):
+def make_zip64(dir_path, zip_path, delete_dir=False):
     """Makes a zip file containing the given directory in Zip64 format.
 
     Args:
         dir_path: the directory to zip
         zip_path: the path with extension of the zip file to create
+        delete_dir: whether to delete the directory after zipping it. By
+            default, this is False
     """
     dir_path = os.path.realpath(dir_path)
     rootdir = os.path.dirname(dir_path)
@@ -3226,6 +3240,9 @@ def make_zip64(dir_path, zip_path):
                 src_path = os.path.join(root, name)
                 dest_path = os.path.join(base, name)
                 f.write(src_path, dest_path)
+
+    if delete_dir:
+        delete_dir(dir_path)
 
 
 def is_archive(filepath):
