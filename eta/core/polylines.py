@@ -48,6 +48,7 @@ class Polyline(etal.Labels):
             should be filled when rendering them
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
             attributes for the polyline
+        tags: (optional) a list of `str`s
 
     Args:
         name (None): a name for the polyline, e.g., ``ground_truth`` or the
@@ -65,6 +66,7 @@ class Polyline(etal.Labels):
             that should be filled when rendering them
         attrs (None): an :class:`eta.core.data.AttributeContainer` of
             attributes for the polyline
+        tags (None): a list of `str`s
     """
 
     def __init__(
@@ -77,6 +79,7 @@ class Polyline(etal.Labels):
         closed=False,
         filled=False,
         attrs=None,
+        tags=None,
     ):
         self.type = etau.get_class_name(self)
         self.name = name
@@ -87,6 +90,7 @@ class Polyline(etal.Labels):
         self.closed = closed
         self.filled = filled
         self.attrs = attrs or etad.AttributeContainer()
+        self.tags = tags or []
 
     @property
     def is_empty(self):
@@ -261,6 +265,8 @@ class Polyline(etal.Labels):
             _attrs.append("filled")
         if self.attrs:
             _attrs.append("attrs")
+        if self.tags:
+            _attrs.append("tags")
         return _attrs + ["points"]
 
     @classmethod
@@ -327,6 +333,7 @@ class Polyline(etal.Labels):
         points = d.get("points", None)
         closed = d.get("closed", False)
         filled = d.get("filled", False)
+        tags = d.get("tags", None)
 
         attrs = d.get("attrs", None)
         if attrs is not None:
@@ -341,6 +348,7 @@ class Polyline(etal.Labels):
             closed=closed,
             filled=filled,
             attrs=attrs,
+            tags=tags,
         )
 
 

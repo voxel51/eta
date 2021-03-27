@@ -61,6 +61,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         eval_type: (optional) an :class:`EvaluationType` value
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
             attributes for the object
+        tags: (optional) a list of `str`s
 
     Args:
         label (None): the object label
@@ -80,6 +81,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         eval_type (None): an :class:`EvaluationType` for the object
         attrs (None): an :class:`eta.core.data.AttributeContainer` of
             attributes for the object
+        tags (None): a list of `str`s
     """
 
     def __init__(
@@ -96,6 +98,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         index_in_frame=None,
         eval_type=None,
         attrs=None,
+        tags=None,
     ):
         self.type = etau.get_class_name(self)
         self.label = label
@@ -110,6 +113,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         self.index_in_frame = index_in_frame
         self.eval_type = eval_type
         self.attrs = attrs or etad.AttributeContainer()
+        self.tags = tags or []
         self._meta = None  # Usable by clients to store temporary metadata
 
     @property
@@ -285,6 +289,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             "frame_number",
             "index_in_frame",
             "eval_type",
+            "tags",
         ]
         _attrs.extend(
             [a for a in _noneable_attrs if getattr(self, a) is not None]
@@ -331,6 +336,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             index_in_frame=d.get("index_in_frame", None),
             attrs=attrs,
             eval_type=d.get("eval_type", None),
+            tags=d.get("tags", None),
         )
 
     @classmethod

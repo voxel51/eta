@@ -42,6 +42,7 @@ class Keypoints(etal.Labels):
         points: a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
             attributes for the keypoints
+        tags: (optional) a list of `str`s
 
     Args:
         name (None): a name for the keypoints, e.g., ``ground_truth`` or the
@@ -52,6 +53,7 @@ class Keypoints(etal.Labels):
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
         attrs (None): an :class:`eta.core.data.AttributeContainer` of
             attributes for the keypoints
+        tags (None): a list of `str`s
     """
 
     def __init__(
@@ -62,6 +64,7 @@ class Keypoints(etal.Labels):
         index=None,
         points=None,
         attrs=None,
+        tags=None,
     ):
         self.type = etau.get_class_name(self)
         self.name = name
@@ -70,6 +73,7 @@ class Keypoints(etal.Labels):
         self.index = index
         self.points = points or []
         self.attrs = attrs or etad.AttributeContainer()
+        self.tags = tags or []
 
     @property
     def is_empty(self):
@@ -295,6 +299,7 @@ class Keypoints(etal.Labels):
         confidence = d.get("confidence", None)
         index = (d.get("index", None),)
         points = d.get("points", None)
+        tags = d.get("tags", None)
 
         attrs = d.get("attrs", None)
         if attrs is not None:
@@ -307,6 +312,7 @@ class Keypoints(etal.Labels):
             index=index,
             points=points,
             attrs=attrs,
+            tags=tags,
         )
 
 
