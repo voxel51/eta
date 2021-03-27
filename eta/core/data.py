@@ -192,7 +192,13 @@ class CategoricalAttribute(Attribute):
     """
 
     def __init__(
-        self, name, value, confidence=None, top_k_probs=None, constant=False
+        self,
+        name,
+        value,
+        confidence=None,
+        top_k_probs=None,
+        constant=False,
+        tags=None,
     ):
         """Creates a CategoricalAttribute instance.
 
@@ -209,7 +215,7 @@ class CategoricalAttribute(Attribute):
             tags (None): a list of `str`s
         """
         super(CategoricalAttribute, self).__init__(
-            name, value, confidence=confidence, constant=constant
+            name, value, confidence=confidence, constant=constant, tags=tags
         )
         self.top_k_probs = top_k_probs
 
