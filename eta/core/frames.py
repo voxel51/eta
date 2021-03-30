@@ -45,6 +45,7 @@ class FrameLabels(etal.Labels):
         keypoints: a KeypointsContainer of keypoints in the frame
         polylines: a PolylineContainer of polylines in the frame
         events: a DetectedEventContainer of events in the frame
+        tags: (optional) a list of tag strings
     """
 
     def __init__(
@@ -57,6 +58,7 @@ class FrameLabels(etal.Labels):
         keypoints=None,
         polylines=None,
         events=None,
+        tags=None,
     ):
         """Creates a FrameLabels instance.
 
@@ -73,6 +75,7 @@ class FrameLabels(etal.Labels):
             polylines: (optional) a PolylineContainer of polylines for the
                 frame
             events: (optional) a DetectedEventContainer of events for the frame
+            tags: (optional) a list of tag strings
         """
         self.frame_number = frame_number
         self.mask = mask
@@ -82,6 +85,7 @@ class FrameLabels(etal.Labels):
         self.keypoints = keypoints or etak.KeypointsContainer()
         self.polylines = polylines or etap.PolylineContainer()
         self.events = events or etae.DetectedEventContainer()
+        self.tags = tags = []
 
     @property
     def is_empty(self):
@@ -170,6 +174,11 @@ class FrameLabels(etal.Labels):
                 return True
 
         return False
+
+    @property
+    def has_tags(self):
+        """Whether the frame has tags."""
+        return bool(self.tags)
 
     def iter_attributes(self):
         """Returns an iterator over the attributes of the frame.
@@ -532,6 +541,8 @@ class FrameLabels(etal.Labels):
             _attrs.append("polylines")
         if self.events:
             _attrs.append("events")
+        if self.tags:
+            _attrs.append("tags")
 
         return _attrs
 
@@ -577,6 +588,8 @@ class FrameLabels(etal.Labels):
         if events is not None:
             events = etae.DetectedEventContainer.from_dict(events)
 
+        tags = d.get("tags", None)
+
         return cls(
             frame_number=frame_number,
             mask=mask,
@@ -586,6 +599,7 @@ class FrameLabels(etal.Labels):
             keypoints=keypoints,
             polylines=polylines,
             events=events,
+            tags=tags,
             **kwargs
         )
 
