@@ -45,7 +45,7 @@ class FrameLabels(etal.Labels):
         keypoints: a KeypointsContainer of keypoints in the frame
         polylines: a PolylineContainer of polylines in the frame
         events: a DetectedEventContainer of events in the frame
-        tags: (optional) a list of `str`s
+        tags: (optional) a list of tag strings
     """
 
     def __init__(
@@ -75,7 +75,7 @@ class FrameLabels(etal.Labels):
             polylines: (optional) a PolylineContainer of polylines for the
                 frame
             events: (optional) a DetectedEventContainer of events for the frame
-            tags: (optional) a list of `str`s
+            tags: (optional) a list of tag strings
         """
         self.frame_number = frame_number
         self.mask = mask
@@ -174,6 +174,11 @@ class FrameLabels(etal.Labels):
                 return True
 
         return False
+
+    @property
+    def has_tags(self):
+        """Whether the frame has tags."""
+        return bool(self.tags)
 
     def iter_attributes(self):
         """Returns an iterator over the attributes of the frame.

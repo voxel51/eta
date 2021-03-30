@@ -80,7 +80,7 @@ class Attribute(etal.Labels):
         constant: whether this attribute is constant, i.e., all attributes of
             the same `name` must be identical to this attribute throughout the
             life of its parent entity
-        tags: (optional) a list of `str`s
+        tags: (optional) a list of tag strings
     """
 
     def __init__(
@@ -91,12 +91,13 @@ class Attribute(etal.Labels):
         Args:
             name: the attribute name
             value: the attribute value
-            confidence (None): an optional confidence of the value, in ``[0, 1]``
-            constant (False): whether this attribute is constant, i.e., all attributes
-                of the same `name` must be identical to this attribute
-                throughout the life of its parent entity. By default, this is
-                False
-            tags (None): a list of `str`s
+            confidence (None): an optional confidence of the value, in
+                ``[0, 1]``
+            constant (False): whether this attribute is constant, i.e., all
+                attributes of the same `name` must be identical to this
+                attribute throughout the life of its parent entity. By default,
+                this is False
+            tags (None): a list of tag strings
         """
         self.type = etau.get_class_name(self)
         self.name = name
@@ -136,6 +137,8 @@ class Attribute(etal.Labels):
             _attrs.append("confidence")
         if self.constant:
             _attrs.append("constant")
+        if self.tags:
+            _attrs.append("tags")
 
         return _attrs
 
@@ -188,7 +191,7 @@ class CategoricalAttribute(Attribute):
         constant: whether this attribute is constant, i.e., all attributes of
             the same `name` must be identical to this attribute throughout the
             life of its parent entity
-        tags: (optional) a list of `str`s
+        tags: (optional) a list of tag strings
     """
 
     def __init__(
@@ -205,14 +208,15 @@ class CategoricalAttribute(Attribute):
         Args:
             name: the attribute name
             value: the attribute value
-            confidence (None): an optional confidence of the value, in ``[0, 1]``
+            confidence (None): an optional confidence of the value, in
+                ``[0, 1]``
             top_k_probs (None): an optional dictionary mapping values to
                 probabilities. By default, no probabilities are stored
-            constant (False): whether this attribute is constant, i.e., all attributes
-                of the same `name` must be identical to this attribute
-                throughout the life of its parent entity. By default, this is
-                False
-            tags (None): a list of `str`s
+            constant (False): whether this attribute is constant, i.e., all
+                attributes of the same `name` must be identical to this
+                attribute throughout the life of its parent entity. By default,
+                this is False
+            tags (None): a list of tag strings
         """
         super(CategoricalAttribute, self).__init__(
             name, value, confidence=confidence, constant=constant, tags=tags
@@ -260,7 +264,7 @@ class NumericAttribute(Attribute):
         constant: whether this attribute is constant, i.e., all attributes of
             the same `name` must be identical to this attribute throughout the
             life of its parent entity
-        tags: (optional) a list of `str`s
+        tags: (optional) a list of tag strings
     """
 
     @classmethod
@@ -286,7 +290,7 @@ class BooleanAttribute(Attribute):
         constant: whether this attribute is constant, i.e., all attributes of
             the same `name` must be identical to this attribute throughout the
             life of its parent entity
-        tags: (optional) a list of `str`s
+        tags: (optional) a list of tag strings
     """
 
     @classmethod

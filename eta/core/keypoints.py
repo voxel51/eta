@@ -42,7 +42,7 @@ class Keypoints(etal.Labels):
         points: a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
             attributes for the keypoints
-        tags: (optional) a list of `str`s
+        tags: (optional) a list of tag strings
 
     Args:
         name (None): a name for the keypoints, e.g., ``ground_truth`` or the
@@ -53,7 +53,7 @@ class Keypoints(etal.Labels):
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
         attrs (None): an :class:`eta.core.data.AttributeContainer` of
             attributes for the keypoints
-        tags (None): a list of `str`s
+        tags (None): a list of tag strings
     """
 
     def __init__(
@@ -114,6 +114,11 @@ class Keypoints(etal.Labels):
     def has_attributes(self):
         """Whether the keypoints has attributes."""
         return bool(self.attrs)
+
+    @property
+    def has_tags(self):
+        """Whether the keypoints has tags."""
+        return bool(self.tags)
 
     @classmethod
     def get_schema_cls(cls):

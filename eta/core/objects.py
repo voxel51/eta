@@ -61,7 +61,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         eval_type: (optional) an :class:`EvaluationType` value
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
             attributes for the object
-        tags: (optional) a list of `str`s
+        tags: (optional) a list of tag strings
 
     Args:
         label (None): the object label
@@ -81,7 +81,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         eval_type (None): an :class:`EvaluationType` for the object
         attrs (None): an :class:`eta.core.data.AttributeContainer` of
             attributes for the object
-        tags (None): a list of `str`s
+        tags (None): a list of tag strings
     """
 
     def __init__(
@@ -170,6 +170,11 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
     def has_attributes(self):
         """Whether the object has attributes."""
         return bool(self.attrs)
+
+    @property
+    def has_tags(self):
+        """Whether the object has tags."""
+        return bool(self.tags)
 
     @classmethod
     def get_schema_cls(cls):
