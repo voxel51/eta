@@ -598,7 +598,9 @@ def get_function(function_name, module_name=None):
     return get_class(function_name, module_name=module_name)
 
 
-def install_package(requirement_str, error_level=0):
+def install_package(
+    requirement_str, error_level=0, error_msg=None, error_suffix=None,
+):
     """Installs the newest compliant version of the package.
 
     Args:
@@ -610,6 +612,10 @@ def install_package(requirement_str, error_level=0):
             0: raise error if the install fails
             1: log warning if the install fails
             2: ignore install fails
+
+        error_msg: an optional error message to use if the installation fails
+        error_suffix: an optional message to append to the error if the
+            installation fails and ``error_level == 0``
 
     Returns:
         True/False whether the requirement was successfully installed
@@ -631,18 +637,27 @@ def install_package(requirement_str, error_level=0):
     success = p.returncode == 0
 
     if not success:
-        handle_error(
-            OSError(
-                "Failed to install package '%s'\n\n%s"
-                % (requirement_str, err.decode())
-            ),
-            error_level,
-        )
+        if error_msg is None:
+            error_msg = "Failed to install package '%s'\n\n%s" % (
+                requirement_str,
+                err.decode(),
+            )
+
+        if error_suffix is not None and error_level <= 0:
+            error_msg += "\n" + error_suffix
+
+        handle_error(PackageError(error_msg), error_level)
 
     return success
 
 
-def ensure_package(requirement_str, error_level=0, log_success=False):
+def ensure_package(
+    requirement_str,
+    error_level=0,
+    error_msg=None,
+    error_suffix=None,
+    log_success=False,
+):
     """Ensures that the given package is installed.
 
     This function uses `pkg_resources.get_distribution` to locate the package
@@ -655,22 +670,45 @@ def ensure_package(requirement_str, error_level=0, log_success=False):
     Args:
         requirement_str: a PEP 440 compliant package requirement, like
             "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
-            "tensorflow>=1.13,<1.15"
+            "tensorflow>=1.13,<1.15". This can also be an iterable of multiple
+            requirements, all of which must be installed, or this can be a
+            single "|"-delimited string specifying multiple requirements, at
+            least one of which must be installed
         error_level: the error level to use, defined as:
 
             0: raise error if requirement is not satisfied
             1: log warning if requirement is not satisifed
             2: ignore unsatisifed requirements
 
+        error_msg: an optional error message to use if the requirement is not
+            satisifed
+        error_suffix: an optional message to append to the error if the
+            requirement is not satisifed and ``error_level == 0``
         log_success: whether to generate a log message if the requirement is
             satisifed
 
     Returns:
         True/False whether the requirement is installed
     """
-    if "|" in requirement_str:
-        return _ensure_packages(requirement_str, error_level, log_success)
+    parse_requirement = lambda req_str: _get_package_version(req_str)
+    error_cls = PackageError
 
+    return _ensure_requirements(
+        requirement_str,
+        parse_requirement,
+        error_level,
+        error_cls,
+        error_msg,
+        error_suffix,
+        log_success,
+    )
+
+
+class PackageError(ImportError):
+    """Exception raised when a requested package is not installed."""
+
+
+def _get_package_version(requirement_str):
     req = Requirement(requirement_str)
 
     try:
@@ -680,29 +718,16 @@ def ensure_package(requirement_str, error_level=0, log_success=False):
         version = None
         error = e
 
-    return _ensure_requirement(
-        req, version, error_level, log_success, error=error
-    )
+    return req, version, error
 
 
-def _ensure_packages(requirement_str, error_level, log_success):
-    results = []
-    for req_str in requirement_str.split("|"):
-        req = Requirement(req_str)
-
-        try:
-            version = pkg_resources.get_distribution(req.name).version
-            error = None
-        except pkg_resources.DistributionNotFound as e:
-            version = None
-            error = e
-
-        results.append((req, version, error))
-
-    return _ensure_one_requirement(results, error_level, log_success)
-
-
-def ensure_import(requirement_str, error_level=0, log_success=False):
+def ensure_import(
+    requirement_str,
+    error_level=0,
+    error_msg=None,
+    error_suffix=None,
+    log_success=False,
+):
     """Ensures that the given package is installed and importable.
 
     This function imports the module the specified name and optionally enforces
@@ -714,85 +739,132 @@ def ensure_import(requirement_str, error_level=0, log_success=False):
 
     Args:
         requirement_str: a PEP 440-like module requirement, like "tensorflow",
-            "tensorflow<2", "tensorflow==2.3.0", or "tensorflow>=1.13,<1.15"
+            "tensorflow<2", "tensorflow==2.3.0", or "tensorflow>=1.13,<1.15".
+            This can also be an iterable of multiple requirements, all of which
+            must be installed, or this can be a single "|"-delimited string
+            specifying multiple requirements, at least one of which must be
+            installed
         error_level: the error level to use, defined as:
 
             0: raise error if requirement is not satisfied
             1: log warning if requirement is not satisifed
             2: ignore unsatisifed requirements
 
+        error_msg: an optional error message to use if the requirement is not
+            satisifed
+        error_suffix: an optional message to append to the error if the
+            requirement is not satisifed and ``error_level == 0``
         log_success: whether to generate a log message if the requirement is
             satisifed
 
     Returns:
         True/False whether the package is installed and importable
     """
+    parse_requirement = lambda req_str: _get_module_version(
+        req_str, error_level
+    )
+    error_cls = ImportError
+
+    return _ensure_requirements(
+        requirement_str,
+        parse_requirement,
+        error_level,
+        error_cls,
+        error_msg,
+        error_suffix,
+        log_success,
+    )
+
+
+def _get_module_version(requirement_str, error_level):
     req = Requirement(requirement_str)
 
     try:
-        # @todo not all modules have `__version__`
         mod = importlib.import_module(req.name)
-        version = mod.__version__
+        version = getattr(mod, "__version__", None)
         error = None
     except ImportError as e:
         version = None
         error = e
 
-    return _ensure_requirement(
-        req, version, error_level, log_success, error=error
+    if error is None and version is None and req.specifier:
+        handle_error(
+            ImportError(
+                "Unable to determine the installed version of '%s'; required "
+                "'%s'" % (req.name, req)
+            ),
+            error_level + 1,
+        )
+
+    return req, version, error
+
+
+def _ensure_requirements(
+    requirement_str,
+    parse_requirement,
+    error_level,
+    error_cls,
+    error_msg,
+    error_suffix,
+    log_success,
+):
+    if is_str(requirement_str):
+        # Require any
+        if "|" in requirement_str:
+            results = [
+                parse_requirement(req_str)
+                for req_str in requirement_str.split("|")
+            ]
+            return _ensure_any_requirement(
+                results,
+                error_level,
+                log_success,
+                error_cls=error_cls,
+                error_msg=error_msg,
+                error_suffix=error_suffix,
+            )
+
+        requirement_str = [requirement_str]
+
+    # Require all
+    results = [parse_requirement(req_str) for req_str in requirement_str]
+    return _ensure_all_requirements(
+        results,
+        error_level,
+        log_success,
+        error_cls=error_cls,
+        error_msg=error_msg,
+        error_suffix=error_suffix,
     )
 
 
-def _ensure_requirement(
-    req, version, error_level, log_success, error_cls=ImportError, error=None
-):
-    if version is None:
-        handle_error(
-            error_cls(
-                "The requested operation requires that '%s' is installed on "
-                "your machine" % str(req)
-            ),
-            error_level,
-            base_error=error,
-        )
-        return False
-
-    if not req.specifier.contains(version):
-        handle_error(
-            error_cls(
-                "The requested operation requires that '%s' is installed "
-                "on your machine; found '%s==%s'"
-                % (str(req), req.name, version)
-            ),
-            error_level,
-        )
-        return False
-
-    if log_success:
-        logger.info(
-            "Requirement satisfied: %s (found %s)" % (str(req), version)
-        )
-
-    return True
-
-
-def _ensure_one_requirement(
-    results, error_level, log_success, error_cls=ImportError
+def _ensure_all_requirements(
+    results,
+    error_level,
+    log_success,
+    error_cls=ImportError,
+    error_msg=None,
+    error_suffix=None,
 ):
     successes = []
     fails = []
     for req, version, error in results:
-        if version is None or not req.specifier.contains(version):
+        if (
+            error is not None
+            or version is None
+            and req.specifier
+            or not req.specifier.contains(version)
+        ):
             fails.append((req, version, error))
         else:
             successes.append((req, version))
 
-    if successes:
+    if not fails:
         if log_success:
             for req, version in successes:
+                ver = version or "???"
                 logger.info(
-                    "Requirement satisfied: %s (found %s)"
-                    % (str(req), version)
+                    "Requirement satisfied: %s (found %s)", str(req), ver
                 )
 
         return True
@@ -802,22 +874,103 @@ def _ensure_one_requirement(
     last_error = None
     for req, version, error in fails:
         req_strs.append(str(req))
+
+        if error is None and version is None:
+            found_strs.append("%s==???" % req.name)
+
         if version is not None:
             found_strs.append("%s==%s" % (req.name, version))
 
         if error is not None:
             last_error = error
 
-    req_str = "\n".join("-   %s" % r for r in req_strs)
-    found_str = "\n".join("-   %s" % f for f in found_strs)
-    error = error_cls(
-        (
+    if error_msg is None:
+        num_req = len(req_strs)
+        num_found = len(found_strs)
+
+        if num_req == 1:
+            reqs = "'%s' is" % req_strs[0]
+        else:
+            reqs = "%s are" % (req_strs,)
+
+        if num_found == 1:
+            founds = ", but found '%s'." % found_strs[0]
+        elif num_found > 1:
+            founds = ", but found %s." % (found_strs,)
+        else:
+            founds = "."
+
+        error_msg = (
+            "The requested operation requires that %s installed on "
+            "your machine%s" % (reqs, founds)
+        )
+
+    if error_suffix is not None and error_level <= 0:
+        error_msg += "\n\n" + error_suffix
+
+    handle_error(error_cls(error_msg), error_level, base_error=last_error)
+
+    return False
+
+
+def _ensure_any_requirement(
+    results,
+    error_level,
+    log_success,
+    error_cls=ImportError,
+    error_msg=None,
+    error_suffix=None,
+):
+    successes = []
+    fails = []
+    for req, version, error in results:
+        if (
+            error is not None
+            or version is None
+            and req.specifier
+            or not req.specifier.contains(version)
+        ):
+            fails.append((req, version, error))
+        else:
+            successes.append((req, version))
+
+    if successes:
+        if log_success:
+            for req, version in successes:
+                ver = version or "???"
+                logger.info(
+                    "Requirement satisfied: %s (found %s)", str(req), ver
+                )
+
+        return True
+
+    req_strs = []
+    found_strs = []
+    last_error = None
+    for req, version, error in fails:
+        req_strs.append(str(req))
+
+        if error is None and version is None:
+            found_strs.append("%s==???" % req.name)
+
+        if version is not None:
+            found_strs.append("%s==%s" % (req.name, version))
+
+        if error is not None:
+            last_error = error
+
+    if error_msg is None:
+        req_str = "\n".join("-   %s" % r for r in req_strs)
+        found_str = "\n".join("-   %s" % f for f in found_strs)
+        error_msg = (
             "The requested operation requires that one of the following is "
             "installed on your machine:\n%s\n\nbut found:\n%s"
-        )
-        % (req_str, found_str)
-    )
-    handle_error(error, error_level, base_error=last_error)
+        ) % (req_str, found_str)
+
+    if error_suffix is not None and error_level <= 0:
+        error_msg += "\n\n" + error_suffix
+
+    handle_error(error_cls(error_msg), error_level, base_error=last_error)
 
     return False
 
@@ -845,7 +998,13 @@ def handle_error(error, error_level, base_error=None):
         logger.warning(error)
 
 
-def ensure_cuda_version(requirement_str, error_level=0, log_success=False):
+def ensure_cuda_version(
+    requirement_str,
+    error_level=0,
+    error_msg=None,
+    error_suffix=None,
+    log_success=False,
+):
     """Ensures that a compliant version of CUDA is installed.
 
     Args:
@@ -857,24 +1016,40 @@ def ensure_cuda_version(requirement_str, error_level=0, log_success=False):
             1: log warning if the requirement is not satisifed
             2: ignore unsatisifed requirements
 
+        error_msg: an optional error message to use if the requirement is not
+            satisifed
+        error_suffix: an optional message to append to the error if the
+            requirement is not satisifed and ``error_level == 0``
         log_success: whether to generate a log message if the requirement is
             satisifed
 
     Returns:
         True/False whether a compliant CUDA version was found
-
-    Raises:
-        CUDAError: if CUDA is not installed or does not meet the specified
-            requirements and `error_level == 0`
     """
     req = Requirement("CUDA" + requirement_str)
     version = get_cuda_version()
-    return _ensure_requirement(
-        req, version, error_level, log_success, error_cls=CUDAError
+    if version is None:
+        error = CUDAError("CUDA not found")
+    else:
+        error = None
+
+    return _ensure_all_requirements(
+        [(req, version, error)],
+        error_level,
+        log_success,
+        error_cls=CUDAError,
+        error_msg=error_msg,
+        error_suffix=error_suffix,
     )
 
 
-def ensure_cudnn_version(requirement_str, error_level=0, log_success=False):
+def ensure_cudnn_version(
+    requirement_str,
+    error_level=0,
+    error_msg=None,
+    error_suffix=None,
+    log_success=False,
+):
     """Ensures that a compliant version of cuDNN is installed.
 
     Args:
@@ -886,20 +1061,30 @@ def ensure_cudnn_version(requirement_str, error_level=0, log_success=False):
             1: log warning if the requirement is not satisifed
             2: ignore unsatisifed requirements
 
+        error_msg: an optional error message to use if the requirement is not
+            satisifed
+        error_suffix: an optional message to append to the error if the
+            requirement is not satisifed and ``error_level == 0``
         log_success: whether to generate a log message if the requirement is
             satisifed
 
     Returns:
         True/False whether a compliant CUDA version was found
-
-    Raises:
-        CUDAError: if cuDNN is not installed or does not meet the specified
-            requirements and `error_level == 0`
     """
     req = Requirement("cuDNN" + requirement_str)
     version = get_cudnn_version()
-    return _ensure_requirement(
-        req, version, error_level, log_success, error_cls=CUDAError
+    if version is None:
+        error = CUDAError("cuDNN not found")
+    else:
+        error = None
+
+    return _ensure_all_requirements(
+        [(req, version, error)],
+        error_level,
+        log_success,
+        error_cls=CUDAError,
+        error_msg=error_msg,
+        error_suffix=error_suffix,
     )
 
 

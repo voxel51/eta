@@ -10,7 +10,7 @@ from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
 
-VERSION = "0.4.1"
+VERSION = "0.5.0"
 
 
 class BdistWheelCustom(bdist_wheel):
@@ -68,11 +68,11 @@ setup(
         "six",
         "scikit-image",
         "sortedcontainers",
-        "Sphinx",
         "tabulate",
         "tzlocal",
     ],
     extras_require={
+        "pipeline": ["blockdiag", "Sphinx", "sphinxcontrib-napoleon"],
         "storage": [
             "boto3",
             "google-api-python-client",

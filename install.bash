@@ -190,12 +190,35 @@ fi
 
 
 MSG "Installing Python packages"
+CRITICAL pip install -r requirements.txt
+
+
+MSG "Installing ETA"
+if [ ${DEV_INSTALL} = true ]; then
+    CRITICAL pip install -e .
+else
+    CRITICAL pip install .
+fi
+
+
+# @note(lite) handle lite installation
+if [[ ${LITE_INSTALL} = true ]]; then
+    EXIT "LITE INSTALLATION COMPLETE"
+fi
+
+
+MSG "Installing storage extras"
+CRITICAL pip install -r requirements/storage.txt
+
+
+MSG "Installing pipeline extras"
+CRITICAL pip install -r requirements/pipeline.txt
+
+
 if [ ${DEV_INSTALL} = true ]; then
     MSG "Performing dev install"
     CRITICAL pip install -r requirements/dev.txt
     CRITICAL pre-commit install
-else
-    CRITICAL pip install -r requirements.txt
 fi
 
 
@@ -226,14 +249,6 @@ if [ "${GCARD}" == "ON" ]; then
 else
     MSG "Installing tensorflow 1.15"
     CRITICAL pip install --upgrade tensorflow~=1.15
-fi
-
-
-MSG "Installing ETA"
-if [ ${DEV_INSTALL} = true ]; then
-    CRITICAL pip install -e .
-else
-    CRITICAL pip install .
 fi
 
 
@@ -270,12 +285,6 @@ else
             CRITICAL brew install imagemagick
         fi
     fi
-fi
-
-
-# @note(lite) handle lite installation
-if [[ ${LITE_INSTALL} = true ]]; then
-    EXIT "LITE INSTALLATION COMPLETE"
 fi
 
 

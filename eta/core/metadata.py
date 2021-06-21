@@ -25,13 +25,20 @@ import os
 import re
 import sys
 
-from docutils.core import publish_doctree
-from docutils.nodes import paragraph, field_list, field_name, field_body
-
-from sphinx.ext.napoleon.docstring import GoogleDocstring
-from sphinx.util.docstrings import prepare_docstring
-
 import eta.core.module as etam
+import eta.core.utils as etau
+
+try:
+    from docutils.core import publish_doctree
+    from docutils.nodes import paragraph, field_list, field_name, field_body
+
+    from sphinx.ext.napoleon.docstring import GoogleDocstring
+    from sphinx.util.docstrings import prepare_docstring
+except ImportError:
+    raise etau.PackageError(
+        "You must run pip install voxel51-eta[pipeline] in order to "
+        "use this feature"
+    )
 
 
 logger = logging.getLogger(__name__)
