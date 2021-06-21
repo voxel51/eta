@@ -598,7 +598,9 @@ def get_function(function_name, module_name=None):
     return get_class(function_name, module_name=module_name)
 
 
-def install_package(requirement_str, error_level=0):
+def install_package(
+    requirement_str, error_level=0, error_msg=None, error_suffix=None,
+):
     """Installs the newest compliant version of the package.
 
     Args:
@@ -610,6 +612,10 @@ def install_package(requirement_str, error_level=0):
             0: raise error if the install fails
             1: log warning if the install fails
             2: ignore install fails
+
+        error_msg: an optional error message to use if the installation fails
+        error_suffix: an optional message to append to the error if the
+            installation fails and ``error_level == 0``
 
     Returns:
         True/False whether the requirement was successfully installed
@@ -631,13 +637,16 @@ def install_package(requirement_str, error_level=0):
     success = p.returncode == 0
 
     if not success:
-        handle_error(
-            OSError(
-                "Failed to install package '%s'\n\n%s"
-                % (requirement_str, err.decode())
-            ),
-            error_level,
-        )
+        if error_msg is None:
+            error_msg = "Failed to install package '%s'\n\n%s" % (
+                requirement_str,
+                err.decode(),
+            )
+
+        if error_suffix is not None and error_level <= 0:
+            error_msg += "\n" + error_suffix
+
+        handle_error(PackageError(error_msg), error_level)
 
     return success
 
@@ -674,7 +683,7 @@ def ensure_package(
         error_msg: an optional error message to use if the requirement is not
             satisifed
         error_suffix: an optional message to append to the error if the
-            requirement is not satisifed
+            requirement is not satisifed and ``error_level == 0``
         log_success: whether to generate a log message if the requirement is
             satisifed
 
@@ -744,7 +753,7 @@ def ensure_import(
         error_msg: an optional error message to use if the requirement is not
             satisifed
         error_suffix: an optional message to append to the error if the
-            requirement is not satisifed
+            requirement is not satisifed and ``error_level == 0``
         log_success: whether to generate a log message if the requirement is
             satisifed
 
@@ -1010,7 +1019,7 @@ def ensure_cuda_version(
         error_msg: an optional error message to use if the requirement is not
             satisifed
         error_suffix: an optional message to append to the error if the
-            requirement is not satisifed
+            requirement is not satisifed and ``error_level == 0``
         log_success: whether to generate a log message if the requirement is
             satisifed
 
@@ -1055,7 +1064,7 @@ def ensure_cudnn_version(
         error_msg: an optional error message to use if the requirement is not
             satisifed
         error_suffix: an optional message to append to the error if the
-            requirement is not satisifed
+            requirement is not satisifed and ``error_level == 0``
         log_success: whether to generate a log message if the requirement is
             satisifed
 

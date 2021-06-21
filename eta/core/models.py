@@ -27,12 +27,10 @@ import logging
 import os
 import sys
 
-import numpy as np
-
 import eta
 import eta.constants as etac
 from eta.core.config import Config, Configurable
-from eta.core.serial import read_pickle, Serializable
+from eta.core.serial import Serializable
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -776,7 +774,7 @@ class ModelRequirements(Serializable):
                 1: log warning if a package install fails
                 2: ignore package install fails
             error_suffix: an optional message to append to the error if the
-                installation fails
+                installation fails and ``error_level == 0``
         """
         if self.packages is None:
             return
@@ -798,7 +796,7 @@ class ModelRequirements(Serializable):
                 1: log warning if a package install fails
                 2: ignore package install fails
             error_suffix: an optional message to append to the error if the
-                installation fails
+                installation fails and ``error_level == 0``
         """
         if self.cpu_packages is None:
             return
@@ -820,7 +818,7 @@ class ModelRequirements(Serializable):
                 1: log warning if a package install fails
                 2: ignore package install fails
             error_suffix: an optional message to append to the error if the
-                installation fails
+                installation fails and ``error_level == 0``
         """
         if self.gpu_packages is None:
             return
@@ -845,7 +843,7 @@ class ModelRequirements(Serializable):
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
             error_suffix: an optional message to append to the error if a
-                requirement is not satisifed
+                requirement is not satisifed and ``error_level == 0``
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
@@ -873,7 +871,7 @@ class ModelRequirements(Serializable):
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
             error_suffix: an optional message to append to the error if a
-                requirement is not satisifed
+                requirement is not satisifed and ``error_level == 0``
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
@@ -901,7 +899,7 @@ class ModelRequirements(Serializable):
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
             error_suffix: an optional message to append to the error if a
-                requirement is not satisifed
+                requirement is not satisifed and ``error_level == 0``
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
