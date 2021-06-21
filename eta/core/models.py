@@ -766,7 +766,7 @@ class ModelRequirements(Serializable):
 
         return self.gpu.get("packages", None)
 
-    def install_base_requirements(self, error_level=0):
+    def install_base_requirements(self, error_level=0, error_suffix=None):
         """Installs any base package requirements for the model.
 
         Args:
@@ -775,14 +775,20 @@ class ModelRequirements(Serializable):
                 0: raise error if a package install fails
                 1: log warning if a package install fails
                 2: ignore package install fails
+            error_suffix: an optional message to append to the error if the
+                installation fails
         """
         if self.packages is None:
             return
 
         for requirement_str in self.packages:
-            etau.install_package(requirement_str, error_level=error_level)
+            etau.install_package(
+                requirement_str,
+                error_level=error_level,
+                error_suffix=error_suffix,
+            )
 
-    def install_cpu_requirements(self, error_level=0):
+    def install_cpu_requirements(self, error_level=0, error_suffix=None):
         """Installs any CPU package requirements for the model.
 
         Args:
@@ -791,14 +797,20 @@ class ModelRequirements(Serializable):
                 0: raise error if a package install fails
                 1: log warning if a package install fails
                 2: ignore package install fails
+            error_suffix: an optional message to append to the error if the
+                installation fails
         """
         if self.cpu_packages is None:
             return
 
         for requirement_str in self.cpu_packages:
-            etau.install_package(requirement_str, error_level=error_level)
+            etau.install_package(
+                requirement_str,
+                error_level=error_level,
+                error_suffix=error_suffix,
+            )
 
-    def install_gpu_requirements(self, error_level=0):
+    def install_gpu_requirements(self, error_level=0, error_suffix=None):
         """Installs any GPU package requirements for the model.
 
         Args:
@@ -807,14 +819,22 @@ class ModelRequirements(Serializable):
                 0: raise error if a package install fails
                 1: log warning if a package install fails
                 2: ignore package install fails
+            error_suffix: an optional message to append to the error if the
+                installation fails
         """
         if self.gpu_packages is None:
             return
 
         for requirement_str in self.gpu_packages:
-            etau.install_package(requirement_str, error_level=error_level)
+            etau.install_package(
+                requirement_str,
+                error_level=error_level,
+                error_suffix=error_suffix,
+            )
 
-    def ensure_base_requirements(self, error_level=0, log_success=False):
+    def ensure_base_requirements(
+        self, error_level=0, error_suffix=None, log_success=False
+    ):
         """Ensures that any base package requirements for the model are
         satisfied.
 
@@ -824,7 +844,8 @@ class ModelRequirements(Serializable):
                 0: raise error if a requirement is not satisfied
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
-
+            error_suffix: an optional message to append to the error if a
+                requirement is not satisifed
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
@@ -835,10 +856,13 @@ class ModelRequirements(Serializable):
             etau.ensure_package(
                 requirement_str,
                 error_level=error_level,
+                error_suffix=error_suffix,
                 log_success=log_success,
             )
 
-    def ensure_cpu_requirements(self, error_level=0, log_success=False):
+    def ensure_cpu_requirements(
+        self, error_level=0, error_suffix=None, log_success=False
+    ):
         """Ensures that any CPU package requirements for the model are
         satisfied.
 
@@ -848,7 +872,8 @@ class ModelRequirements(Serializable):
                 0: raise error if a requirement is not satisfied
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
-
+            error_suffix: an optional message to append to the error if a
+                requirement is not satisifed
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
@@ -859,10 +884,13 @@ class ModelRequirements(Serializable):
             etau.ensure_package(
                 requirement_str,
                 error_level=error_level,
+                error_suffix=error_suffix,
                 log_success=log_success,
             )
 
-    def ensure_gpu_requirements(self, error_level=0, log_success=False):
+    def ensure_gpu_requirements(
+        self, error_level=0, error_suffix=None, log_success=False
+    ):
         """Ensures that any GPU package requirements for the model are
         satisfied.
 
@@ -872,32 +900,43 @@ class ModelRequirements(Serializable):
                 0: raise error if a requirement is not satisfied
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
-
+            error_suffix: an optional message to append to the error if a
+                requirement is not satisifed
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
         if self.gpu_packages is None or error_level >= 2:
             return
 
-        self._ensure_cuda(error_level)
+        self._ensure_cuda(error_level, error_suffix)
+
         for requirement_str in self.gpu_packages:
             etau.ensure_package(
                 requirement_str,
                 error_level=error_level,
+                error_suffix=error_suffix,
                 log_success=log_success,
             )
 
-    def _ensure_cuda(self, error_level):
+    def _ensure_cuda(self, error_level, error_suffix):
         if self.gpu is None or error_level >= 2:
             return
 
         cuda_version = self.gpu.get("cuda_version", None)
         if cuda_version is not None:
-            etau.ensure_cuda_version(cuda_version, error_level=error_level)
+            etau.ensure_cuda_version(
+                cuda_version,
+                error_level=error_level,
+                error_suffix=error_suffix,
+            )
 
         cudnn_version = self.gpu.get("cudnn_version", None)
         if cudnn_version is not None:
-            etau.ensure_cudnn_version(cudnn_version, error_level=error_level)
+            etau.ensure_cudnn_version(
+                cudnn_version,
+                error_level=error_level,
+                error_suffix=error_suffix,
+            )
 
     def attributes(self):
         """Returns the list of class attributes that will be serialized.
@@ -949,6 +988,10 @@ class Model(Serializable):
         tags: a list of tags for the model (if any)
         date_added: the datetime that the model was added (if any)
     """
+
+    # An optional error message to append to any error messages resulting from
+    # unsatisifed requirements
+    _REQUIREMENT_ERROR_SUFFIX = None
 
     def __init__(
         self,
@@ -1082,14 +1125,23 @@ class Model(Serializable):
         if not self.has_requirements:
             return
 
-        self.requirements.install_base_requirements(error_level=error_level)
+        self.requirements.install_base_requirements(
+            error_level=error_level,
+            error_suffix=self._REQUIREMENT_ERROR_SUFFIX,
+        )
 
         found_gpu = self._ensure_environment(error_level)
 
         if found_gpu:
-            self.requirements.install_gpu_requirements(error_level=error_level)
+            self.requirements.install_gpu_requirements(
+                error_level=error_level,
+                error_suffix=self._REQUIREMENT_ERROR_SUFFIX,
+            )
         else:
-            self.requirements.install_cpu_requirements(error_level=error_level)
+            self.requirements.install_cpu_requirements(
+                error_level=error_level,
+                error_suffix=self._REQUIREMENT_ERROR_SUFFIX,
+            )
 
     def ensure_requirements(self, error_level=0, log_success=False):
         """Ensures that any requirement(s) for this model are satisfied.
@@ -1108,18 +1160,24 @@ class Model(Serializable):
             return
 
         self.requirements.ensure_base_requirements(
-            error_level=error_level, log_success=log_success
+            error_level=error_level,
+            error_suffix=self._REQUIREMENT_ERROR_SUFFIX,
+            log_success=log_success,
         )
 
         found_gpu = self._ensure_environment(error_level)
 
         if found_gpu:
             self.requirements.ensure_gpu_requirements(
-                error_level=error_level, log_success=log_success
+                error_level=error_level,
+                error_suffix=self._REQUIREMENT_ERROR_SUFFIX,
+                log_success=log_success,
             )
         else:
             self.requirements.ensure_cpu_requirements(
-                error_level=error_level, log_success=log_success
+                error_level=error_level,
+                error_suffix=self._REQUIREMENT_ERROR_SUFFIX,
+                log_success=log_success,
             )
 
     def _ensure_environment(self, error_level):
@@ -1130,22 +1188,25 @@ class Model(Serializable):
 
         if found_gpu:
             if self.requirements.supports_gpu == False:  # False, not None
-                etau.handle_error(
-                    ModelError(
-                        "Model '%s' requires GPU but no GPU was found"
-                        % self.name
-                    ),
-                    error_level,
+                error_msg = (
+                    "Model '%s' requires GPU but no GPU was found" % self.name
                 )
+
+                if self._REQUIREMENT_ERROR_SUFFIX:
+                    error_msg += "\n\n" + self._REQUIREMENT_ERROR_SUFFIX
+
+                etau.handle_error(ModelError(error_msg), error_level)
         else:
             if self.requirements.supports_cpu == False:  # False not None
-                etau.handle_error(
-                    ModelError(
-                        "Model '%s' does not support CPU and no GPU was found"
-                        % self.name
-                    ),
-                    error_level,
+                error_msg = (
+                    "Model '%s' does not support CPU and no GPU was found"
+                    % self.name
                 )
+
+                if self._REQUIREMENT_ERROR_SUFFIX:
+                    error_msg += "\n\n" + self._REQUIREMENT_ERROR_SUFFIX
+
+                etau.handle_error(ModelError(error_msg), error_level)
 
         return found_gpu
 
