@@ -75,6 +75,11 @@ class HasBlockDiagram(object):
             logger.info("Generating block diagram '%s'", svg_path)
             args = ["blockdiag", "-Tsvg", "-o", svg_path, blockdiag_path]
             etau.communicate_or_die(args)
+        except etau.ExecutableNotFoundError:
+            raise etau.PackageError(
+                "You must run pip install voxel51-eta[pipeline] in order to "
+                "use this feature"
+            )
         finally:
             if not keep_diag_file:
                 etau.delete_file(blockdiag_path)

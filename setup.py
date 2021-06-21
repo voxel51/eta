@@ -68,11 +68,11 @@ setup(
         "six",
         "scikit-image",
         "sortedcontainers",
-        "Sphinx",
         "tabulate",
         "tzlocal",
     ],
     extras_require={
+        "pipeline": ["blockdiag", "Sphinx", "sphinxcontrib-napoleon"],
         "storage": [
             "boto3",
             "google-api-python-client",

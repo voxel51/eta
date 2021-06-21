@@ -32,6 +32,9 @@ fi
 
 cd "${MODELS_DIR}"
 
+echo "Installing protobuf"
+pip install protobuf
+
 if command -v protoc &> /dev/null; then
     echo "Found protoc"
 else

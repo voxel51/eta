@@ -35,7 +35,6 @@ import eta
 import eta.core.builder as etab
 import eta.constants as etac
 import eta.core.logging as etal
-import eta.core.metadata as etame
 import eta.core.models as etamode
 import eta.core.module as etamodu
 import eta.core.pipeline as etap
@@ -43,6 +42,7 @@ import eta.core.serial as etase
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+etame = etau.lazy_import("eta.core.metadata")
 etast = etau.lazy_import("eta.core.storage")
 etat = etau.lazy_import("eta.core.tfutils")
 
