@@ -1,0 +1,3 @@
+blockdiag==1.5.3
+Sphinx==2.4.4
+sphinxcontrib-napoleon==0.7
