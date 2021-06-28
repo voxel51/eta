@@ -849,11 +849,9 @@ def _ensure_all_requirements(
     successes = []
     fails = []
     for req, version, error in results:
-        if (
-            error is not None
-            or version is None
-            and req.specifier
-            or not req.specifier.contains(version)
+        if error is not None or (
+            req.specifier
+            and (version is None or not req.specifier.contains(version))
         ):
             fails.append((req, version, error))
         else:
@@ -924,11 +922,9 @@ def _ensure_any_requirement(
     successes = []
     fails = []
     for req, version, error in results:
-        if (
-            error is not None
-            or version is None
-            and req.specifier
-            or not req.specifier.contains(version)
+        if error is not None or (
+            req.specifier
+            and (version is None or not req.specifier.contains(version))
         ):
             fails.append((req, version, error))
         else:
