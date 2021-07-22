@@ -1140,7 +1140,7 @@ def render_bounding_box_and_mask(polyline, mask_size):
 
     # Render mask
 
-    mask = np.zeros(mask_size, dtype=np.uint8)
+    mask = np.zeros((h_mask, w_mask), dtype=np.uint8)
     abs_points = np.array(abs_points, dtype=np.int32)
 
     if polyline.filled:
