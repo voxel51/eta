@@ -152,7 +152,7 @@ class WebSession(object):
         with open(path, "wb") as f:
             self._do_download(r, f)
 
-    def _get_streaming_response(self, url, headers=None, params=None,proxies=None):
+    def _get_streaming_response(self, url, headers=None, params=None):
         #get the defualt system proxy settings by default
         proxies = urllib.request.getproxies()
         self.sess.proxies.update(proxies)
