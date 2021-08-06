@@ -23,6 +23,9 @@ import logging
 import re
 import requests
 
+import urllib.request
+
+
 import eta.constants as etac
 import eta.core.utils as etau
 
@@ -149,13 +152,17 @@ class WebSession(object):
         with open(path, "wb") as f:
             self._do_download(r, f)
 
-    def _get_streaming_response(self, url, headers=None, params=None):
+    def _get_streaming_response(self, url, headers=None, params=None,proxies=None):
+        #get the defualt system proxy settings by default
+        proxies = urllib.request.getproxies()
+        self.sess.proxies.update(proxies)
         r = self.sess.get(
             url,
             headers=headers,
             params=params,
             stream=True,
             verify=self.verify,
+            
         )
 
         if r.status_code not in (200, 206):
