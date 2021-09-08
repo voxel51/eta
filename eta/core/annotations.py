@@ -32,6 +32,7 @@ import eta
 import eta.constants as etac
 from eta.core.config import Config, Configurable
 import eta.core.data as etad
+import eta.core.frameutils as etaf
 import eta.core.image as etai
 import eta.core.logo as etal
 import eta.core.utils as etau
@@ -698,7 +699,7 @@ class Draw(object):
 
 
 def annotate_video(
-    input_path, video_labels, output_path, annotation_config=None
+    input_path, video_labels, output_path, support=None, annotation_config=None
 ):
     """Annotates the video with the given labels.
 
@@ -707,6 +708,8 @@ def annotate_video(
         video_labels: an `eta.core.video.VideoLabels` instance describing the
             content to annotate
         output_path: the path to write the output video
+        support: an optional `[first, last]` range of frames to render. By
+            default, the entire video is annotated
         annotation_config: an optional AnnotationConfig specifying how to
             render the annotations. If omitted, the default config is used
     """
@@ -717,8 +720,15 @@ def annotate_video(
     video_labels = video_labels.render_framewise()
     mask_index = video_labels.mask_index
 
+    if support is not None:
+        frames = etaf.FrameRange(*support)
+    else:
+        frames = None
+
     # Annotate video
-    with etav.VideoProcessor(input_path, out_video_path=output_path) as vp:
+    with etav.VideoProcessor(
+        input_path, frames=frames, out_video_path=output_path
+    ) as vp:
         # Set media size
         annotation_config.set_media_size(frame_size=vp.output_frame_size)
 
