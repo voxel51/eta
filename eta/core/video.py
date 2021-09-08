@@ -3897,7 +3897,7 @@ class FFmpegVideoWriter(VideoWriter):
         Args:
             img: a numpy array
         """
-        self._ffmpeg.stream(img.tostring())
+        self._ffmpeg.stream(img.tobytes())
 
     def close(self):
         """Closes the FFmpegVideoWriter."""
