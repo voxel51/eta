@@ -2652,7 +2652,7 @@ def extract_frame(video_path, output_path, start_time=None):
 
 
 def _make_ffmpeg_select_arg(frames):
-    ss = "+".join(["eq(n\,%d)" % (f - 1) for f in frames])
+    ss = "+".join(["eq(n\\,%d)" % (f - 1) for f in frames])
     return "select='%s'" % ss
 
 
@@ -3897,7 +3897,7 @@ class FFmpegVideoWriter(VideoWriter):
         Args:
             img: a numpy array
         """
-        self._ffmpeg.stream(img.tostring())
+        self._ffmpeg.stream(img.tobytes())
 
     def close(self):
         """Closes the FFmpegVideoWriter."""
