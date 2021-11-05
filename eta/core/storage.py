@@ -1124,6 +1124,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             "object_name": object_name,
             "name": os.path.basename(object_name),
             "size": metadata["ContentLength"],
+            "checksum": metadata["ETag"][1:-1],
             "mime_type": mime_type,
             "last_modified": metadata["LastModified"],
         }
@@ -1138,6 +1139,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             "object_name": path,
             "name": os.path.basename(path),
             "size": obj["Size"],
+            "checksum": obj["ETag"][1:-1],
             "mime_type": etau.guess_mime_type(path),
             "last_modified": obj["LastModified"],
         }
@@ -1639,6 +1641,7 @@ class GoogleCloudStorageClient(
             "object_name": blob.name,
             "name": os.path.basename(blob.name),
             "size": blob.size,
+            "checksum": blob.md5_hash,
             "mime_type": mime_type,
             "last_modified": blob.updated,
         }
