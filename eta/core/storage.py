@@ -49,7 +49,9 @@ import requests
 
 try:
     import boto3
+    import botocore.config as bcc
     import google.api_core.exceptions as gae
+    import google.api_core.retry as gar
     import google.cloud.storage as gcs
     import google.oauth2.service_account as gos
     import googleapiclient.discovery as gad
@@ -132,41 +134,6 @@ def _parse_remote_path(remote_path):
         raise ValueError("Unknown remote path '%s'" % remote_path)
 
     return client, filename
-
-
-def google_cloud_api_retry(func):
-    """Decorator for handling retry of Google API errors.
-
-    Follows recommendations from:
-    https://cloud.google.com/apis/design/errors#error_retries
-    """
-
-    def is_500_or_503(exception):
-        return isinstance(exception, gae.InternalServerError) or isinstance(
-            exception, gae.ServiceUnavailable
-        )
-
-    def is_429(exception):
-        return isinstance(exception, gae.TooManyRequests)
-
-    stop_max_attempt_number = 10
-    # wait times below are in milliseconds
-
-    @retry(
-        retry_on_exception=is_500_or_503,
-        stop_max_attempt_number=stop_max_attempt_number,
-        wait_exponential_multiplier=1000,
-        wait_exponential_max=1 * 1000,
-    )
-    @retry(
-        retry_on_exception=is_429,
-        stop_max_attempt_number=stop_max_attempt_number,
-        wait_fixed=30 * 1000,
-    )
-    def wrapper(*args, **kwargs):
-        return func(*args, **kwargs)
-
-    return wrapper
 
 
 class StorageClient(object):
@@ -821,7 +788,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
     strategy used by this class.
     """
 
-    def __init__(self, credentials=None):
+    def __init__(self, credentials=None, max_pool_connections=None, **kwargs):
         """Creates an S3StorageClient instance.
 
         Args:
@@ -830,6 +797,10 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 `boto3.client("s3", **credentials)`. If not provided, active
                 credentials are automatically loaded as described in
                 `NeedsAWSCredentials`
+            max_pool_connections: an optional maximum number of connections to
+                keep in the connection pool
+            **kwargs: optional configuration options for
+                `botocore.config.Config(**kwargs)`
         """
         if credentials is None:
             credentials, _ = self.load_credentials()
@@ -839,7 +810,17 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             if region:
                 credentials["region_name"] = region
 
-        self._client = boto3.client("s3", **credentials)
+        if "retries" not in kwargs:
+            kwargs["retries"] = {"max_attempts": 10, "mode": "standard"}
+
+        if (
+            max_pool_connections is not None
+            and "max_pool_connections" not in kwargs
+        ):
+            kwargs["max_pool_connections"] = max_pool_connections
+
+        config = bcc.Config(**kwargs)
+        self._client = boto3.client("s3", config=config, **credentials)
 
     def upload(self, local_path, cloud_path, content_type=None):
         """Uploads the file to S3.
@@ -1365,14 +1346,13 @@ class GoogleCloudStorageClient(
     strategy used by this class.
     """
 
-    #
-    # The default chunk size to use when uploading and downloading files.
-    # Note that this gives the GCS API the right to use up to this much memory
-    # as a buffer during read/write
-    #
-    DEFAULT_CHUNK_SIZE = 256 * 1024 * 1024  # in bytes
-
-    def __init__(self, credentials=None, chunk_size=None):
+    def __init__(
+        self,
+        credentials=None,
+        chunk_size=None,
+        max_pool_connections=None,
+        **kwargs,
+    ):
         """Creates a GoogleCloudStorageClient instance.
 
         Args:
@@ -1380,17 +1360,50 @@ class GoogleCloudStorageClient(
                 instance. If not provided, active credentials are automatically
                 loaded as described in `NeedsGoogleCredentials`
             chunk_size: an optional chunk size (in bytes) to use for uploads
-                and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
+                and downloads
+            max_pool_connections: an optional maximum number of connections to
+                keep in the connection pool
+            **kwargs: optional keyword arguments for
+                `google.cloud.storage.Client(**kwargs)`
         """
         if credentials is None:
             credentials, _ = self.load_credentials()
 
-        self._client = gcs.Client(
-            credentials=credentials, project=credentials.project_id
+        client = gcs.Client(
+            credentials=credentials, project=credentials.project_id, **kwargs
         )
-        self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
 
-    @google_cloud_api_retry
+        # https://github.com/googleapis/python-bigquery/issues/59#issuecomment-650432896
+        if max_pool_connections is not None:
+            adapter = requests.adapters.HTTPAdapter(
+                pool_maxsize=max_pool_connections
+            )
+
+            try:
+                client._http.mount("http://", adapter)
+                client._http.mount("https://", adapter)
+                client._http_internal.mount("http://", adapter)
+                client._http_internal.mount("https://", adapter)
+                client._http._auth_request.session.mount("http://", adapter)
+                client._http._auth_request.session.mount("https://", adapter)
+            except Exception as e:
+                logger.debug(e)
+
+        retriable_types = (
+           gae.TooManyRequests,  # 429
+           gae.InternalServerError,  # 500
+           gae.BadGateway,  # 502
+           gae.ServiceUnavailable,  # 503
+        )
+
+        retry = gar.Retry(
+            predicate=lambda e: isinstance(e, retriable_types)
+        )
+
+        self.chunk_size = chunk_size
+        self._client = client
+        self._retry = retry
+
     def upload(self, local_path, cloud_path, content_type=None):
         """Uploads the file to GCS.
 
@@ -1404,7 +1417,6 @@ class GoogleCloudStorageClient(
         blob = self._get_blob(cloud_path)
         blob.upload_from_filename(local_path, content_type=content_type)
 
-    @google_cloud_api_retry
     def upload_bytes(self, bytes_str, cloud_path, content_type=None):
         """Uploads the given bytes to GCS.
 
@@ -1419,7 +1431,6 @@ class GoogleCloudStorageClient(
         blob = self._get_blob(cloud_path)
         blob.upload_from_string(bytes_str, content_type=content_type)
 
-    @google_cloud_api_retry
     def upload_stream(self, file_obj, cloud_path, content_type=None):
         """Uploads the contents of the given file-like object to GCS.
 
@@ -1435,7 +1446,6 @@ class GoogleCloudStorageClient(
         blob = self._get_blob(cloud_path)
         blob.upload_from_file(file_obj, content_type=content_type)
 
-    @google_cloud_api_retry
     def download(self, cloud_path, local_path):
         """Downloads the file from GCS to the given location.
 
@@ -1445,9 +1455,8 @@ class GoogleCloudStorageClient(
         """
         blob = self._get_blob(cloud_path)
         etau.ensure_basedir(local_path)
-        blob.download_to_filename(local_path)
+        blob.download_to_filename(local_path, checksum=None)
 
-    @google_cloud_api_retry
     def download_bytes(self, cloud_path):
         """Downloads the file from GCS and returns the bytes string.
 
@@ -1460,7 +1469,6 @@ class GoogleCloudStorageClient(
         blob = self._get_blob(cloud_path)
         return blob.download_as_string()
 
-    @google_cloud_api_retry
     def download_stream(self, cloud_path, file_obj):
         """Downloads the file from GCS to the given file-like object.
 
@@ -1470,9 +1478,8 @@ class GoogleCloudStorageClient(
                 which must be open for writing
         """
         blob = self._get_blob(cloud_path)
-        blob.download_to_file(file_obj)
+        blob.download_to_file(file_obj, checksum=None)
 
-    @google_cloud_api_retry
     def delete(self, cloud_path):
         """Deletes the given file from GCS.
 
@@ -1482,7 +1489,6 @@ class GoogleCloudStorageClient(
         blob = self._get_blob(cloud_path)
         blob.delete()
 
-    @google_cloud_api_retry
     def delete_folder(self, cloud_folder):
         """Deletes all files in the given GCS "folder".
 
@@ -1490,7 +1496,7 @@ class GoogleCloudStorageClient(
             cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
         """
         bucket_name, folder_name = self._parse_gcs_path(cloud_folder)
-        bucket = self._client.get_bucket(bucket_name)
+        bucket = self._client.get_bucket(bucket_name, retry=self._retry)
 
         if folder_name and not folder_name.endswith("/"):
             folder_name += "/"
@@ -1498,7 +1504,6 @@ class GoogleCloudStorageClient(
         for blob in bucket.list_blobs(prefix=folder_name):
             blob.delete()
 
-    @google_cloud_api_retry
     def get_file_metadata(self, cloud_path):
         """Returns metadata about the given file in GCS.
 
@@ -1511,7 +1516,7 @@ class GoogleCloudStorageClient(
                 `last_modified`
         """
         blob = self._get_blob(cloud_path)
-        blob.patch()  # must call `patch` so metadata is populated
+        blob.reload()  # populates metadata
         return self._get_file_metadata(blob)
 
     def get_folder_metadata(self, cloud_folder):
@@ -1552,7 +1557,6 @@ class GoogleCloudStorageClient(
             "last_modified": last_modified,
         }
 
-    @google_cloud_api_retry
     def list_files_in_folder(
         self, cloud_folder, recursive=True, return_metadata=False
     ):
@@ -1573,10 +1577,11 @@ class GoogleCloudStorageClient(
                 for the files in the folder
         """
         bucket_name, folder_name = self._parse_gcs_path(cloud_folder)
-        bucket = self._client.get_bucket(bucket_name)
+        bucket = self._client.get_bucket(bucket_name, retry=self._retry)
 
         if folder_name and not folder_name.endswith("/"):
             folder_name += "/"
+
         delimiter = "/" if not recursive else None
         blobs = bucket.list_blobs(prefix=folder_name, delimiter=delimiter)
 
@@ -1598,7 +1603,6 @@ class GoogleCloudStorageClient(
 
         return paths
 
-    @google_cloud_api_retry
     def generate_signed_url(
         self, cloud_path, method="GET", hours=24, content_type=None
     ):
@@ -1627,7 +1631,7 @@ class GoogleCloudStorageClient(
 
     def _get_blob(self, cloud_path):
         bucket_name, object_name = self._parse_gcs_path(cloud_path)
-        bucket = self._client.get_bucket(bucket_name)
+        bucket = self._client.get_bucket(bucket_name, retry=self._retry)
         return bucket.blob(object_name, chunk_size=self.chunk_size)
 
     @staticmethod
@@ -1652,9 +1656,11 @@ class GoogleCloudStorageClient(
             raise GoogleCloudStorageClientError(
                 "Cloud storage path '%s' must start with gs://" % cloud_path
             )
+
         chunks = cloud_path[5:].split("/", 1)
         if len(chunks) != 2:
             return chunks[0], ""
+
         return chunks[0], chunks[1]
 
 
@@ -2486,25 +2492,19 @@ class HTTPStorageClient(StorageClient):
             Storage, so set this attribute to False for use with GCS
         chunk_size: the chunk size (in bytes) that will be used for streaming
             downloads
-        keep_alive: whether the request session should be kept alive between
-            requests
 
     Examples::
 
-        # Use client to perform a one-off task
-        client = HTTPStorageClient(...)
-        client.upload(...)
-
         # Use client to perform a series of tasks without closing and
         # reopening the request session each time
-        client = HTTPStorageClient(..., keep_alive=True)
+        client = HTTPStorageClient(...)
         client.upload(...)
         client.download(...)
         ...
         client.close()  # make sure the session is closed
 
         # Automatic connection management via context manager
-        with HTTPStorageClient(..., keep_alive=True) as client:
+        with HTTPStorageClient(...) as client:
             client.upload(...)
             client.download(...)
             ...
@@ -2518,7 +2518,10 @@ class HTTPStorageClient(StorageClient):
     DEFAULT_CHUNK_SIZE = 32 * 1024 * 1024  # in bytes
 
     def __init__(
-        self, set_content_type=False, chunk_size=None, keep_alive=False
+        self,
+        set_content_type=False,
+        chunk_size=None,
+        max_pool_connections=None,
     ):
         """Creates an HTTPStorageClient instance.
 
@@ -2527,13 +2530,21 @@ class HTTPStorageClient(StorageClient):
                 upload requests. By default, this is False
             chunk_size: an optional chunk size (in bytes) to use for downloads.
                 By default, `DEFAULT_CHUNK_SIZE` is used
-            keep_alive: whether to keep the request session alive between
-                requests. By default, this is False
+            max_pool_connections: an optional maximum number of connections to
+                keep in the connection pool
         """
+        session = requests.Session()
+
+        if max_pool_connections is not None:
+            adapter = requests.adapters.HTTPAdapter(
+                pool_maxsize=max_pool_connections
+            )
+            session.mount("http://", adapter)
+            session.mount("https://", adapter)
+
         self.set_content_type = set_content_type
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
-        self.keep_alive = keep_alive
-        self._requests = requests.Session() if keep_alive else requests
+        self._session = session
 
     def __enter__(self):
         return self
@@ -2542,11 +2553,8 @@ class HTTPStorageClient(StorageClient):
         self.close()
 
     def close(self):
-        """Closes the HTTP session. Only needs to be called when
-        `keep_alive=True` is passed to the constructor.
-        """
-        if self.keep_alive:
-            self._requests.close()  # pylint: disable=no-member
+        """Closes the HTTP session."""
+        self._session.close()
 
     def upload(self, local_path, url, filename=None, content_type=None):
         """Uploads the file to the given URL via a PUT request.
@@ -2657,7 +2665,7 @@ class HTTPStorageClient(StorageClient):
         Args:
             url: the URL of the file to DELETE
         """
-        self._requests.delete(url)
+        self._session.delete(url)
 
     @staticmethod
     def get_filename(url):
@@ -2681,7 +2689,7 @@ class HTTPStorageClient(StorageClient):
     def _do_upload(self, file_obj, url, filename, content_type):
         if not self.set_content_type:
             # Upload without setting content type
-            res = self._requests.put(url, data=file_obj)
+            res = self._session.put(url, data=file_obj)
             res.raise_for_status()
             return
 
@@ -2690,11 +2698,11 @@ class HTTPStorageClient(StorageClient):
         else:
             files = {"file": file_obj}
         headers = {"Content-Type": content_type}
-        res = self._requests.put(url, files=files, headers=headers)
+        res = self._session.put(url, files=files, headers=headers)
         res.raise_for_status()
 
     def _do_download(self, url, file_obj):
-        with self._requests.get(url, stream=True) as res:
+        with self._session.get(url, stream=True) as res:
             for chunk in res.iter_content(chunk_size=self.chunk_size):
                 file_obj.write(chunk)
             res.raise_for_status()

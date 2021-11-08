@@ -74,9 +74,9 @@ setup(
     extras_require={
         "pipeline": ["blockdiag", "Sphinx", "sphinxcontrib-napoleon"],
         "storage": [
-            "boto3",
+            "boto3>=1.15",
             "google-api-python-client",
-            "google-cloud-storage",
+            "google-cloud-storage>=1.36",
             "httplib2<=0.15",
             "pysftp",
         ],
