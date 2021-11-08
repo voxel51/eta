@@ -672,6 +672,12 @@ class NeedsAWSCredentials(object):
                 from which they were loaded. If the credentials were loaded
                 from environment variables, `path` will be None
         """
+        if profile is None and "AWS_PROFILE" in os.environ:
+            logger.debug(
+                "Loading profile from 'AWS_PROFILE' environment variable"
+            )
+            profile = os.environ["AWS_PROFILE"]
+
         if credentials_path:
             logger.debug(
                 "Loading AWS credentials from manually provided path " "'%s'",
