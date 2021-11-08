@@ -811,10 +811,10 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         if credentials is None:
             credentials, _ = self.load_credentials()
 
-            # The .ini files use `region` but `boto3.client` uses `region_name`
-            region = credentials.pop("region", None)
-            if region:
-                credentials["region_name"] = region
+        # The .ini files use `region` but `boto3.client` uses `region_name`
+        region = credentials.pop("region", None)
+        if region:
+            credentials["region_name"] = region
 
         if "retries" not in kwargs:
             kwargs["retries"] = {"max_attempts": 10, "mode": "standard"}
