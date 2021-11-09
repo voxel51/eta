@@ -43,8 +43,6 @@ except ImportError:
     import urlparse  # Python 2
 
 import dateutil.parser
-
-from retrying import retry
 import requests
 
 try:
@@ -2056,7 +2054,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             return response["name"]
         except:
             raise GoogleDriveStorageClientError(
-                "Team Drive with ID '%s' not found", drive_id
+                "Team Drive with ID '%s' not found" % drive_id
             )
 
     def get_root_team_drive_id(self, file_id):
