@@ -828,7 +828,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         config = bcc.Config(**kwargs)
         self._client = boto3.client("s3", config=config, **credentials)
 
-    def upload(self, local_path, cloud_path, content_type=None):
+    def upload(self, local_path, cloud_path, content_type=None, metadata=None):
         """Uploads the file to S3.
 
         Args:
@@ -836,12 +836,18 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             cloud_path: the path to the S3 object to create
             content_type: the optional type of the content being uploaded. If
                 no value is provided, it is guessed from the filename
+            metadata: an optional dictionary of custom object metadata to store
         """
         self._do_upload(
-            cloud_path, local_path=local_path, content_type=content_type
+            cloud_path,
+            local_path=local_path,
+            content_type=content_type,
+            metadata=metadata,
         )
 
-    def upload_stream(self, file_obj, cloud_path, content_type=None):
+    def upload_stream(
+        self, file_obj, cloud_path, content_type=None, metadata=None
+    ):
         """Uploads the contents of the given file-like object to S3.
 
         Args:
@@ -852,12 +858,18 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 no value is provided but the object already exists in S3, then
                 the same value is used. Otherwise, the default value
                 ("application/octet-stream") is used
+            metadata: an optional dictionary of custom object metadata to store
         """
         self._do_upload(
-            cloud_path, file_obj=file_obj, content_type=content_type
+            cloud_path,
+            file_obj=file_obj,
+            content_type=content_type,
+            metadata=metadata,
         )
 
-    def upload_bytes(self, bytes_str, cloud_path, content_type=None):
+    def upload_bytes(
+        self, bytes_str, cloud_path, content_type=None, metadata=None
+    ):
         """Uploads the given bytes to S3.
 
         Args:
@@ -867,9 +879,15 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 no value is provided but the object already exists in S3, then
                 the same value is used. Otherwise, the default value
                 ("application/octet-stream") is used
+            metadata: an optional dictionary of custom object metadata to store
         """
         with io.BytesIO(_to_bytes(bytes_str)) as f:
-            self._do_upload(cloud_path, file_obj=f, content_type=content_type)
+            self._do_upload(
+                cloud_path,
+                file_obj=f,
+                content_type=content_type,
+                metadata=metadata,
+            )
 
     def download(self, cloud_path, local_path):
         """Downloads the file from S3 to the given location.
@@ -943,8 +961,8 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
 
         Returns:
             a dictionary containing metadata about the file, including its
-                `bucket`, `object_name`, `name`, `size`, `mime_type`, and
-                `last_modified`
+                `bucket`, `object_name`, `name`, `size`, `mime_type`,
+                `last_modified`, `checksum`, and `metadata`
         """
         bucket, object_name = self._parse_s3_path(cloud_path)
         return self._get_file_metadata(bucket, object_name)
@@ -998,8 +1016,8 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 default, this is True
             return_metadata: whether to return a metadata dictionary for each
                 file, including its `bucket`, `object_name`, `name`, `size`,
-                `mime_type`, and `last_modified`. By default, only the paths to
-                the files are returned
+                `mime_type`, `last_modified`, `checksum`, and `metadata`. By
+                default, only the paths to the files are returned
 
         Returns:
             a list of full cloud paths (when `return_metadata == False`) or a
@@ -1061,23 +1079,59 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         params = {"Bucket": bucket, "Key": object_name}
         if client_method == "put_object" and content_type:
             params["ContentType"] = content_type
+
         expiration = int(3600 * hours)
         return self._client.generate_presigned_url(
             ClientMethod=client_method, Params=params, ExpiresIn=expiration
         )
 
+    def add_metadata(self, cloud_path, metadata):
+        """Adds custom metadata key-value pairs to the given S3 object.
+
+        Note that S3 fundamentally treats metadata as immutable, so this method
+        must use `botocore.client.S3.copy_object()` to copy the object, which
+        only supports file sizes up to 5GB. For larger files, you must manually
+        re-upload the file with the desired metadata.
+
+        Args:
+            cloud_path: the path to the S3 object
+            metadata: a dictionary of custom metadata
+        """
+        bucket, object_name = self._parse_s3_path(cloud_path)
+        response = self._client.head_object(Bucket=bucket, Key=object_name)
+
+        response["Metadata"].update(metadata)
+
+        self._client.copy_object(
+            Bucket=bucket,
+            Key=object_name,
+            CopySource={"Bucket": bucket, "Key": object_name},
+            Metadata=response["Metadata"],
+            MetadataDirective="REPLACE",
+            TaggingDirective="COPY",
+            ContentType=response["ContentType"],
+        )
+
     def _do_upload(
-        self, cloud_path, local_path=None, file_obj=None, content_type=None
+        self,
+        cloud_path,
+        local_path=None,
+        file_obj=None,
+        content_type=None,
+        metadata=None,
     ):
         bucket, object_name = self._parse_s3_path(cloud_path)
 
         if local_path and not content_type:
             content_type = etau.guess_mime_type(local_path)
 
+        extra_args = {}
+
         if content_type:
-            extra_args = {"ContentType": content_type}
-        else:
-            extra_args = None
+            extra_args["ContentType"] = content_type
+
+        if metadata:
+            extra_args["Metadata"] = metadata
 
         if local_path:
             self._client.upload_file(
@@ -1100,9 +1154,9 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             self._client.download_fileobj(bucket, object_name, file_obj)
 
     def _get_file_metadata(self, bucket, object_name):
-        metadata = self._client.head_object(Bucket=bucket, Key=object_name)
+        response = self._client.head_object(Bucket=bucket, Key=object_name)
 
-        mime_type = metadata["ContentType"]
+        mime_type = response["ContentType"]
         if not mime_type:
             mime_type = etau.guess_mime_type(object_name)
 
@@ -1110,10 +1164,11 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             "bucket": bucket,
             "object_name": object_name,
             "name": os.path.basename(object_name),
-            "size": metadata["ContentLength"],
-            "checksum": metadata["ETag"][1:-1],
+            "size": response["ContentLength"],
             "mime_type": mime_type,
-            "last_modified": metadata["LastModified"],
+            "last_modified": response["LastModified"],
+            "checksum": response["ETag"][1:-1],
+            "metadata": response["Metadata"],
         }
 
     @staticmethod
@@ -1126,9 +1181,10 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             "object_name": path,
             "name": os.path.basename(path),
             "size": obj["Size"],
-            "checksum": obj["ETag"][1:-1],
             "mime_type": etau.guess_mime_type(path),
             "last_modified": obj["LastModified"],
+            "checksum": obj["ETag"][1:-1],
+            "metadata": obj["Metadata"],
         }
 
     @staticmethod
@@ -1410,7 +1466,7 @@ class GoogleCloudStorageClient(
         self._client = client
         self._retry = retry
 
-    def upload(self, local_path, cloud_path, content_type=None):
+    def upload(self, local_path, cloud_path, content_type=None, metadata=None):
         """Uploads the file to GCS.
 
         Args:
@@ -1418,12 +1474,18 @@ class GoogleCloudStorageClient(
             cloud_path: the path to the GCS object to create
             content_type: the optional type of the content being uploaded. If
                 no value is provided, it is guessed from the filename
+            metadata: an optional dictionary of custom object metadata to store
         """
         content_type = content_type or etau.guess_mime_type(local_path)
         blob = self._get_blob(cloud_path)
+        if metadata:
+            blob.metadata = metadata
+
         blob.upload_from_filename(local_path, content_type=content_type)
 
-    def upload_bytes(self, bytes_str, cloud_path, content_type=None):
+    def upload_bytes(
+        self, bytes_str, cloud_path, content_type=None, metadata=None
+    ):
         """Uploads the given bytes to GCS.
 
         Args:
@@ -1433,11 +1495,17 @@ class GoogleCloudStorageClient(
                 no value is provided but the object already exists in GCS, then
                 the same value is used. Otherwise, the default value
                 ("application/octet-stream") is used
+            metadata: an optional dictionary of custom object metadata to store
         """
         blob = self._get_blob(cloud_path)
+        if metadata:
+            blob.metadata = metadata
+
         blob.upload_from_string(bytes_str, content_type=content_type)
 
-    def upload_stream(self, file_obj, cloud_path, content_type=None):
+    def upload_stream(
+        self, file_obj, cloud_path, content_type=None, metadata=None
+    ):
         """Uploads the contents of the given file-like object to GCS.
 
         Args:
@@ -1448,8 +1516,12 @@ class GoogleCloudStorageClient(
                 no value is provided but the object already exists in GCS, then
                 the same value is used. Otherwise, the default value
                 ("application/octet-stream") is used
+            metadata: an optional dictionary of custom object metadata to store
         """
         blob = self._get_blob(cloud_path)
+        if metadata:
+            blob.metadata = metadata
+
         blob.upload_from_file(file_obj, content_type=content_type)
 
     def download(self, cloud_path, local_path):
@@ -1518,11 +1590,10 @@ class GoogleCloudStorageClient(
 
         Returns:
             a dictionary containing metadata about the file, including its
-                `bucket`, `object_name`, `name`, `size`, `mime_type`, and
-                `last_modified`
+                `bucket`, `object_name`, `name`, `size`, `mime_type`,
+                `last_modified`, `checksum`, and `metadata`
         """
-        blob = self._get_blob(cloud_path)
-        blob.reload()  # populates metadata
+        blob = self._get_blob(cloud_path, include_metadata=True)
         return self._get_file_metadata(blob)
 
     def get_folder_metadata(self, cloud_folder):
@@ -1574,8 +1645,8 @@ class GoogleCloudStorageClient(
                 default, this is True
             return_metadata: whether to return a metadata dictionary for each
                 file, including its  `bucket`, `object_name`, `name`, `size`,
-                `mime_type`, and `last_modified`. By default, only the paths
-                to the files are returned
+                `mime_type`, `last_modified`, `checksum`, and `metadata`. By
+                default, only the paths to the files are returned
 
         Returns:
             a list of full cloud paths (when `return_metadata == False`) or a
@@ -1635,10 +1706,31 @@ class GoogleCloudStorageClient(
             expiration=expiration, method=method, content_type=content_type
         )
 
-    def _get_blob(self, cloud_path):
+    def add_metadata(self, cloud_path, metadata):
+        """Adds custom metadata key-value pairs to the given GCS object.
+
+        Args:
+            cloud_path: the path to the GCS object
+            metadata: a dictionary of custom metadata
+        """
+        blob = self._get_blob(cloud_path, include_metadata=True)
+
+        if blob.metadata:
+            blob.metadata.update(metadata)
+        else:
+            blob.metadata = metadata
+
+        blob.patch()
+
+    def _get_blob(self, cloud_path, include_metadata=False):
         bucket_name, object_name = self._parse_gcs_path(cloud_path)
         bucket = self._client.get_bucket(bucket_name, retry=self._retry)
-        return bucket.blob(object_name, chunk_size=self.chunk_size)
+        blob = bucket.blob(object_name, chunk_size=self.chunk_size)
+
+        if include_metadata:
+            blob.reload()
+
+        return blob
 
     @staticmethod
     def _get_file_metadata(blob):
@@ -1651,9 +1743,10 @@ class GoogleCloudStorageClient(
             "object_name": blob.name,
             "name": os.path.basename(blob.name),
             "size": blob.size,
-            "checksum": blob.md5_hash,
             "mime_type": mime_type,
             "last_modified": blob.updated,
+            "checksum": blob.md5_hash,
+            "metadata": blob.metadata or {},
         }
 
     @staticmethod
