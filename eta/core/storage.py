@@ -906,15 +906,20 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         """
         self._do_download(cloud_path, file_obj=file_obj)
 
-    def download_bytes(self, cloud_path):
+    def download_bytes(self, cloud_path, start=None, end=None):
         """Downloads the file from S3 and returns the bytes string.
 
         Args:
             cloud_path: the path to the S3 object to download
+            start: an optional first byte in a range to download
+            end: an optional last byte in a range to download
 
         Returns:
             the downloaded bytes string
         """
+        if start is not None or end is not None:
+            return self._do_download(cloud_path, start=start, end=end)
+
         with io.BytesIO() as f:
             self.download_stream(cloud_path, f)
             return f.getvalue()
@@ -1141,8 +1146,18 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 file_obj, bucket, object_name, ExtraArgs=extra_args
             )
 
-    def _do_download(self, cloud_path, local_path=None, file_obj=None):
+    def _do_download(
+        self, cloud_path, local_path=None, file_obj=None, start=None, end=None
+    ):
         bucket, object_name = self._parse_s3_path(cloud_path)
+
+        if start is not None or end is not None:
+            response = self._client.get_object(
+                Bucket=bucket,
+                Key=object_name,
+                Range="bytes=%s-%s" % (start or "", end or ""),
+            )
+            return response["Body"].read()
 
         if local_path:
             etau.ensure_basedir(local_path)
@@ -1533,17 +1548,19 @@ class GoogleCloudStorageClient(
         etau.ensure_basedir(local_path)
         blob.download_to_filename(local_path, checksum=None)
 
-    def download_bytes(self, cloud_path):
+    def download_bytes(self, cloud_path, start=None, end=None):
         """Downloads the file from GCS and returns the bytes string.
 
         Args:
             cloud_path: the path to the GCS object to download
+            start: an optional first byte in a range to download
+            end: an optional last byte in a range to download
 
         Returns:
             the downloaded bytes string
         """
         blob = self._get_blob(cloud_path)
-        return blob.download_as_string()
+        return blob.download_as_bytes(start=start, end=end, checksum=None)
 
     def download_stream(self, cloud_path, file_obj):
         """Downloads the file from GCS to the given file-like object.
