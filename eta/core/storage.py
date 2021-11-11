@@ -1465,15 +1465,13 @@ class GoogleCloudStorageClient(
                 logger.debug(e)
 
         retriable_types = (
-           gae.TooManyRequests,  # 429
-           gae.InternalServerError,  # 500
-           gae.BadGateway,  # 502
-           gae.ServiceUnavailable,  # 503
+            gae.TooManyRequests,  # 429
+            gae.InternalServerError,  # 500
+            gae.BadGateway,  # 502
+            gae.ServiceUnavailable,  # 503
         )
 
-        retry = gar.Retry(
-            predicate=lambda e: isinstance(e, retriable_types)
-        )
+        retry = gar.Retry(predicate=lambda e: isinstance(e, retriable_types))
 
         self.chunk_size = chunk_size
         self._client = client
@@ -2517,7 +2515,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     fields="files(%s),nextPageToken" % fields,
                     pageSize=256,
                     pageToken=page_token,
-                    **params
+                    **params,
                 )
                 .execute()
             )
@@ -2741,11 +2739,13 @@ class HTTPStorageClient(StorageClient):
         with open(local_path, "wb") as f:
             self._do_download(url, f)
 
-    def download_bytes(self, url):
+    def download_bytes(self, url, start=None, end=None):
         """Downloads bytes from the given URL via a GET request.
 
         Args:
             url: the URL from which to GET the file
+            start: an optional first byte in a range to download
+            end: an optional last byte in a range to download
 
         Returns:
             the downloaded bytes string
@@ -2755,7 +2755,7 @@ class HTTPStorageClient(StorageClient):
                 error
         """
         with io.BytesIO() as f:
-            self._do_download(url, f)
+            self._do_download(url, f, start=start, end=end)
             return f.getvalue()
 
     def download_stream(self, url, file_obj):
@@ -2811,12 +2811,18 @@ class HTTPStorageClient(StorageClient):
             files = {"file": (filename, file_obj, content_type)}
         else:
             files = {"file": file_obj}
+
         headers = {"Content-Type": content_type}
         res = self._session.put(url, files=files, headers=headers)
         res.raise_for_status()
 
-    def _do_download(self, url, file_obj):
-        with self._session.get(url, stream=True) as res:
+    def _do_download(self, url, file_obj, start=None, end=None):
+        if start is not None or end is not None:
+            headers = {"Range": "bytes=%s-%s" % (start or "", end or "")}
+        else:
+            headers = None
+
+        with self._session.get(url, headers=headers, stream=True) as res:
             for chunk in res.iter_content(chunk_size=self.chunk_size):
                 file_obj.write(chunk)
             res.raise_for_status()
