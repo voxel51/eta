@@ -2767,9 +2767,7 @@ def ensure_dir(dirname):
     Args:
         dirname: the directory path
     """
-    if dirname and not os.path.isdir(dirname):
-        logger.debug("Making directory '%s'", dirname)
-        os.makedirs(dirname)
+    os.makedirs(dirname, exist_ok=True)
 
 
 def has_extension(filename, *args):
