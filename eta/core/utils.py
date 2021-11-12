@@ -3889,7 +3889,7 @@ def _iter_pattern_matches(patt):
     # Create validation functions
     seq_patts = re.findall(seq_exp, patt)
     fcns = [parse_int_sprintf_pattern(sp) for sp in seq_patts]
-    full_exp, num_inds = re.subn(seq_exp, "(\\s*\\d+)", patt)
+    full_exp, num_inds = re.subn(seq_exp, r"(\\s*\\d+)", patt)
 
     # Iterate over exactly matching patterns and files
     for f in files:
