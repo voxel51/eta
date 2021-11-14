@@ -51,6 +51,7 @@ try:
     import google.api_core.exceptions as gae
     import google.api_core.retry as gar
     import google.cloud.storage as gcs
+    from google.cloud.storage._signing import generate_signed_url_v4
     import google.oauth2.service_account as gos
     import googleapiclient.discovery as gad
     import googleapiclient.http as gah
@@ -1713,10 +1714,14 @@ class GoogleCloudStorageClient(
         Returns:
             a URL for accessing the object via HTTP request
         """
-        blob = self._get_blob(cloud_path)
-        expiration = datetime.timedelta(hours=hours)
-        return blob.generate_signed_url(
-            expiration=expiration, method=method, content_type=content_type
+        bucket, name = self._parse_gcs_path(cloud_path)
+        resource = "/%s/%s" % (bucket, urlparse.quote(name, safe=b"/~"))
+        return generate_signed_url_v4(
+            self._client._credentials,
+            resource=resource,
+            expiration=datetime.timedelta(hours=hours),
+            method=method.upper(),
+            content_type=content_type,
         )
 
     def add_metadata(self, cloud_path, metadata):
