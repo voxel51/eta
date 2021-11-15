@@ -966,7 +966,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         Returns:
             a dictionary containing metadata about the file, including its
                 `bucket`, `object_name`, `name`, `size`, `mime_type`,
-                `last_modified`, `checksum`, and `metadata`
+                `last_modified`, `etag`, and `metadata`
         """
         bucket, object_name = self._parse_s3_path(cloud_path)
         return self._get_file_metadata(bucket, object_name)
@@ -1020,7 +1020,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 default, this is True
             return_metadata: whether to return a metadata dictionary for each
                 file, including its `bucket`, `object_name`, `name`, `size`,
-                `mime_type`, `last_modified`, `checksum`, and `metadata`. By
+                `mime_type`, `last_modified`, `etag`, and `metadata`. By
                 default, only the paths to the files are returned
 
         Returns:
@@ -1181,7 +1181,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             "size": response["ContentLength"],
             "mime_type": mime_type,
             "last_modified": response["LastModified"],
-            "checksum": response["ETag"][1:-1],
+            "etag": response["ETag"][1:-1],
             "metadata": response["Metadata"],
         }
 
@@ -1197,7 +1197,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             "size": obj["Size"],
             "mime_type": etau.guess_mime_type(path),
             "last_modified": obj["LastModified"],
-            "checksum": obj["ETag"][1:-1],
+            "etag": obj["ETag"][1:-1],
             "metadata": obj["Metadata"],
         }
 
@@ -1605,7 +1605,7 @@ class GoogleCloudStorageClient(
         Returns:
             a dictionary containing metadata about the file, including its
                 `bucket`, `object_name`, `name`, `size`, `mime_type`,
-                `last_modified`, `checksum`, and `metadata`
+                `last_modified`, `etag`, and `metadata`
         """
         blob = self._get_blob(cloud_path, include_metadata=True)
         return self._get_file_metadata(blob)
@@ -1659,7 +1659,7 @@ class GoogleCloudStorageClient(
                 default, this is True
             return_metadata: whether to return a metadata dictionary for each
                 file, including its  `bucket`, `object_name`, `name`, `size`,
-                `mime_type`, `last_modified`, `checksum`, and `metadata`. By
+                `mime_type`, `last_modified`, `etag`, and `metadata`. By
                 default, only the paths to the files are returned
 
         Returns:
@@ -1763,7 +1763,7 @@ class GoogleCloudStorageClient(
             "size": blob.size,
             "mime_type": mime_type,
             "last_modified": blob.updated,
-            "checksum": blob.etag,
+            "etag": blob.etag,
             "metadata": blob.metadata or {},
         }
 
