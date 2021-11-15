@@ -1763,7 +1763,7 @@ class GoogleCloudStorageClient(
             "size": blob.size,
             "mime_type": mime_type,
             "last_modified": blob.updated,
-            "checksum": blob.md5_hash,
+            "checksum": blob.etag,
             "metadata": blob.metadata or {},
         }
 
