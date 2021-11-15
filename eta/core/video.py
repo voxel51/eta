@@ -2298,11 +2298,12 @@ class VideoStreamInfo(etas.Serializable):
         return self.custom_attributes(dynamic=True)
 
     @classmethod
-    def build_for(cls, video_path, verbose=False):
+    def build_for(cls, video_path, mime_type=None, verbose=False):
         """Builds a VideoStreamInfo instance for the given video.
 
         Args:
             video_path: the path to the video
+            mime_type: the MIME type of the video, if already known
             verbose: whether to generously log the process of extracting the
                 stream info. By default, this is False
 
@@ -2322,7 +2323,9 @@ class VideoStreamInfo(etas.Serializable):
                 "Found video stream: %s", etas.json_to_str(stream_info)
             )
 
-        mime_type = etau.guess_mime_type(video_path)
+        if mime_type is None:
+            mime_type = etau.guess_mime_type(video_path)
+
         return cls(stream_info, format_info, mime_type=mime_type)
 
     @classmethod
