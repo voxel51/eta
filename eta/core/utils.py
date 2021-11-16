@@ -37,6 +37,11 @@ try:
 except ImportError:
     from io import StringIO as _StringIO  # Python 3
 
+try:
+    import urllib.parse as urlparse  # Python 3
+except ImportError:
+    import urlparse  # Python 2
+
 import itertools as it
 import logging
 import math
@@ -2301,8 +2306,10 @@ def get_dir_size(dirpath):
 
 
 def guess_mime_type(filepath):
-    """Guess the MIME type for the given file path. If no reasonable guess can
-    be determined, `application/octet-stream` is returned.
+    """Guess the MIME type for the given file path.
+
+    If no reasonable guess can be determined, `application/octet-stream` is
+    returned.
 
     Args:
         filepath: path to the file
@@ -2310,7 +2317,15 @@ def guess_mime_type(filepath):
     Returns:
         the MIME type string
     """
-    return mimetypes.guess_type(filepath)[0] or "application/octet-stream"
+    if filepath.startswith("http"):
+        filepath = urlparse.urlparse(filepath).path
+
+    mime_type, _ = mimetypes.guess_type(filepath)
+
+    if not mime_type:
+        return "application/octet-stream"
+
+    return mime_type
 
 
 def read_file(inpath, binary=False):
