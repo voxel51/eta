@@ -763,8 +763,7 @@ class NeedsAWSCredentials(object):
     def _load_credentials_ini(cls, credentials_path, profile=None):
         config = configparser.ConfigParser()
         config.read(credentials_path)
-        section = "profile " + profile if profile else "default"
-        return dict(config[section])
+        return dict(config[profile or "default"])
 
 
 class AWSCredentialsError(Exception):
