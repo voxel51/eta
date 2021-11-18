@@ -461,7 +461,7 @@ class Config(etas.Serializable):
             default: a default string to return if key is not present
 
         Returns:
-            a string
+            a path string
 
         Raises:
             ConfigError: if the field value was the wrong type or no default
