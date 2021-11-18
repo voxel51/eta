@@ -449,6 +449,32 @@ class Config(etas.Serializable):
         return str(val) if val is not None else val
 
     @staticmethod
+    def parse_path(d, key, default=no_default):
+        """Parses a path attribute.
+
+        The path is converted to an absolute path if necessary via
+        ``os.path.abspath(os.path.expanduser(value))``.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            default: a default string to return if key is not present
+
+        Returns:
+            a string
+
+        Raises:
+            ConfigError: if the field value was the wrong type or no default
+                value was provided and the key was not found in the dictionary
+        """
+        val = _parse_key(d, key, six.string_types, default)[0]
+
+        if val is not None:
+            val = os.path.abspath(os.path.expanduser(str(val)))
+
+        return val
+
+    @staticmethod
     def parse_number(d, key, default=no_default):
         """Parses a number attribute.
 
@@ -679,26 +705,6 @@ class EnvConfig(etas.Serializable):
     """
 
     @staticmethod
-    def parse_string_array(d, key, env_var=None, default=no_default):
-        """Parses a string array attribute.
-
-        Args:
-            d: a JSON dictionary
-            key: the key to parse
-            env_var: an optional environment variable to load the attribute
-                from rather than using the JSON dictionary
-            default: an optional default list to return if key is not present
-
-        Returns:
-            a list of strings
-
-        Raises:
-            EnvConfigError: if the environment variable, the dictionary key, or
-                a default value was not provided
-        """
-        return _parse_env_var_or_key(d, key, list, env_var, str, True, default)
-
-    @staticmethod
     def parse_string(d, key, env_var=None, default=no_default):
         """Parses a string attribute.
 
@@ -720,6 +726,84 @@ class EnvConfig(etas.Serializable):
             d, key, six.string_types, env_var, str, False, default
         )
         return str(val) if val is not None else val
+
+    @staticmethod
+    def parse_path(d, key, env_var=None, default=no_default):
+        """Parses a path attribute.
+
+        The path is converted to an absolute path if necessary via
+        ``os.path.abspath(os.path.expanduser(value))``.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            env_var: an optional environment variable to load the attribute
+                from rather than using the JSON dictionary
+            default: an optional default string to return if key is not present
+
+        Returns:
+            a path string
+
+        Raises:
+            EnvConfigError: if the environment variable, the dictionary key, or
+                a default value was not provided
+        """
+        val = _parse_env_var_or_key(
+            d, key, six.string_types, env_var, str, False, default
+        )
+
+        if val is not None:
+            val = os.path.abspath(os.path.expanduser(str(val)))
+
+        return val
+
+    @staticmethod
+    def parse_string_array(d, key, env_var=None, default=no_default):
+        """Parses a string array attribute.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            env_var: an optional environment variable to load the attribute
+                from rather than using the JSON dictionary
+            default: an optional default list to return if key is not present
+
+        Returns:
+            a list of strings
+
+        Raises:
+            EnvConfigError: if the environment variable, the dictionary key, or
+                a default value was not provided
+        """
+        return _parse_env_var_or_key(d, key, list, env_var, str, True, default)
+
+    @staticmethod
+    def parse_path_array(d, key, env_var=None, default=no_default):
+        """Parses a path array attribute.
+
+        Each path is converted to an absolute path if necessary via
+        ``os.path.abspath(os.path.expanduser(value))``.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            env_var: an optional environment variable to load the attribute
+                from rather than using the JSON dictionary
+            default: an optional default list to return if key is not present
+
+        Returns:
+            a list of path strings
+
+        Raises:
+            EnvConfigError: if the environment variable, the dictionary key, or
+                a default value was not provided
+        """
+        val = _parse_env_var_or_key(d, key, list, env_var, str, True, default)
+
+        if val is not None:
+            val = [os.path.abspath(os.path.expanduser(v)) for v in val]
+
+        return val
 
     @staticmethod
     def parse_number(d, key, env_var=None, default=no_default):
