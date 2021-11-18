@@ -834,8 +834,23 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         ):
             kwargs["max_pool_connections"] = max_pool_connections
 
-        config = bcc.Config(**kwargs)
-        self._client = boto3.client("s3", config=config, **credentials)
+        #
+        # We allow users to provide credentials via numerous options, which
+        # have already been parsed from above. However, the AWS libraries seem
+        # to complain when a profile is specified whose credentials aren't
+        # configured via environment variables or `~/.aws/credentials`.
+        #
+        # Temporarily hiding the `AWS_PROFILE` env var when creating the client
+        # with manually provided credentials as kwargs bypasses the issue
+        #
+        aws_profile = os.environ.pop("AWS_PROFILE", None)
+
+        try:
+            config = bcc.Config(**kwargs)
+            self._client = boto3.client("s3", config=config, **credentials)
+        finally:
+            if aws_profile is not None:
+                os.environ["AWS_PROFILE"] = aws_profile
 
     def upload(self, local_path, cloud_path, content_type=None, metadata=None):
         """Uploads the file to S3.
