@@ -764,6 +764,11 @@ class NeedsAWSCredentials(object):
         if profile is None:
             profile = "default"
 
+        if not os.path.isfile(credentials_path):
+            raise FileNotFoundError(
+                "File '%s' does not exist" % credentials_path
+            )
+
         config = configparser.ConfigParser()
         config.read(credentials_path)
 
