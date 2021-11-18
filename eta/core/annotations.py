@@ -1999,11 +1999,11 @@ def _render_title(
 
     title_hash = 0
 
-    if _name and per_name_colors:
-        title_hash += _name.__hash__()
+    if name and per_name_colors:
+        title_hash += name.__hash__()
 
-    if _label and per_label_colors:
-        title_hash += _label.__hash__()
+    if label and per_label_colors:
+        title_hash += label.__hash__()
 
     if index is not None and per_index_colors:
         title_hash += str(index).__hash__()
