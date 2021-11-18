@@ -761,9 +761,20 @@ class NeedsAWSCredentials(object):
 
     @classmethod
     def _load_credentials_ini(cls, credentials_path, profile=None):
+        if profile is None:
+            profile = "default"
+
         config = configparser.ConfigParser()
         config.read(credentials_path)
-        return dict(config[profile or "default"])
+
+        # Config file syntax
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#aws-config-file
+        if "profile " + profile in config:
+            return dict(config["profile " + profile])
+
+        # Credentials file syntax
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#shared-credentials-file
+        return dict(config[profile])
 
 
 class AWSCredentialsError(Exception):
