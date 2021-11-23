@@ -1280,7 +1280,7 @@ class S3InfoCommand(Command):
             "-f",
             "--folder",
             action="store_true",
-            help="whether the provided" "paths are folders, not files",
+            help="whether the provided paths are folders, not files",
         )
 
     @staticmethod
@@ -1404,7 +1404,7 @@ class S3ListCommand(Command):
             "-r",
             "--recursive",
             action="store_true",
-            help="whether to " "recursively list the contents of subfolders",
+            help="whether to recursively list the contents of subfolders",
         )
         parser.add_argument(
             "-l",
@@ -1470,20 +1470,21 @@ class S3UploadCommand(Command):
         parser.add_argument(
             "local_path",
             metavar="LOCAL_PATH",
-            help="the path to the file to " "upload",
+            help="the path to the file to upload",
         )
         parser.add_argument(
             "cloud_path",
             metavar="CLOUD_PATH",
-            help="the path to the S3 " "object to create",
+            help="the path to the S3 object to create",
         )
         parser.add_argument(
             "-t",
             "--content-type",
             metavar="TYPE",
-            help="an optional content "
-            "type of the file. By default, the type is guessed from the "
-            "filename",
+            help=(
+                "an optional content type of the file. By default, the type "
+                "is guessed from the filename"
+            ),
         )
 
     @staticmethod
@@ -2785,7 +2786,7 @@ class GoogleDriveInfoCommand(Command):
             "-f",
             "--folder",
             action="store_true",
-            help="whether the files of" "interest are folders",
+            help="whether the files of interest are folders",
         )
 
     @staticmethod
@@ -2912,7 +2913,7 @@ class GoogleDriveListCommand(Command):
             "-r",
             "--recursive",
             action="store_true",
-            help="whether to " "recursively list the contents of subfolders",
+            help="whether to recursively list the contents of subfolders",
         )
         parser.add_argument(
             "-l",
@@ -2981,30 +2982,32 @@ class GoogleDriveUploadCommand(Command):
         parser.add_argument(
             "folder_id",
             metavar="ID",
-            help="the ID of the folder to upload " "the file into",
+            help="the ID of the folder to upload the file into",
         )
         parser.add_argument(
             "-f",
             "--filename",
             metavar="FILENAME",
-            help="an optional "
-            "filename to include in the request. By default, the name of the "
-            "local file is used",
+            help=(
+                "an optional filename to include in the request. By default, "
+                "the name of the local file is used"
+            ),
         )
         parser.add_argument(
             "-t",
             "--content-type",
             metavar="TYPE",
-            help="an optional content "
-            "type of the file. By default, the type is guessed from the "
-            "filename",
+            help=(
+                "an optional content type of the file. By default, the type "
+                "is guessed from the filename"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -3033,38 +3036,39 @@ class GoogleDriveUploadDirectoryCommand(Command):
         parser.add_argument(
             "local_dir",
             metavar="LOCAL_DIR",
-            help="the directory of files to " "upload",
+            help="the directory of files to upload",
         )
         parser.add_argument(
             "folder_id",
             metavar="ID",
-            help="the ID of the folder to upload " "the files into",
+            help="the ID of the folder to upload the files into",
         )
         parser.add_argument(
             "-f",
             "--skip-failures",
             action="store_true",
-            help="whether to " "skip failures",
+            help="whether to skip failures",
         )
         parser.add_argument(
             "-e",
             "--skip-existing",
             action="store_true",
-            help="whether to " "skip existing files",
+            help="whether to skip existing files",
         )
         parser.add_argument(
             "-r",
             "--recursive",
             action="store_true",
-            help="whether to "
-            "recursively upload the contents of subdirecotires",
+            help=(
+                "whether to recursively upload the contents of subdirecotires"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -3103,29 +3107,33 @@ class GoogleDriveDownloadCommand(Command):
             "path",
             nargs="?",
             metavar="LOCAL_PATH",
-            help="the path to which "
-            "to write the downloaded file. If not provided, the filename of "
-            "the file in Google Drive is used",
+            help=(
+                "the path to which to write the downloaded file. If not "
+                "provided, the filename of the file in Google Drive is used"
+            ),
         )
         parser.add_argument(
             "--public",
             action="store_true",
-            help="whether the file has "
-            "public link sharing turned on and can therefore be downloaded "
-            "with no credentials",
+            help=(
+                "whether the file has public link sharing turned on and can "
+                "therefore be downloaded with no credentials"
+            ),
         )
         parser.add_argument(
             "--print",
             action="store_true",
-            help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk",
+            help=(
+                "whether to print the download to stdout. If true, a file is "
+                "NOT written to disk"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -3186,33 +3194,35 @@ class GoogleDriveDownloadDirectoryCommand(Command):
         parser.add_argument(
             "local_dir",
             metavar="LOCAL_DIR",
-            help="the directory to download " "the files into",
+            help="the directory to download the files into",
         )
         parser.add_argument(
             "-f",
             "--skip-failures",
             action="store_true",
-            help="whether to " "skip failures",
+            help="whether to skip failures",
         )
         parser.add_argument(
             "-e",
             "--skip-existing",
             action="store_true",
-            help="whether to " "skip existing files",
+            help="whether to skip existing files",
         )
         parser.add_argument(
             "-r",
             "--recursive",
             action="store_true",
-            help="whether to "
-            "recursively download the contents of subdirecotires",
+            help=(
+                "whether to recursively download the contents of "
+                "subdirecotires"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -3270,14 +3280,16 @@ class GoogleDriveDeleteDirCommand(Command):
             "-c",
             "--contents-only",
             action="store_true",
-            help="whether to "
-            "delete only the contents of the folder (not the folder itself)",
+            help=(
+                "whether to delete only the contents of the folder (not the "
+                "folder itself)"
+            ),
         )
         parser.add_argument(
             "-s",
             "--skip-failures",
             action="store_true",
-            help="whether to " "skip failures",
+            help="whether to skip failures",
         )
 
     @staticmethod
@@ -3321,7 +3333,7 @@ class HTTPUploadCommand(Command):
         parser.add_argument(
             "path",
             metavar="LOCAL_PATH",
-            help="the path to the file to " "upload",
+            help="the path to the file to upload",
         )
         parser.add_argument(
             "url", metavar="URL", help="the URL to which to PUT the file"
@@ -3330,17 +3342,19 @@ class HTTPUploadCommand(Command):
             "-f",
             "--filename",
             metavar="FILENAME",
-            help="an optional "
-            "filename to include in the request. By default, the name of the "
-            "local file is used",
+            help=(
+                "an optional filename to include in the request. By default, "
+                "the name of the local file is used"
+            ),
         )
         parser.add_argument(
             "-t",
             "--content-type",
             metavar="TYPE",
-            help="an optional content "
-            "type of the file. By default, the type is guessed from the "
-            "filename",
+            help=(
+                "an optional content type of the file. By default, the type "
+                "is guessed from the filename"
+            ),
         )
 
     @staticmethod
@@ -3377,22 +3391,25 @@ class HTTPDownloadCommand(Command):
             "path",
             nargs="?",
             metavar="LOCAL_PATH",
-            help="the path to which "
-            "to write the downloaded file. If not provided, the filename is "
-            "guessed from the URL",
+            help=(
+                "the path to which to write the downloaded file. If not "
+                "provided, the filename is guessed from the URL"
+            ),
         )
         parser.add_argument(
             "--print",
             action="store_true",
-            help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk",
+            help=(
+                "whether to print the download to stdout. If true, a file is "
+                "NOT written to disk"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -3458,12 +3475,12 @@ class SFTPUploadCommand(Command):
         parser.add_argument(
             "local_path",
             metavar="LOCAL_PATH",
-            help="the path to the file to " "upload",
+            help="the path to the file to upload",
         )
         parser.add_argument(
             "remote_path",
             metavar="REMOTE_PATH",
-            help="the remote path to " "write the file",
+            help="the remote path to write the file",
         )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
@@ -3497,12 +3514,12 @@ class SFTPUploadDirCommand(Command):
         parser.add_argument(
             "local_dir",
             metavar="LOCAL_DIR",
-            help="the path to the directory " "to upload",
+            help="the path to the directory to upload",
         )
         parser.add_argument(
             "remote_dir",
             metavar="REMOTE_DIR",
-            help="the remote directory to " "write the uploaded directory",
+            help="the remote directory to write the uploaded directory",
         )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
@@ -3539,15 +3556,16 @@ class SFTPDownloadCommand(Command):
         parser.add_argument(
             "remote_path",
             metavar="REMOTE_PATH",
-            help="the remote file to " "download",
+            help="the remote file to download",
         )
         parser.add_argument(
             "local_path",
             nargs="?",
             metavar="LOCAL_PATH",
-            help="the path to "
-            "which to write the downloaded file. If not provided, the "
-            "filename is guessed from the remote path",
+            help=(
+                "the path to which to write the downloaded file. If not "
+                "provided, the filename is guessed from the remote path"
+            ),
         )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
@@ -3557,8 +3575,10 @@ class SFTPDownloadCommand(Command):
         parser.add_argument(
             "--print",
             action="store_true",
-            help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk",
+            help=(
+                "whether to print the download to stdout. If true, a file is "
+                "NOT written to disk"
+            ),
         )
 
     @staticmethod
@@ -3591,12 +3611,12 @@ class SFTPDownloadDirCommand(Command):
         parser.add_argument(
             "remote_dir",
             metavar="REMOTE_DIR",
-            help="the remote directory to " "download",
+            help="the remote directory to download",
         )
         parser.add_argument(
             "local_dir",
             metavar="LOCAL_DIR",
-            help="the local directory to " "write the downloaded directory",
+            help="the local directory to write the downloaded directory",
         )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
@@ -3630,7 +3650,7 @@ class SFTPDeleteCommand(Command):
         parser.add_argument(
             "remote_path",
             metavar="REMOTE_PATH",
-            help="the remote file to " "delete",
+            help="the remote file to delete",
         )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
@@ -3664,7 +3684,7 @@ class SFTPDeleteDirCommand(Command):
         parser.add_argument(
             "remote_dir",
             metavar="REMOTE_DIR",
-            help="the remote directory to " "delete",
+            help="the remote directory to delete",
         )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
