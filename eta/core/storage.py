@@ -577,6 +577,481 @@ class LocalStorageClient(StorageClient, CanSyncDirectories):
         )
 
 
+class _BotoStorageClient(StorageClient, CanSyncDirectories):
+    """Base client for reading/writing data using Amazon's ``boto3`` API."""
+
+    def __init__(
+        self,
+        credentials,
+        alias=None,
+        endpoint_url=None,
+        max_pool_connections=None,
+        **kwargs,
+    ):
+        """Creates a _BotoStorageClient instance.
+
+        Args:
+            credentials: a credentials dictionary to be passed to `boto3` via
+                `boto3.client("s3", **credentials)`
+            alias: a prefix for all cloud path strings, e.g., "s3"
+            endpoint_url: the storage endpoint, if different from the default
+                AWS service endpoint
+            max_pool_connections: an optional maximum number of connections to
+                keep in the connection pool
+            **kwargs: optional configuration options for
+                `botocore.config.Config(**kwargs)`
+        """
+        self.alias = alias
+        self.endpoint_url = endpoint_url
+
+        prefixes = []
+
+        if alias is not None:
+            prefixes.append(alias + "://")
+
+        if endpoint_url is not None:
+            prefixes.append(endpoint_url.rstrip("/") + "/")
+
+        if not prefixes:
+            raise ValueError(
+                "At least one of `alias` and `endpoint_url` must be provided"
+            )
+
+        self._prefixes = tuple(prefixes)
+
+        if "retries" not in kwargs:
+            kwargs["retries"] = {"max_attempts": 10, "mode": "standard"}
+
+        if "signature_version" not in kwargs:
+            kwargs["signature_version"] = "s3v4"
+
+        if (
+            max_pool_connections is not None
+            and "max_pool_connections" not in kwargs
+        ):
+            kwargs["max_pool_connections"] = max_pool_connections
+
+        #
+        # We allow users to provide credentials via numerous options, which
+        # have already been parsed from above. However, the AWS libraries seem
+        # to complain when a profile is specified whose credentials aren't
+        # configured via environment variables or `~/.aws/credentials`.
+        #
+        # Temporarily hiding the `AWS_PROFILE` env var when creating the client
+        # with manually provided credentials as kwargs bypasses the issue
+        #
+        aws_profile = os.environ.pop("AWS_PROFILE", None)
+
+        try:
+            config = bcc.Config(**kwargs)
+            self._client = boto3.client(
+                "s3", endpoint_url=endpoint_url, config=config, **credentials,
+            )
+        finally:
+            if aws_profile is not None:
+                os.environ["AWS_PROFILE"] = aws_profile
+
+    def upload(self, local_path, cloud_path, content_type=None, metadata=None):
+        """Uploads the file to the cloud.
+
+        Args:
+            local_path: the path to the file to upload
+            cloud_path: the cloud path to create
+            content_type: the optional type of the content being uploaded. If
+                no value is provided, it is guessed from the filename
+            metadata: an optional dictionary of custom object metadata to store
+        """
+        self._do_upload(
+            cloud_path,
+            local_path=local_path,
+            content_type=content_type,
+            metadata=metadata,
+        )
+
+    def upload_stream(
+        self, file_obj, cloud_path, content_type=None, metadata=None
+    ):
+        """Uploads the contents of the given file-like object to the cloud.
+
+        Args:
+            file_obj: the file-like object to upload, which must be open for
+                reading in binary (not text) mode
+            cloud_path: the cloud path to create
+            content_type: the optional type of the content being uploaded. If
+                no value is provided but the object already exists, then the
+                same value is used. Otherwise, the default value
+                ("application/octet-stream") is used
+            metadata: an optional dictionary of custom object metadata to store
+        """
+        self._do_upload(
+            cloud_path,
+            file_obj=file_obj,
+            content_type=content_type,
+            metadata=metadata,
+        )
+
+    def upload_bytes(
+        self, bytes_str, cloud_path, content_type=None, metadata=None
+    ):
+        """Uploads the given bytes to the cloud.
+
+        Args:
+            bytes_str: the bytes string to upload
+            cloud_path: the cloud path to create
+            content_type: the optional type of the content being uploaded. If
+                no value is provided but the object already exists, then the
+                same value is used. Otherwise, the default value
+                ("application/octet-stream") is used
+            metadata: an optional dictionary of custom object metadata to store
+        """
+        with io.BytesIO(_to_bytes(bytes_str)) as f:
+            self._do_upload(
+                cloud_path,
+                file_obj=f,
+                content_type=content_type,
+                metadata=metadata,
+            )
+
+    def download(self, cloud_path, local_path):
+        """Downloads the cloud file to the given location.
+
+        Args:
+            cloud_path: the cloud path
+            local_path: the local disk path to store the downloaded file
+        """
+        self._do_download(cloud_path, local_path=local_path)
+
+    def download_stream(self, cloud_path, file_obj):
+        """Downloads the cloud file to the given file-like object.
+
+        Args:
+            cloud_path: the cloud path
+            file_obj: the file-like object to which to write the download,
+                which must be open for writing in binary mode
+        """
+        self._do_download(cloud_path, file_obj=file_obj)
+
+    def download_bytes(self, cloud_path, start=None, end=None):
+        """Downloads the cloud file as a bytes string.
+
+        Args:
+            cloud_path: the cloud path
+            start: an optional first byte in a range to download
+            end: an optional last byte in a range to download
+
+        Returns:
+            the downloaded bytes string
+        """
+        if start is not None or end is not None:
+            return self._do_download(cloud_path, start=start, end=end)
+
+        with io.BytesIO() as f:
+            self.download_stream(cloud_path, f)
+            return f.getvalue()
+
+    def delete(self, cloud_path):
+        """Deletes the given cloud file.
+
+        Args:
+            cloud_path: the cloud path
+        """
+        bucket, object_name = self._parse_path(cloud_path)
+        self._client.delete_object(Bucket=bucket, Key=object_name)
+
+    def delete_folder(self, cloud_folder):
+        """Deletes all files in the given cloud "folder".
+
+        Args:
+            cloud_folder: a cloud "folder" path
+        """
+        bucket, folder_name = self._parse_path(cloud_folder)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        kwargs = {"Bucket": bucket, "Prefix": folder_name}
+        while True:
+            resp = self._client.list_objects_v2(**kwargs)
+            contents = resp.get("Contents", [])
+            if contents:
+                delete = {"Objects": [{"Key": obj["Key"]} for obj in contents]}
+                self._client.delete_objects(Bucket=bucket, Delete=delete)
+
+            try:
+                kwargs["ContinuationToken"] = resp["NextContinuationToken"]
+            except KeyError:
+                break
+
+    def get_file_metadata(self, cloud_path):
+        """Returns metadata about the given cloud file.
+
+        Args:
+            cloud_path: the cloud path
+
+        Returns:
+            a dictionary containing metadata about the file, including its
+                `bucket`, `object_name`, `name`, `size`, `mime_type`,
+                `last_modified`, `etag`, and `metadata`
+        """
+        bucket, object_name = self._parse_path(cloud_path)
+        return self._get_file_metadata(bucket, object_name)
+
+    def get_folder_metadata(self, cloud_folder):
+        """Returns metadata about the given cloud "folder".
+
+        Note that this method is *expensive*; the only way to compute this
+        information is to call `list_files_in_folder(..., recursive=True)` and
+        compute stats from individual files!
+
+        Args:
+            cloud_folder: a cloud "folder" path
+
+        Returns:
+            a dictionary containing metadata about the "folder", including its
+                `bucket`, `path`, `num_files`, `size`, and `last_modified`
+        """
+        files = self.list_files_in_folder(
+            cloud_folder, recursive=True, return_metadata=True
+        )
+
+        bucket, path = self._parse_path(cloud_folder)
+        path = path.rstrip("/")
+
+        if files:
+            num_files = len(files)
+            size = sum(f["size"] for f in files)
+            last_modified = max(f["last_modified"] for f in files)
+        else:
+            num_files = 0
+            size = 0
+            last_modified = "-"
+
+        return {
+            "bucket": bucket,
+            "path": path,
+            "num_files": num_files,
+            "size": size,
+            "last_modified": last_modified,
+        }
+
+    def list_files_in_folder(
+        self, cloud_folder, recursive=True, return_metadata=False
+    ):
+        """Returns a list of the files in the given cloud "folder".
+
+        Args:
+            cloud_folder: a cloud "folder" path
+            recursive: whether to recursively traverse sub-"folders". By
+                default, this is True
+            return_metadata: whether to return a metadata dictionary for each
+                file, including its `bucket`, `object_name`, `name`, `size`,
+                `mime_type`, `last_modified`, `etag`, and `metadata`. By
+                default, only the paths to the files are returned
+
+        Returns:
+            a list of full cloud paths (when `return_metadata == False`) or a
+                list of metadata dictionaries (when `return_metadata == True`)
+                for the files in the folder
+        """
+        bucket, folder_name = self._parse_path(cloud_folder)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        kwargs = {"Bucket": bucket, "Prefix": folder_name}
+        if not recursive:
+            kwargs["Delimiter"] = "/"
+
+        paths_or_metadata = []
+        prefix = self._prefixes[0] + bucket
+        while True:
+            resp = self._client.list_objects_v2(**kwargs)
+
+            for obj in resp.get("Contents", []):
+                path = obj["Key"]
+                if not path.endswith("/"):
+                    if return_metadata:
+                        paths_or_metadata.append(
+                            self._get_object_metadata(bucket, obj)
+                        )
+                    else:
+                        paths_or_metadata.append(os.path.join(prefix, path))
+
+            try:
+                kwargs["ContinuationToken"] = resp["NextContinuationToken"]
+            except KeyError:
+                break
+
+        return paths_or_metadata
+
+    def generate_signed_url(
+        self, cloud_path, method="GET", hours=24, content_type=None
+    ):
+        """Generates a signed URL for accessing the given object.
+
+        Anyone with the URL can access the object with the permission until it
+        expires.
+
+        Note that you should use `PUT`, not `POST`, to upload objects!
+
+        Args:
+            cloud_path: the cloud path
+            method: the HTTP verb (GET, PUT, DELETE) to authorize
+            hours: the number of hours that the URL is valid
+            content_type: (PUT actions only) the optional type of the content
+                being uploaded
+
+        Returns:
+            a URL for accessing the object via HTTP request
+        """
+        client_method = method.lower() + "_object"
+        bucket, object_name = self._parse_path(cloud_path)
+        params = {"Bucket": bucket, "Key": object_name}
+        if client_method == "put_object" and content_type:
+            params["ContentType"] = content_type
+
+        expiration = int(3600 * hours)
+        return self._client.generate_presigned_url(
+            ClientMethod=client_method, Params=params, ExpiresIn=expiration
+        )
+
+    def add_metadata(self, cloud_path, metadata):
+        """Adds custom metadata key-value pairs to the given object.
+
+        Note that the S3 API fundamentally treats metadata as immutable, so
+        this method must use `botocore.client.S3.copy_object()` to copy the
+        object, which only supports file sizes up to 5GB. For larger files, you
+        must manually re-upload the file with the desired metadata.
+
+        Args:
+            cloud_path: the cloud path
+            metadata: a dictionary of custom metadata
+        """
+        bucket, object_name = self._parse_path(cloud_path)
+        response = self._client.head_object(Bucket=bucket, Key=object_name)
+
+        response["Metadata"].update(metadata)
+
+        self._client.copy_object(
+            Bucket=bucket,
+            Key=object_name,
+            CopySource={"Bucket": bucket, "Key": object_name},
+            Metadata=response["Metadata"],
+            MetadataDirective="REPLACE",
+            TaggingDirective="COPY",
+            ContentType=response["ContentType"],
+        )
+
+    def _do_upload(
+        self,
+        cloud_path,
+        local_path=None,
+        file_obj=None,
+        content_type=None,
+        metadata=None,
+    ):
+        bucket, object_name = self._parse_path(cloud_path)
+
+        if local_path and not content_type:
+            content_type = etau.guess_mime_type(local_path)
+
+        extra_args = {}
+
+        if content_type:
+            extra_args["ContentType"] = content_type
+
+        if metadata:
+            extra_args["Metadata"] = metadata
+
+        if local_path:
+            self._client.upload_file(
+                local_path, bucket, object_name, ExtraArgs=extra_args
+            )
+
+        if file_obj is not None:
+            self._client.upload_fileobj(
+                file_obj, bucket, object_name, ExtraArgs=extra_args
+            )
+
+    def _do_download(
+        self, cloud_path, local_path=None, file_obj=None, start=None, end=None
+    ):
+        bucket, object_name = self._parse_path(cloud_path)
+
+        if start is not None or end is not None:
+            response = self._client.get_object(
+                Bucket=bucket,
+                Key=object_name,
+                Range="bytes=%s-%s" % (start or "", end or ""),
+            )
+            return response["Body"].read()
+
+        if local_path:
+            etau.ensure_basedir(local_path)
+            self._client.download_file(bucket, object_name, local_path)
+
+        if file_obj is not None:
+            self._client.download_fileobj(bucket, object_name, file_obj)
+
+    def _get_file_metadata(self, bucket, object_name):
+        response = self._client.head_object(Bucket=bucket, Key=object_name)
+
+        mime_type = response["ContentType"]
+        if not mime_type:
+            mime_type = etau.guess_mime_type(object_name)
+
+        return {
+            "bucket": bucket,
+            "object_name": object_name,
+            "name": os.path.basename(object_name),
+            "size": response["ContentLength"],
+            "mime_type": mime_type,
+            "last_modified": response["LastModified"],
+            "etag": response["ETag"][1:-1],
+            "metadata": response.get("Metadata", {}),
+        }
+
+    @staticmethod
+    def _get_object_metadata(bucket, obj):
+        # @todo is there a way to get the MIME type without guessing or making
+        # an expensive call to `head_object`?
+        path = obj["Key"]
+        return {
+            "bucket": bucket,
+            "object_name": path,
+            "name": os.path.basename(path),
+            "size": obj["Size"],
+            "mime_type": etau.guess_mime_type(path),
+            "last_modified": obj["LastModified"],
+            "etag": obj["ETag"][1:-1],
+            "metadata": obj.get("Metadata", {}),
+        }
+
+    def _strip_prefix(self, cloud_path):
+        _cloud_path = _strip_prefix(cloud_path, self._prefixes)
+
+        if _cloud_path is None:
+            if len(self._prefixes) == 1:
+                valid_prefixes = "'%s'" % self._prefixes[0]
+            else:
+                valid_prefixes = self._prefixes
+
+            raise ValueError(
+                "Invalid path '%s'; must start with %s"
+                % (cloud_path, valid_prefixes)
+            )
+
+        return _cloud_path
+
+    def _parse_path(self, cloud_path):
+        _cloud_path = self._strip_prefix(cloud_path)
+
+        chunks = _cloud_path.split("/", 1)
+
+        if len(chunks) != 2:
+            return chunks[0], ""
+
+        return chunks[0], chunks[1]
+
+
 class NeedsAWSCredentials(object):
     """Mixin for classes that need AWS credentials to take authenticated
     actions.
@@ -588,9 +1063,12 @@ class NeedsAWSCredentials(object):
             `cls.from_ini()` method by providing a path to a valid credentials
             `.ini` file
 
-        (2) setting the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
-            `AWS_SESSION_TOKEN` (if applicable), and `AWS_DEFAULT_REGION`
-            environment variables directly
+        (2) setting the following environment variables directly:
+
+            -   `AWS_ACCESS_KEY_ID`
+            -   `AWS_SECRET_ACCESS_KEY`
+            -   `AWS_SESSION_TOKEN` (if applicable)
+            -   `AWS_DEFAULT_REGION`
 
         (3) setting the `AWS_SHARED_CREDENTIALS_FILE` environment variable to
             point to a valid credentials `.ini` file
@@ -604,10 +1082,10 @@ class NeedsAWSCredentials(object):
     In the above, the `.ini` file should have syntax similar to the following::
 
         [default]
-        aws_access_key_id = WWW
-        aws_secret_access_key = XXX
-        aws_session_token = YYY
-        region = ZZZ
+        aws_access_key_id = ...
+        aws_secret_access_key = ...
+        aws_session_token = ...  # if applicable
+        region = ...
 
     See the following link for more information:
     https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#configuration
@@ -679,7 +1157,7 @@ class NeedsAWSCredentials(object):
 
         if credentials_path:
             logger.debug(
-                "Loading AWS credentials from manually provided path " "'%s'",
+                "Loading AWS credentials from manually provided path '%s'",
                 credentials_path,
             )
             credentials = cls._load_credentials_ini(
@@ -699,12 +1177,14 @@ class NeedsAWSCredentials(object):
                 "aws_access_key_id": os.environ["AWS_ACCESS_KEY_ID"],
                 "aws_secret_access_key": os.environ["AWS_SECRET_ACCESS_KEY"],
             }
+
             if "AWS_DEFAULT_REGION" in os.environ:
                 logger.debug(
                     "Loading region from 'AWS_DEFAULT_REGION' environment "
                     "variable"
                 )
                 credentials["region"] = os.environ["AWS_DEFAULT_REGION"]
+
             if "AWS_SESSION_TOKEN" in os.environ:
                 logger.debug(
                     "Loading session token from 'AWS_SESSION_TOKEN' "
@@ -713,6 +1193,7 @@ class NeedsAWSCredentials(object):
                 credentials["aws_session_token"] = os.environ[
                     "AWS_SESSION_TOKEN"
                 ]
+
             return credentials, None
 
         if "AWS_SHARED_CREDENTIALS_FILE" in os.environ:
@@ -798,7 +1279,7 @@ class AWSCredentialsError(Exception):
         )
 
 
-class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
+class S3StorageClient(_BotoStorageClient, NeedsAWSCredentials):
     """Client for reading/writing data from Amazon S3 buckets.
 
     All cloud path strings used by this class should have the form
@@ -812,10 +1293,8 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         """Creates an S3StorageClient instance.
 
         Args:
-            credentials: an optional AWS credentials dictionary. If provided,
-                the values are directly passed to `boto3` via
-                `boto3.client("s3", **credentials)`. If not provided, active
-                credentials are automatically loaded as described in
+            credentials: an optional AWS credentials dictionary. If not
+                provided, credentials must be loadable as described in
                 `NeedsAWSCredentials`
             max_pool_connections: an optional maximum number of connections to
                 keep in the connection pool
@@ -826,439 +1305,292 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             credentials, _ = self.load_credentials()
 
         # The .ini files use `region` but `boto3.client` uses `region_name`
-        region = credentials.pop("region", None)
-        if region:
-            credentials["region_name"] = region
+        credentials["region_name"] = credentials.pop("region", None)
 
-        if "retries" not in kwargs:
-            kwargs["retries"] = {"max_attempts": 10, "mode": "standard"}
+        super(S3StorageClient, self).__init__(
+            credentials,
+            alias="s3",
+            max_pool_connections=max_pool_connections,
+            **kwargs,
+        )
+
+
+class NeedsMinIOCredentials(object):
+    """Mixin for classes that need MinIO credentials to take authenticated
+    actions.
+
+    Storage clients that derive from this class should allow users to provide
+    credentials in the following ways (in order of precedence):
+
+        (1) manually constructing an instance of the class via the
+            `cls.from_ini()` method by providing a path to a valid credentials
+            `.ini` file
+
+        (2) setting the following environment variables directly:
+
+            -   `MINIO_ACCESS_KEY`
+            -   `MINIO_SECRET_ACCESS_KEY`
+            -   `MINIO_ENDPOINT_URL`
+            -   `MINIO_ALIAS`  # optional
+            -   `MINIO_REGION`  # if applicable
+
+        (3) setting the `MINIO_CONFIG_FILE` environment variable to point to a
+            valid credentials `.ini` file
+
+        (4) setting the `MINIO_SHARED_CREDENTIALS_FILE` environment variable to
+            point to a valid credentials `.ini` file
+
+        (5) loading credentials from `~/.eta/minio-credentials.ini` that have
+            been activated via `cls.activate_credentials()`
+
+    In the above, the `.ini` file should have syntax similar to the following::
+
+        [default]
+        access_key = ...
+        secret_access_key = ...
+        endpoint_url = ...
+        alias = ...  # optional
+        region = ...  # if applicable
+
+    See the following link for more information:
+    https://docs.min.io/docs/minio-quickstart-guide.html
+    """
+
+    CREDENTIALS_PATH = os.path.join(
+        etac.ETA_CONFIG_DIR, "minio-credentials.ini"
+    )
+
+    @classmethod
+    def activate_credentials(cls, credentials_path):
+        """Activate the credentials by copying them to
+        `~/.eta/minio-credentials.ini`.
+
+        Args:
+            credentials_path: the path to a credentials `.ini` file
+        """
+        etau.copy_file(credentials_path, cls.CREDENTIALS_PATH)
+        logger.info(
+            "MinIO credentials successfully activated at '%s'",
+            cls.CREDENTIALS_PATH,
+        )
+
+    @classmethod
+    def deactivate_credentials(cls):
+        """Deactivates (deletes) the currently active credentials, if any.
+
+        Active credentials (if any) are at `~/.eta/minio-credentials.ini`.
+        """
+        try:
+            os.remove(cls.CREDENTIALS_PATH)
+            logger.info(
+                "MinIO credentials '%s' successfully deactivated",
+                cls.CREDENTIALS_PATH,
+            )
+        except OSError:
+            logger.info("No MinIO credentials to deactivate")
+
+    @classmethod
+    def has_active_credentials(cls):
+        """Determines whether there are any active credentials stored at
+        `~/.eta/minio-credentials.ini`.
+
+        Returns:
+            True/False
+        """
+        return os.path.isfile(cls.CREDENTIALS_PATH)
+
+    @classmethod
+    def load_credentials(cls, credentials_path=None, profile=None):
+        """Loads the MinIO credentials as a dictionary.
+
+        Args:
+            credentials_path: an optional path to a credentials `.ini` file.
+                If omitted, active credentials are located using the strategy
+                described in the class docstring of `NeedsMinIOCredentials`
+            profile: an optional profile to load when a credentials `.ini` file
+                is loaded (if applicable). If not provided, the "default"
+                section is loaded
+
+        Returns:
+            a (credentials, path) tuple containing the credentials and the path
+                from which they were loaded. If the credentials were loaded
+                from environment variables, `path` will be None
+        """
+        if profile is None and "MINIO_PROFILE" in os.environ:
+            logger.debug(
+                "Loading profile from 'MINIO_PROFILE' environment variable"
+            )
+            profile = os.environ["MINIO_PROFILE"]
+
+        if credentials_path:
+            logger.debug(
+                "Loading MinIO credentials from manually provided path '%s'",
+                credentials_path,
+            )
+            credentials = cls._load_credentials_ini(
+                credentials_path, profile=profile
+            )
+            return credentials, credentials_path
 
         if (
-            max_pool_connections is not None
-            and "max_pool_connections" not in kwargs
+            "MINIO_ACCESS_KEY" in os.environ
+            and "MINIO_SECRET_ACCESS_KEY" in os.environ
         ):
-            kwargs["max_pool_connections"] = max_pool_connections
-
-        #
-        # We allow users to provide credentials via numerous options, which
-        # have already been parsed from above. However, the AWS libraries seem
-        # to complain when a profile is specified whose credentials aren't
-        # configured via environment variables or `~/.aws/credentials`.
-        #
-        # Temporarily hiding the `AWS_PROFILE` env var when creating the client
-        # with manually provided credentials as kwargs bypasses the issue
-        #
-        aws_profile = os.environ.pop("AWS_PROFILE", None)
-
-        try:
-            config = bcc.Config(**kwargs)
-            self._client = boto3.client("s3", config=config, **credentials)
-        finally:
-            if aws_profile is not None:
-                os.environ["AWS_PROFILE"] = aws_profile
-
-    def upload(self, local_path, cloud_path, content_type=None, metadata=None):
-        """Uploads the file to S3.
-
-        Args:
-            local_path: the path to the file to upload
-            cloud_path: the path to the S3 object to create
-            content_type: the optional type of the content being uploaded. If
-                no value is provided, it is guessed from the filename
-            metadata: an optional dictionary of custom object metadata to store
-        """
-        self._do_upload(
-            cloud_path,
-            local_path=local_path,
-            content_type=content_type,
-            metadata=metadata,
-        )
-
-    def upload_stream(
-        self, file_obj, cloud_path, content_type=None, metadata=None
-    ):
-        """Uploads the contents of the given file-like object to S3.
-
-        Args:
-            file_obj: the file-like object to upload, which must be open for
-                reading in binary (not text) mode
-            cloud_path: the path to the S3 object to create
-            content_type: the optional type of the content being uploaded. If
-                no value is provided but the object already exists in S3, then
-                the same value is used. Otherwise, the default value
-                ("application/octet-stream") is used
-            metadata: an optional dictionary of custom object metadata to store
-        """
-        self._do_upload(
-            cloud_path,
-            file_obj=file_obj,
-            content_type=content_type,
-            metadata=metadata,
-        )
-
-    def upload_bytes(
-        self, bytes_str, cloud_path, content_type=None, metadata=None
-    ):
-        """Uploads the given bytes to S3.
-
-        Args:
-            bytes_str: the bytes string to upload
-            cloud_path: the path to the S3 object to create
-            content_type: the optional type of the content being uploaded. If
-                no value is provided but the object already exists in S3, then
-                the same value is used. Otherwise, the default value
-                ("application/octet-stream") is used
-            metadata: an optional dictionary of custom object metadata to store
-        """
-        with io.BytesIO(_to_bytes(bytes_str)) as f:
-            self._do_upload(
-                cloud_path,
-                file_obj=f,
-                content_type=content_type,
-                metadata=metadata,
+            logger.debug(
+                "Loading access key and secret key from 'MINIO_ACCESS_KEY' "
+                "and 'MINIO_SECRET_ACCESS_KEY' environment variables"
             )
+            credentials = {
+                "access_key": os.environ["MINIO_ACCESS_KEY"],
+                "secret_access_key": os.environ["MINIO_SECRET_ACCESS_KEY"],
+            }
 
-    def download(self, cloud_path, local_path):
-        """Downloads the file from S3 to the given location.
+            if "MINIO_ENDPOINT_URL" in os.environ:
+                logger.debug(
+                    "Loading endpoint URL from 'MINIO_ENDPOINT_URL' "
+                    "environment variable"
+                )
+                credentials["endpoint_url"] = os.environ["MINIO_ENDPOINT_URL"]
 
-        Args:
-            cloud_path: the path to the S3 object to download
-            local_path: the local disk path to store the downloaded file
-        """
-        self._do_download(cloud_path, local_path=local_path)
+            if "MINIO_ALIAS" in os.environ:
+                logger.debug(
+                    "Loading region from 'MINIO_ALIAS' environment variable"
+                )
+                credentials["alias"] = os.environ["MINIO_ALIAS"]
 
-    def download_stream(self, cloud_path, file_obj):
-        """Downloads the file from S3 to the given file-like object.
+            if "MINIO_REGION" in os.environ:
+                logger.debug(
+                    "Loading region from 'MINIO_REGION' environment variable"
+                )
+                credentials["region"] = os.environ["MINIO_REGION"]
 
-        Args:
-            cloud_path: the path to the S3 object to download
-            file_obj: the file-like object to which to write the download,
-                which must be open for writing in binary mode
-        """
-        self._do_download(cloud_path, file_obj=file_obj)
+            return credentials, None
 
-    def download_bytes(self, cloud_path, start=None, end=None):
-        """Downloads the file from S3 and returns the bytes string.
-
-        Args:
-            cloud_path: the path to the S3 object to download
-            start: an optional first byte in a range to download
-            end: an optional last byte in a range to download
-
-        Returns:
-            the downloaded bytes string
-        """
-        if start is not None or end is not None:
-            return self._do_download(cloud_path, start=start, end=end)
-
-        with io.BytesIO() as f:
-            self.download_stream(cloud_path, f)
-            return f.getvalue()
-
-    def delete(self, cloud_path):
-        """Deletes the given file from S3.
-
-        Args:
-            cloud_path: the path to the S3 object to delete
-        """
-        bucket, object_name = self._parse_s3_path(cloud_path)
-        self._client.delete_object(Bucket=bucket, Key=object_name)
-
-    def delete_folder(self, cloud_folder):
-        """Deletes all files in the given S3 "folder".
-
-        Args:
-            cloud_folder: a string like `s3://<bucket-name>/<folder-path>`
-        """
-        bucket, folder_name = self._parse_s3_path(cloud_folder)
-        if folder_name and not folder_name.endswith("/"):
-            folder_name += "/"
-
-        kwargs = {"Bucket": bucket, "Prefix": folder_name}
-        while True:
-            resp = self._client.list_objects_v2(**kwargs)
-            contents = resp.get("Contents", [])
-            if contents:
-                delete = {"Objects": [{"Key": obj["Key"]} for obj in contents]}
-                self._client.delete_objects(Bucket=bucket, Delete=delete)
-
-            try:
-                kwargs["ContinuationToken"] = resp["NextContinuationToken"]
-            except KeyError:
-                break
-
-    def get_file_metadata(self, cloud_path):
-        """Returns metadata about the given file in S3.
-
-        Args:
-            cloud_path: the path to the S3 object
-
-        Returns:
-            a dictionary containing metadata about the file, including its
-                `bucket`, `object_name`, `name`, `size`, `mime_type`,
-                `last_modified`, `etag`, and `metadata`
-        """
-        bucket, object_name = self._parse_s3_path(cloud_path)
-        return self._get_file_metadata(bucket, object_name)
-
-    def get_folder_metadata(self, cloud_folder):
-        """Returns metadata about the given "folder" in S3.
-
-        Note that this method is *expensive*; the only way to compute this
-        information is to call `list_files_in_folder(..., recursive=True)` and
-        compute stats from individual files!
-
-        Args:
-            cloud_folder: a string like `s3://<bucket-name>/<folder-path>`
-
-        Returns:
-            a dictionary containing metadata about the "folder", including its
-                `bucket`, `path`, `num_files`, `size`, and `last_modified`
-        """
-        files = self.list_files_in_folder(
-            cloud_folder, recursive=True, return_metadata=True
-        )
-
-        bucket, path = self._parse_s3_path(cloud_folder)
-        path = path.rstrip("/")
-
-        if files:
-            num_files = len(files)
-            size = sum(f["size"] for f in files)
-            last_modified = max(f["last_modified"] for f in files)
+        if "MINIO_SHARED_CREDENTIALS_FILE" in os.environ:
+            credentials_path = os.environ["MINIO_SHARED_CREDENTIALS_FILE"]
+            logger.debug(
+                "Loading MinIO credentials from environment variable "
+                "MINIO_SHARED_CREDENTIALS_FILE='%s'",
+                credentials_path,
+            )
+        elif "MINIO_CONFIG_FILE" in os.environ:
+            credentials_path = os.environ["MINIO_CONFIG_FILE"]
+            logger.debug(
+                "Loading MinIO credentials from environment variable "
+                "MINIO_CONFIG_FILE='%s'",
+                credentials_path,
+            )
+        elif cls.has_active_credentials():
+            credentials_path = cls.CREDENTIALS_PATH
+            logger.debug(
+                "Loading activated MinIO credentials from '%s'",
+                credentials_path,
+            )
         else:
-            num_files = 0
-            size = 0
-            last_modified = "-"
+            raise MinIOCredentialsError("No MinIO credentials found")
 
-        return {
-            "bucket": bucket,
-            "path": path,
-            "num_files": num_files,
-            "size": size,
-            "last_modified": last_modified,
-        }
+        credentials = cls._load_credentials_ini(
+            credentials_path, profile=profile
+        )
+        return credentials, credentials_path
 
-    def list_files_in_folder(
-        self, cloud_folder, recursive=True, return_metadata=False
-    ):
-        """Returns a list of the files in the given "folder" in S3.
+    @classmethod
+    def from_ini(cls, credentials_path, profile=None):
+        """Creates a `cls` instance from the given credentials `.ini` file.
 
         Args:
-            cloud_folder: a string like `s3://<bucket-name>/<folder-path>`
-            recursive: whether to recursively traverse sub-"folders". By
-                default, this is True
-            return_metadata: whether to return a metadata dictionary for each
-                file, including its `bucket`, `object_name`, `name`, `size`,
-                `mime_type`, `last_modified`, `etag`, and `metadata`. By
-                default, only the paths to the files are returned
+            credentials_path: the path to a credentials `.ini` file
+            profile: an optional profile to load. If not provided the "default"
+                section is loaded
 
         Returns:
-            a list of full cloud paths (when `return_metadata == False`) or a
-                list of metadata dictionaries (when `return_metadata == True`)
-                for the files in the folder
+            an instance of cls with the given credentials
         """
-        bucket, folder_name = self._parse_s3_path(cloud_folder)
-        if folder_name and not folder_name.endswith("/"):
-            folder_name += "/"
+        credentials, _ = cls.load_credentials(
+            credentials_path=credentials_path, profile=profile
+        )
+        return cls(credentials=credentials)
 
-        kwargs = {"Bucket": bucket, "Prefix": folder_name}
-        if not recursive:
-            kwargs["Delimiter"] = "/"
+    @classmethod
+    def _load_credentials_ini(cls, credentials_path, profile=None):
+        if profile is None:
+            profile = "default"
 
-        paths_or_metadata = []
-        prefix = "s3://" + bucket
-        while True:
-            resp = self._client.list_objects_v2(**kwargs)
+        if not os.path.isfile(credentials_path):
+            raise FileNotFoundError(
+                "File '%s' does not exist" % credentials_path
+            )
 
-            for obj in resp.get("Contents", []):
-                path = obj["Key"]
-                if not path.endswith("/"):
-                    if return_metadata:
-                        paths_or_metadata.append(
-                            self._get_object_metadata(bucket, obj)
-                        )
-                    else:
-                        paths_or_metadata.append(os.path.join(prefix, path))
+        config = configparser.ConfigParser()
+        config.read(credentials_path)
 
-            try:
-                kwargs["ContinuationToken"] = resp["NextContinuationToken"]
-            except KeyError:
-                break
+        # Config file syntax
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#aws-config-file
+        if "profile " + profile in config:
+            return dict(config["profile " + profile])
 
-        return paths_or_metadata
+        # Credentials file syntax
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#shared-credentials-file
+        return dict(config[profile])
 
-    def generate_signed_url(
-        self, cloud_path, method="GET", hours=24, content_type=None
-    ):
-        """Generates a signed URL for accessing the given S3 object.
 
-        Anyone with the URL can access the object with the permission until it
-        expires.
+class MinIOCredentialsError(Exception):
+    """Error raised when a problem with MinIO credentials is encountered."""
 
-        Note that you should use `PUT`, not `POST`, to upload objects!
+    def __init__(self, message):
+        """Creates an MinIOCredentialsError instance.
 
         Args:
-            cloud_path: the path to the S3 object
-            method: the HTTP verb (GET, PUT, DELETE) to authorize
-            hours: the number of hours that the URL is valid
-            content_type: (PUT actions only) the optional type of the content
-                being uploaded
-
-        Returns:
-            a URL for accessing the object via HTTP request
+            message: the error message
         """
-        client_method = method.lower() + "_object"
-        bucket, object_name = self._parse_s3_path(cloud_path)
-        params = {"Bucket": bucket, "Key": object_name}
-        if client_method == "put_object" and content_type:
-            params["ContentType"] = content_type
-
-        expiration = int(3600 * hours)
-        return self._client.generate_presigned_url(
-            ClientMethod=client_method, Params=params, ExpiresIn=expiration
+        super(MinIOCredentialsError, self).__init__(
+            "%s. Read the documentation for "
+            "`eta.core.storage.NeedsMinIOCredentials` for more information "
+            "about authenticating with MinIO services." % message
         )
 
-    def add_metadata(self, cloud_path, metadata):
-        """Adds custom metadata key-value pairs to the given S3 object.
 
-        Note that S3 fundamentally treats metadata as immutable, so this method
-        must use `botocore.client.S3.copy_object()` to copy the object, which
-        only supports file sizes up to 5GB. For larger files, you must manually
-        re-upload the file with the desired metadata.
+class MinIOStorageClient(_BotoStorageClient, NeedsMinIOCredentials):
+    """Client for reading/writing data from MinIO.
+
+    All cloud path strings used by this class should have the form
+    "<alias>://<bucket>/<path/to/object>".
+
+    See `NeedsMinIOCredentials` for more information about the authentication
+    strategy used by this class.
+    """
+
+    def __init__(self, credentials=None, max_pool_connections=None, **kwargs):
+        """Creates a MinIOStorageClient instance.
 
         Args:
-            cloud_path: the path to the S3 object
-            metadata: a dictionary of custom metadata
+            credentials: an optional MinIO credentials dictionary. If not
+                provided, credentials must be loadable as described in
+                `NeedsMinIOCredentials`
+            max_pool_connections: an optional maximum number of connections to
+                keep in the connection pool
+            **kwargs: optional configuration options for
+                `botocore.config.Config(**kwargs)`
         """
-        bucket, object_name = self._parse_s3_path(cloud_path)
-        response = self._client.head_object(Bucket=bucket, Key=object_name)
+        if credentials is None:
+            credentials, _ = self.load_credentials()
 
-        response["Metadata"].update(metadata)
+        _credentials = {
+            "aws_access_key_id": credentials["access_key"],
+            "aws_secret_access_key": credentials["secret_access_key"],
+            "region_name": credentials.get("region", "us-east-1"),
+        }
 
-        self._client.copy_object(
-            Bucket=bucket,
-            Key=object_name,
-            CopySource={"Bucket": bucket, "Key": object_name},
-            Metadata=response["Metadata"],
-            MetadataDirective="REPLACE",
-            TaggingDirective="COPY",
-            ContentType=response["ContentType"],
+        alias = credentials.pop("alias", None)
+        endpoint_url = credentials.pop("endpoint_url")
+
+        super(MinIOStorageClient, self).__init__(
+            _credentials,
+            alias=alias,
+            endpoint_url=endpoint_url,
+            max_pool_connections=max_pool_connections,
+            **kwargs,
         )
-
-    def _do_upload(
-        self,
-        cloud_path,
-        local_path=None,
-        file_obj=None,
-        content_type=None,
-        metadata=None,
-    ):
-        bucket, object_name = self._parse_s3_path(cloud_path)
-
-        if local_path and not content_type:
-            content_type = etau.guess_mime_type(local_path)
-
-        extra_args = {}
-
-        if content_type:
-            extra_args["ContentType"] = content_type
-
-        if metadata:
-            extra_args["Metadata"] = metadata
-
-        if local_path:
-            self._client.upload_file(
-                local_path, bucket, object_name, ExtraArgs=extra_args
-            )
-
-        if file_obj is not None:
-            self._client.upload_fileobj(
-                file_obj, bucket, object_name, ExtraArgs=extra_args
-            )
-
-    def _do_download(
-        self, cloud_path, local_path=None, file_obj=None, start=None, end=None
-    ):
-        bucket, object_name = self._parse_s3_path(cloud_path)
-
-        if start is not None or end is not None:
-            response = self._client.get_object(
-                Bucket=bucket,
-                Key=object_name,
-                Range="bytes=%s-%s" % (start or "", end or ""),
-            )
-            return response["Body"].read()
-
-        if local_path:
-            etau.ensure_basedir(local_path)
-            self._client.download_file(bucket, object_name, local_path)
-
-        if file_obj is not None:
-            self._client.download_fileobj(bucket, object_name, file_obj)
-
-    def _get_file_metadata(self, bucket, object_name):
-        response = self._client.head_object(Bucket=bucket, Key=object_name)
-
-        mime_type = response["ContentType"]
-        if not mime_type:
-            mime_type = etau.guess_mime_type(object_name)
-
-        return {
-            "bucket": bucket,
-            "object_name": object_name,
-            "name": os.path.basename(object_name),
-            "size": response["ContentLength"],
-            "mime_type": mime_type,
-            "last_modified": response["LastModified"],
-            "etag": response["ETag"][1:-1],
-            "metadata": response["Metadata"],
-        }
-
-    @staticmethod
-    def _get_object_metadata(bucket, obj):
-        # @todo is there a way to get the MIME type without guessing or making
-        # an expensive call to `head_object`?
-        path = obj["Key"]
-        return {
-            "bucket": bucket,
-            "object_name": path,
-            "name": os.path.basename(path),
-            "size": obj["Size"],
-            "mime_type": etau.guess_mime_type(path),
-            "last_modified": obj["LastModified"],
-            "etag": obj["ETag"][1:-1],
-            "metadata": obj["Metadata"],
-        }
-
-    @staticmethod
-    def _parse_s3_path(cloud_path):
-        """Parses an S3 path.
-
-        Args:
-            cloud_path: a string of form "s3://<bucket_name>/<object_name>"
-
-        Returns:
-            bucket_name: the name of the S3 bucket
-            object_name: the name of the object
-
-        Raises:
-            S3StorageClientError: if the cloud path string was invalid
-        """
-        if not cloud_path.startswith("s3://"):
-            raise S3StorageClientError(
-                "Cloud storage path '%s' must start with s3://" % cloud_path
-            )
-        chunks = cloud_path[5:].split("/", 1)
-        if len(chunks) != 2:
-            return chunks[0], ""
-        return chunks[0], chunks[1]
-
-
-class S3StorageClientError(Exception):
-    """Error raised when a problem occurred in an S3StorageClient."""
-
-    pass
 
 
 class NeedsGoogleCredentials(object):
@@ -1617,7 +1949,7 @@ class GoogleCloudStorageClient(
         Args:
             cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
         """
-        bucket_name, folder_name = self._parse_gcs_path(cloud_folder)
+        bucket_name, folder_name = self._parse_path(cloud_folder)
         bucket = self._client.get_bucket(bucket_name, retry=self._retry)
 
         if folder_name and not folder_name.endswith("/"):
@@ -1658,7 +1990,7 @@ class GoogleCloudStorageClient(
             cloud_folder, recursive=True, return_metadata=True
         )
 
-        bucket, path = self._parse_gcs_path(cloud_folder)
+        bucket, path = self._parse_path(cloud_folder)
         path = path.rstrip("/")
 
         if files:
@@ -1697,7 +2029,7 @@ class GoogleCloudStorageClient(
                 list of metadata dictionaries (when `return_metadata == True`)
                 for the files in the folder
         """
-        bucket_name, folder_name = self._parse_gcs_path(cloud_folder)
+        bucket_name, folder_name = self._parse_path(cloud_folder)
         bucket = self._client.get_bucket(bucket_name, retry=self._retry)
 
         if folder_name and not folder_name.endswith("/"):
@@ -1744,7 +2076,7 @@ class GoogleCloudStorageClient(
         Returns:
             a URL for accessing the object via HTTP request
         """
-        bucket, name = self._parse_gcs_path(cloud_path)
+        bucket, name = self._parse_path(cloud_path)
         resource = "/%s/%s" % (bucket, urlparse.quote(name, safe=b"/~"))
         return generate_signed_url_v4(
             self._client._credentials,
@@ -1771,7 +2103,7 @@ class GoogleCloudStorageClient(
         blob.patch()
 
     def _get_blob(self, cloud_path, include_metadata=False):
-        bucket_name, object_name = self._parse_gcs_path(cloud_path)
+        bucket_name, object_name = self._parse_path(cloud_path)
         bucket = self._client.get_bucket(bucket_name, retry=self._retry)
         blob = bucket.blob(object_name, chunk_size=self.chunk_size)
 
@@ -1797,24 +2129,25 @@ class GoogleCloudStorageClient(
             "metadata": blob.metadata or {},
         }
 
-    @staticmethod
-    def _parse_gcs_path(cloud_path):
-        if not cloud_path.startswith("gs://"):
-            raise GoogleCloudStorageClientError(
-                "Cloud storage path '%s' must start with gs://" % cloud_path
+    def _strip_prefix(self, cloud_path):
+        prefix = "gs://"
+
+        if not cloud_path.startswith(prefix):
+            raise ValueError(
+                "Invalid path '%s'; must start with %s" % (cloud_path, prefix)
             )
 
-        chunks = cloud_path[5:].split("/", 1)
+        return cloud_path[len(prefix) :]
+
+    def _parse_path(self, cloud_path):
+        _cloud_path = self._strip_prefix(cloud_path)
+
+        chunks = _cloud_path.split("/", 1)
+
         if len(chunks) != 2:
             return chunks[0], ""
 
         return chunks[0], chunks[1]
-
-
-class GoogleCloudStorageClientError(Exception):
-    """Error raised when a problem occurred in a GoogleCloudStorageClient."""
-
-    pass
 
 
 class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
@@ -2283,6 +2616,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             except Exception as e:
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
+
                 logger.warning(
                     "Failed to upload '%s' to '%s'; skipping",
                     local_path,
@@ -2373,6 +2707,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             except Exception as e:
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
+
                 logger.warning(
                     "Failed to download '%s' to '%s'; skipping",
                     file_id,
@@ -2440,6 +2775,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             except Exception as e:
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
+
                 logger.warning(
                     "Failed to delete '%s' from '%s'; skipping",
                     filename,
@@ -3289,3 +3625,14 @@ def _to_bytes(val, encoding="utf-8"):
         raise TypeError("Failed to convert %r to bytes" % bytes_str)
 
     return bytes_str
+
+
+def _strip_prefix(path, prefixes):
+    if not path:
+        return None
+
+    for prefix in prefixes:
+        if path.startswith(prefix):
+            return path[len(prefix) :]
+
+    return None

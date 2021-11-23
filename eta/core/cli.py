@@ -98,6 +98,7 @@ class ETACommand(Command):
         _register_command(subparsers, "auth", AuthCommand)
         _register_command(subparsers, "s3", S3Command)
         _register_command(subparsers, "gcs", GCSCommand)
+        _register_command(subparsers, "minio", MinIOCommand)
         _register_command(subparsers, "gdrive", GoogleDriveStorageCommand)
         _register_command(subparsers, "http", HTTPStorageCommand)
         _register_command(subparsers, "sftp", SFTPStorageCommand)
@@ -1000,6 +1001,9 @@ class ShowAuthCommand(Command):
         # Print info about active AWS credentials
         eta auth show --aws
 
+        # Print info about active MinIO credentials
+        eta auth show --minio
+
         # Print info about active SSH credentials
         eta auth show --ssh
     """
@@ -1017,6 +1021,11 @@ class ShowAuthCommand(Command):
             help="show info about AWS credentials",
         )
         parser.add_argument(
+            "--minio",
+            action="store_true",
+            help="show info about MinIO credentials",
+        )
+        parser.add_argument(
             "--ssh",
             action="store_true",
             help="show info about SSH credentials",
@@ -1029,6 +1038,9 @@ class ShowAuthCommand(Command):
 
         if args.aws:
             _print_aws_credentials_info()
+
+        if args.minio:
+            _print_minio_credentials_info()
 
         if args.ssh:
             _print_ssh_credentials_info()
@@ -1043,6 +1055,11 @@ class ShowAuthCommand(Command):
             try:
                 _print_aws_credentials_info()
             except etast.AWSCredentialsError:
+                pass
+
+            try:
+                _print_minio_credentials_info()
+            except etast.MinIOCredentialsError:
                 pass
 
             try:
@@ -1081,6 +1098,22 @@ def _print_aws_credentials_info():
     print(table_str + "\n")
 
 
+def _print_minio_credentials_info():
+    credentials, path = etast.NeedsMinIOCredentials.load_credentials()
+    contents = []
+    for key in sorted(credentials):
+        value = credentials[key]
+        contents.append((key.lower().replace("_", " "), value))
+
+    if path:
+        contents.append(("path", path))
+
+    table_str = tabulate(
+        contents, headers=["MinIO credentials", ""], tablefmt="simple"
+    )
+    print(table_str + "\n")
+
+
 def _print_ssh_credentials_info():
     path = etast.NeedsSSHCredentials.get_private_key_path()
     contents = [
@@ -1102,6 +1135,9 @@ class ActivateAuthCommand(Command):
         # Activate AWS credentials
         eta auth activate --aws '/path/to/credentials.ini'
 
+        # Activate MinIO credentials
+        eta auth activate --minio '/path/to/credentials.ini'
+
         # Activate SSH credentials
         eta auth activate --ssh '/path/to/id_rsa'
     """
@@ -1117,6 +1153,9 @@ class ActivateAuthCommand(Command):
             "--aws", metavar="PATH", help="path to AWS credentials file"
         )
         parser.add_argument(
+            "--minio", metavar="PATH", help="path to MinIO credentials file"
+        )
+        parser.add_argument(
             "--ssh", metavar="PATH", help="path to SSH private key"
         )
 
@@ -1127,6 +1166,9 @@ class ActivateAuthCommand(Command):
 
         if args.aws:
             etast.NeedsAWSCredentials.activate_credentials(args.aws)
+
+        if args.minio:
+            etast.NeedsMinIOCredentials.activate_credentials(args.minio)
 
         if args.ssh:
             etast.NeedsSSHCredentials.activate_credentials(args.ssh)
@@ -1141,6 +1183,9 @@ class DeactivateAuthCommand(Command):
 
         # Deactivate AWS credentials
         eta auth deactivate --aws
+
+        # Deactivate MinIO credentials
+        eta auth deactivate --minio
 
         # Deactivate SSH credentials
         eta auth deactivate --ssh
@@ -1162,6 +1207,11 @@ class DeactivateAuthCommand(Command):
             help="delete the active AWS credentials",
         )
         parser.add_argument(
+            "--minio",
+            action="store_true",
+            help="delete the active MinIO credentials",
+        )
+        parser.add_argument(
             "--ssh",
             action="store_true",
             help="delete the active SSH credentials",
@@ -1177,6 +1227,9 @@ class DeactivateAuthCommand(Command):
 
         if args.aws or args.all:
             etast.NeedsAWSCredentials.deactivate_credentials()
+
+        if args.minio or args.all:
+            etast.NeedsMinIOCredentials.deactivate_credentials()
 
         if args.ssh or args.all:
             etast.NeedsSSHCredentials.deactivate_credentials()
@@ -1227,7 +1280,7 @@ class S3InfoCommand(Command):
             "-f",
             "--folder",
             action="store_true",
-            help="whether the provided" "paths are folders, not files",
+            help="whether the provided paths are folders, not files",
         )
 
     @staticmethod
@@ -1351,7 +1404,7 @@ class S3ListCommand(Command):
             "-r",
             "--recursive",
             action="store_true",
-            help="whether to " "recursively list the contents of subfolders",
+            help="whether to recursively list the contents of subfolders",
         )
         parser.add_argument(
             "-l",
@@ -1417,20 +1470,21 @@ class S3UploadCommand(Command):
         parser.add_argument(
             "local_path",
             metavar="LOCAL_PATH",
-            help="the path to the file to " "upload",
+            help="the path to the file to upload",
         )
         parser.add_argument(
             "cloud_path",
             metavar="CLOUD_PATH",
-            help="the path to the S3 " "object to create",
+            help="the path to the S3 object to create",
         )
         parser.add_argument(
             "-t",
             "--content-type",
             metavar="TYPE",
-            help="an optional content "
-            "type of the file. By default, the type is guessed from the "
-            "filename",
+            help=(
+                "an optional content type of the file. By default, the type "
+                "is guessed from the filename"
+            ),
         )
 
     @staticmethod
@@ -1459,32 +1513,37 @@ class S3UploadDirectoryCommand(Command):
         parser.add_argument(
             "local_dir",
             metavar="LOCAL_DIR",
-            help="the directory of files to " "upload",
+            help="the directory of files to upload",
         )
         parser.add_argument(
             "cloud_dir",
             metavar="CLOUD_DIR",
-            help="the S3 directory to " "upload into",
+            help="the S3 directory to upload into",
         )
         parser.add_argument(
             "--sync",
             action="store_true",
-            help="whether to sync the S3 "
-            "directory to match the contents of the local directory",
+            help=(
+                "whether to sync the S3 directory to match the contents of "
+                "the local directory"
+            ),
         )
         parser.add_argument(
             "-o",
             "--overwrite",
             action="store_true",
-            help="whether to "
-            "overwrite existing files; only valid in `--sync` mode",
+            help=(
+                "whether to overwrite existing files; only valid in `--sync` "
+                "mode"
+            ),
         )
         parser.add_argument(
             "-r",
             "--recursive",
             action="store_true",
-            help="whether to "
-            "recursively upload the contents of subdirecotires",
+            help=(
+                "whether to recursively upload the contents of subdirecotires"
+            ),
         )
 
     @staticmethod
@@ -1520,21 +1579,24 @@ class S3DownloadCommand(Command):
         parser.add_argument(
             "cloud_path",
             metavar="CLOUD_PATH",
-            help="the S3 object to " "download",
+            help="the S3 object to download",
         )
         parser.add_argument(
             "local_path",
             nargs="?",
             metavar="LOCAL_PATH",
-            help="the path to "
-            "which to write the downloaded file. If not provided, the "
-            "filename of the file in S3 is used",
+            help=(
+                "the path to which to write the downloaded file. If not "
+                "provided, the filename of the file in S3 is used"
+            ),
         )
         parser.add_argument(
             "--print",
             action="store_true",
-            help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk",
+            help=(
+                "whether to print the download to stdout. If true, a file is "
+                "NOT written to disk"
+            ),
         )
 
     @staticmethod
@@ -1568,32 +1630,38 @@ class S3DownloadDirectoryCommand(Command):
         parser.add_argument(
             "cloud_dir",
             metavar="CLOUD_DIR",
-            help="the S3 directory to " "download",
+            help="the S3 directory to download",
         )
         parser.add_argument(
             "local_dir",
             metavar="LOCAL_DIR",
-            help="the directory to which to " "download files into",
+            help="the directory to which to download files into",
         )
         parser.add_argument(
             "--sync",
             action="store_true",
-            help="whether to sync the local"
-            "directory to match the contents of the S3 directory",
+            help=(
+                "whether to sync the local directory to match the contents of "
+                "the S3 directory"
+            ),
         )
         parser.add_argument(
             "-o",
             "--overwrite",
             action="store_true",
-            help="whether to "
-            "overwrite existing files; only valid in `--sync` mode",
+            help=(
+                "whether to overwrite existing files; only valid in `--sync` "
+                "mode"
+            ),
         )
         parser.add_argument(
             "-r",
             "--recursive",
             action="store_true",
-            help="whether to "
-            "recursively download the contents of subdirecotires",
+            help=(
+                "whether to recursively download the contents of "
+                "subdirecotires"
+            ),
         )
 
     @staticmethod
@@ -1702,7 +1770,7 @@ class GCSInfoCommand(Command):
             "-f",
             "--folder",
             action="store_true",
-            help="whether the provided" "paths are folders, not files",
+            help="whether the provided paths are folders, not files",
         )
 
     @staticmethod
@@ -1826,7 +1894,7 @@ class GCSListCommand(Command):
             "-r",
             "--recursive",
             action="store_true",
-            help="whether to " "recursively list the contents of subfolders",
+            help="whether to recursively list the contents of subfolders",
         )
         parser.add_argument(
             "-l",
@@ -1892,27 +1960,28 @@ class GCSUploadCommand(Command):
         parser.add_argument(
             "local_path",
             metavar="LOCAL_PATH",
-            help="the path to the file to " "upload",
+            help="the path to the file to upload",
         )
         parser.add_argument(
             "cloud_path",
             metavar="CLOUD_PATH",
-            help="the path to the GCS " "object to create",
+            help="the path to the GCS object to create",
         )
         parser.add_argument(
             "-t",
             "--content-type",
             metavar="TYPE",
-            help="an optional content "
-            "type of the file. By default, the type is guessed from the "
-            "filename",
+            help=(
+                "an optional content type of the file. By default, the type "
+                "is guessed from the filename"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -1941,39 +2010,44 @@ class GCSUploadDirectoryCommand(Command):
         parser.add_argument(
             "local_dir",
             metavar="LOCAL_DIR",
-            help="the directory of files to " "upload",
+            help="the directory of files to upload",
         )
         parser.add_argument(
             "cloud_dir",
             metavar="CLOUD_DIR",
-            help="the GCS directory to " "upload into",
+            help="the GCS directory to upload into",
         )
         parser.add_argument(
             "--sync",
             action="store_true",
-            help="whether to sync the GCS"
-            "directory to match the contents of the local directory",
+            help=(
+                "whether to sync the GCS directory to match the contents of "
+                "the local directory"
+            ),
         )
         parser.add_argument(
             "-o",
             "--overwrite",
             action="store_true",
-            help="whether to "
-            "overwrite existing files; only valid in `--sync` mode",
+            help=(
+                "whether to overwrite existing files; only valid in `--sync` "
+                "mode"
+            ),
         )
         parser.add_argument(
             "-r",
             "--recursive",
             action="store_true",
-            help="whether to "
-            "recursively upload the contents of subdirecotires",
+            help=(
+                "whether to recursively upload the contents of subdirecotires"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -2009,28 +2083,31 @@ class GCSDownloadCommand(Command):
         parser.add_argument(
             "cloud_path",
             metavar="CLOUD_PATH",
-            help="the GCS object to " "download",
+            help="the GCS object to download",
         )
         parser.add_argument(
             "local_path",
             nargs="?",
             metavar="LOCAL_PATH",
-            help="the path to "
-            "which to write the downloaded file. If not provided, the "
-            "filename of the file in GCS is used",
+            help=(
+                "the path to which to write the downloaded file. If not "
+                "provided, the filename of the file in GCS is used"
+            ),
         )
         parser.add_argument(
             "--print",
             action="store_true",
-            help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk",
+            help=(
+                "whether to print the download to stdout. If true, a file is "
+                "NOT written to disk"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -2064,39 +2141,45 @@ class GCSDownloadDirectoryCommand(Command):
         parser.add_argument(
             "cloud_dir",
             metavar="CLOUD_DIR",
-            help="the GCS directory to " "download",
+            help="the GCS directory to download",
         )
         parser.add_argument(
             "local_dir",
             metavar="LOCAL_DIR",
-            help="the directory to which to " "download files into",
+            help="the directory to which to download files into",
         )
         parser.add_argument(
             "--sync",
             action="store_true",
-            help="whether to sync the local"
-            "directory to match the contents of the GCS directory",
+            help=(
+                "whether to sync the local directory to match the contents of "
+                "the GCS directory"
+            ),
         )
         parser.add_argument(
             "-o",
             "--overwrite",
             action="store_true",
-            help="whether to "
-            "overwrite existing files; only valid in `--sync` mode",
+            help=(
+                "whether to overwrite existing files; only valid in `--sync` "
+                "mode"
+            ),
         )
         parser.add_argument(
             "-r",
             "--recursive",
             action="store_true",
-            help="whether to "
-            "recursively download the contents of subdirecotires",
+            help=(
+                "whether to recursively download the contents of "
+                "subdirecotires"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -2151,12 +2234,504 @@ class GCSDeleteDirCommand(Command):
         parser.add_argument(
             "cloud_dir",
             metavar="CLOUD_DIR",
-            help="the GCS directory to " "delete",
+            help="the GCS directory to delete",
         )
 
     @staticmethod
     def execute(parser, args):
         client = etast.GoogleCloudStorageClient()
+
+        print("Deleting '%s'" % args.cloud_dir)
+        client.delete_folder(args.cloud_dir)
+
+
+class MinIOCommand(Command):
+    """Tools for working with MinIO."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "info", MinIOInfoCommand)
+        _register_command(subparsers, "list", MinIOListCommand)
+        _register_command(subparsers, "upload", MinIOUploadCommand)
+        _register_command(
+            subparsers, "upload-dir", MinIOUploadDirectoryCommand
+        )
+        _register_command(subparsers, "download", MinIODownloadCommand)
+        _register_command(
+            subparsers, "download-dir", MinIODownloadDirectoryCommand
+        )
+        _register_command(subparsers, "delete", MinIODeleteCommand)
+        _register_command(subparsers, "delete-dir", MinIODeleteDirCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class MinIOInfoCommand(Command):
+    """Get information about files/folders in MinIO.
+
+    Examples:
+        # Get file info
+        eta minio info <cloud-path> [...]
+
+        # Get folder info
+        eta minio info --folder <cloud-path> [...]
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "paths",
+            nargs="+",
+            metavar="CLOUD_PATH",
+            help="the path(s) of the files of interest in MinIO",
+        )
+        parser.add_argument(
+            "-f",
+            "--folder",
+            action="store_true",
+            help="whether the provided paths are folders, not files",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        client = etast.MinIOStorageClient()
+
+        if args.folder:
+            metadata = [client.get_folder_metadata(p) for p in args.paths]
+            _print_minio_folder_info_table(metadata)
+            return
+
+        metadata = [client.get_file_metadata(p) for p in args.paths]
+        _print_minio_file_info_table(metadata)
+
+
+class MinIOListCommand(Command):
+    """List contents of a MinIO folder.
+
+    Examples:
+        # List folder contents
+        eta minio list <alias>://<bucket>/<prefix>
+
+        # List folder contents recursively
+        eta minio list <alias>://<bucket>/<prefix> --recursive
+
+        # List folder contents according to the given query
+        eta minio list <alias>://<bucket>/<prefix>
+            [--recursive]
+            [--limit <limit>]
+            [--search [<field><operator>]<str>[,...]]
+            [--sort-by <field>]
+            [--ascending]
+            [--count]
+
+        # List the last 10 modified files that contain "test" in any field
+        eta minio list <alias>://<bucket>/<prefix> \\
+            --search test --limit 10 --sort-by last_modified
+
+        # List files whose size is 10-20MB, from smallest to largest
+        eta minio list <alias>://<bucket>/<prefix> \\
+            --search 'size>10MB,size<20MB' --sort-by size --ascending
+
+        # List files that were uploaded before November 26th, 2019, recurisvely
+        # traversing subfolders, and display the count
+        eta minio list <alias>://<bucket>/<prefix> \\
+            --recursive --search 'last modified<2019-11-26' --count
+
+    Search syntax:
+        The generic search syntax is:
+
+            --search [<field><operator>]<str>[,...]
+
+        where:
+            <field>    an optional field name on which to search
+            <operator> an optional operator to use when evaluating matches
+            <str>      the search string
+
+        If <field><operator> is omitted, the search will match any records for
+        which any column contains the given search string.
+
+        Multiple searches can be specified as a comma-separated list. Records
+        must match all searches in order to appear in the search results.
+
+        The supported fields are:
+
+        field         type     description
+        ------------- -------- ------------------------------------------
+        bucket        string   the name of the bucket
+        name          string   the name of the object in the bucket
+        size          bytes    the size of the object
+        type          string   the MIME type of the object
+        last modified datetime the date that the object was last modified
+
+        Fields are case insensitive, and underscores can be used in-place of
+        spaces.
+
+        The meaning of the operators are as follows:
+
+        operator  type       description
+        --------- ---------- --------------------------------------------------
+        :         contains   the field contains the search string
+        ==        comparison the search string is equal to the field
+        <         comparison the search string is less than the field
+        <=        comparison the search string is less or equal to the field
+        >         comparison the search string is greater than the field
+        >=        comparison the search string is greater or equal to the field
+
+        For contains (":") queries, the search/record values are parsed as
+        follows:
+
+        type     description
+        -------- --------------------------------------------------------------
+        string   the search and record are treated as strings
+        bytes    the search is treated as a string, and the record is converted
+                 to a human-readable bytes string
+        datetime the search is treated as a string, and the record is rendered
+                 as a string in "%Y-%m-%d %H:%M:%S %Z" format in local timezone
+
+        For comparison ("==", "<", "<=", ">", ">=") queries, the search/record
+        values are parsed as follows:
+
+        type     description
+        -------- ------------------------------------------------------------
+        string   the search and record are treated as strings
+        bytes    the search must be a human-readable bytes string, which is
+                 converted to numeric bytes for comparison with the record
+        datetime the search must be an ISO time string, which is converted to
+                 a datetime for comparison with the record. If no timezone is
+                 included in the search, local time is assumed
+
+        You can include special characters (":", "=", "<", ">", ",") in search
+        strings by escaping them with "\\".
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "folder", metavar="CLOUD_DIR", help="the MinIO folder to list"
+        )
+        parser.add_argument(
+            "-r",
+            "--recursive",
+            action="store_true",
+            help="whether to recursively list the contents of subfolders",
+        )
+        parser.add_argument(
+            "-l",
+            "--limit",
+            metavar="LIMIT",
+            type=int,
+            default=-1,
+            help="limit the number of files listed",
+        )
+        parser.add_argument(
+            "-s",
+            "--search",
+            metavar="SEARCH",
+            help="search to limit results when listing files",
+        )
+        parser.add_argument(
+            "--sort-by",
+            metavar="FIELD",
+            help="field to sort by when listing files",
+        )
+        parser.add_argument(
+            "--ascending",
+            action="store_true",
+            help="whether to sort in ascending order",
+        )
+        parser.add_argument(
+            "-c",
+            "--count",
+            action="store_true",
+            help="whether to show the number of files in the list",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        client = etast.MinIOStorageClient()
+
+        metadata = client.list_files_in_folder(
+            args.folder, recursive=args.recursive, return_metadata=True
+        )
+
+        metadata = _filter_records(
+            metadata,
+            args.limit,
+            args.search,
+            args.sort_by,
+            args.ascending,
+            _MINIO_SEARCH_FIELDS_MAP,
+        )
+
+        _print_minio_file_info_table(metadata, show_count=args.count)
+
+
+class MinIOUploadCommand(Command):
+    """Upload file to MinIO.
+
+    Examples:
+        # Upload file
+        eta minio upload <local-path> <cloud-path>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "local_path",
+            metavar="LOCAL_PATH",
+            help="the path to the file to upload",
+        )
+        parser.add_argument(
+            "cloud_path",
+            metavar="CLOUD_PATH",
+            help="the path to the MinIO object to create",
+        )
+        parser.add_argument(
+            "-t",
+            "--content-type",
+            metavar="TYPE",
+            help=(
+                "an optional content type of the file. By default, the type "
+                "is guessed from the filename"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        client = etast.MinIOStorageClient()
+
+        print("Uploading '%s' to '%s'" % (args.local_path, args.cloud_path))
+        client.upload(
+            args.local_path, args.cloud_path, content_type=args.content_type
+        )
+
+
+class MinIOUploadDirectoryCommand(Command):
+    """Upload directory to MinIO.
+
+    Examples:
+        # Upload directory
+        eta minio upload-dir <local-dir> <cloud-dir>
+
+        # Upload-sync directory
+        eta minio upload-dir --sync <local-dir> <cloud-dir>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "local_dir",
+            metavar="LOCAL_DIR",
+            help="the directory of files to upload",
+        )
+        parser.add_argument(
+            "cloud_dir",
+            metavar="CLOUD_DIR",
+            help="the MinIO directory to upload into",
+        )
+        parser.add_argument(
+            "--sync",
+            action="store_true",
+            help=(
+                "whether to sync the MinIO directory to match the contents of "
+                "the local directory"
+            ),
+        )
+        parser.add_argument(
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help=(
+                "whether to overwrite existing files; only valid in `--sync` "
+                "mode"
+            ),
+        )
+        parser.add_argument(
+            "-r",
+            "--recursive",
+            action="store_true",
+            help=(
+                "whether to recursively upload the contents of subdirecotires"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        client = etast.MinIOStorageClient()
+
+        if args.sync:
+            client.upload_dir_sync(
+                args.local_dir,
+                args.cloud_dir,
+                overwrite=args.overwrite,
+                recursive=args.recursive,
+            )
+        else:
+            client.upload_dir(
+                args.local_dir, args.cloud_dir, recursive=args.recursive
+            )
+
+
+class MinIODownloadCommand(Command):
+    """Download file from MinIO.
+
+    Examples:
+        # Download file
+        eta minio download <cloud-path> <local-path>
+
+        # Print download to stdout
+        eta minio download <cloud-path> --print
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "cloud_path",
+            metavar="CLOUD_PATH",
+            help="the MinIO object to download",
+        )
+        parser.add_argument(
+            "local_path",
+            nargs="?",
+            metavar="LOCAL_PATH",
+            help=(
+                "the path to which to write the downloaded file. If not "
+                "provided, the filename of the file in MinIO is used"
+            ),
+        )
+        parser.add_argument(
+            "--print",
+            action="store_true",
+            help=(
+                "whether to print the download to stdout. If true, a file is "
+                "NOT written to disk"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        client = etast.MinIOStorageClient()
+
+        if args.print:
+            print(client.download_bytes(args.cloud_path))
+        else:
+            local_path = args.local_path
+            if local_path is None:
+                local_path = client.get_file_metadata(args.cloud_path)["name"]
+
+            print("Downloading '%s' to '%s'" % (args.cloud_path, local_path))
+            client.download(args.cloud_path, local_path)
+
+
+class MinIODownloadDirectoryCommand(Command):
+    """Download directory from MinIO.
+
+    Examples:
+        # Download directory
+        eta minio download-dir <cloud-folder> <local-dir>
+
+        # Download directory sync
+        eta minio download-dir --sync <cloud-folder> <local-dir>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "cloud_dir",
+            metavar="CLOUD_DIR",
+            help="the S3 directory to download",
+        )
+        parser.add_argument(
+            "local_dir",
+            metavar="LOCAL_DIR",
+            help="the directory to which to download files into",
+        )
+        parser.add_argument(
+            "--sync",
+            action="store_true",
+            help=(
+                "whether to sync the local directory to match the contents of "
+                "the MinIO directory"
+            ),
+        )
+        parser.add_argument(
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help=(
+                "whether to overwrite existing files; only valid in `--sync` "
+                "mode"
+            ),
+        )
+        parser.add_argument(
+            "-r",
+            "--recursive",
+            action="store_true",
+            help=(
+                "whether to recursively download the contents of "
+                "subdirecotires"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        client = etast.MinIOStorageClient()
+
+        if args.sync:
+            client.download_dir_sync(
+                args.cloud_dir,
+                args.local_dir,
+                overwrite=args.overwrite,
+                recursive=args.recursive,
+            )
+        else:
+            client.download_dir(
+                args.cloud_dir, args.local_dir, recursive=args.recursive
+            )
+
+
+class MinIODeleteCommand(Command):
+    """Delete file from MinIO.
+
+    Examples:
+        # Delete file
+        eta minio delete <cloud-path>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "cloud_path", metavar="CLOUD_PATH", help="the MinIO file to delete"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        client = etast.MinIOStorageClient()
+
+        print("Deleting '%s'" % args.cloud_path)
+        client.delete(args.cloud_path)
+
+
+class MinIODeleteDirCommand(Command):
+    """Delete directory from MinIO.
+
+    Examples:
+        # Delete directory
+        eta minio delete-dir <cloud-dir>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "cloud_dir", metavar="CLOUD_DIR", help="the MinIO folder to delete"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        client = etast.MinIOStorageClient()
 
         print("Deleting '%s'" % args.cloud_dir)
         client.delete_folder(args.cloud_dir)
@@ -2211,7 +2786,7 @@ class GoogleDriveInfoCommand(Command):
             "-f",
             "--folder",
             action="store_true",
-            help="whether the files of" "interest are folders",
+            help="whether the files of interest are folders",
         )
 
     @staticmethod
@@ -2338,7 +2913,7 @@ class GoogleDriveListCommand(Command):
             "-r",
             "--recursive",
             action="store_true",
-            help="whether to " "recursively list the contents of subfolders",
+            help="whether to recursively list the contents of subfolders",
         )
         parser.add_argument(
             "-l",
@@ -2407,30 +2982,32 @@ class GoogleDriveUploadCommand(Command):
         parser.add_argument(
             "folder_id",
             metavar="ID",
-            help="the ID of the folder to upload " "the file into",
+            help="the ID of the folder to upload the file into",
         )
         parser.add_argument(
             "-f",
             "--filename",
             metavar="FILENAME",
-            help="an optional "
-            "filename to include in the request. By default, the name of the "
-            "local file is used",
+            help=(
+                "an optional filename to include in the request. By default, "
+                "the name of the local file is used"
+            ),
         )
         parser.add_argument(
             "-t",
             "--content-type",
             metavar="TYPE",
-            help="an optional content "
-            "type of the file. By default, the type is guessed from the "
-            "filename",
+            help=(
+                "an optional content type of the file. By default, the type "
+                "is guessed from the filename"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -2459,38 +3036,39 @@ class GoogleDriveUploadDirectoryCommand(Command):
         parser.add_argument(
             "local_dir",
             metavar="LOCAL_DIR",
-            help="the directory of files to " "upload",
+            help="the directory of files to upload",
         )
         parser.add_argument(
             "folder_id",
             metavar="ID",
-            help="the ID of the folder to upload " "the files into",
+            help="the ID of the folder to upload the files into",
         )
         parser.add_argument(
             "-f",
             "--skip-failures",
             action="store_true",
-            help="whether to " "skip failures",
+            help="whether to skip failures",
         )
         parser.add_argument(
             "-e",
             "--skip-existing",
             action="store_true",
-            help="whether to " "skip existing files",
+            help="whether to skip existing files",
         )
         parser.add_argument(
             "-r",
             "--recursive",
             action="store_true",
-            help="whether to "
-            "recursively upload the contents of subdirecotires",
+            help=(
+                "whether to recursively upload the contents of subdirecotires"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -2529,29 +3107,33 @@ class GoogleDriveDownloadCommand(Command):
             "path",
             nargs="?",
             metavar="LOCAL_PATH",
-            help="the path to which "
-            "to write the downloaded file. If not provided, the filename of "
-            "the file in Google Drive is used",
+            help=(
+                "the path to which to write the downloaded file. If not "
+                "provided, the filename of the file in Google Drive is used"
+            ),
         )
         parser.add_argument(
             "--public",
             action="store_true",
-            help="whether the file has "
-            "public link sharing turned on and can therefore be downloaded "
-            "with no credentials",
+            help=(
+                "whether the file has public link sharing turned on and can "
+                "therefore be downloaded with no credentials"
+            ),
         )
         parser.add_argument(
             "--print",
             action="store_true",
-            help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk",
+            help=(
+                "whether to print the download to stdout. If true, a file is "
+                "NOT written to disk"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -2612,33 +3194,35 @@ class GoogleDriveDownloadDirectoryCommand(Command):
         parser.add_argument(
             "local_dir",
             metavar="LOCAL_DIR",
-            help="the directory to download " "the files into",
+            help="the directory to download the files into",
         )
         parser.add_argument(
             "-f",
             "--skip-failures",
             action="store_true",
-            help="whether to " "skip failures",
+            help="whether to skip failures",
         )
         parser.add_argument(
             "-e",
             "--skip-existing",
             action="store_true",
-            help="whether to " "skip existing files",
+            help="whether to skip existing files",
         )
         parser.add_argument(
             "-r",
             "--recursive",
             action="store_true",
-            help="whether to "
-            "recursively download the contents of subdirecotires",
+            help=(
+                "whether to recursively download the contents of "
+                "subdirecotires"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -2696,14 +3280,16 @@ class GoogleDriveDeleteDirCommand(Command):
             "-c",
             "--contents-only",
             action="store_true",
-            help="whether to "
-            "delete only the contents of the folder (not the folder itself)",
+            help=(
+                "whether to delete only the contents of the folder (not the "
+                "folder itself)"
+            ),
         )
         parser.add_argument(
             "-s",
             "--skip-failures",
             action="store_true",
-            help="whether to " "skip failures",
+            help="whether to skip failures",
         )
 
     @staticmethod
@@ -2747,7 +3333,7 @@ class HTTPUploadCommand(Command):
         parser.add_argument(
             "path",
             metavar="LOCAL_PATH",
-            help="the path to the file to " "upload",
+            help="the path to the file to upload",
         )
         parser.add_argument(
             "url", metavar="URL", help="the URL to which to PUT the file"
@@ -2756,17 +3342,19 @@ class HTTPUploadCommand(Command):
             "-f",
             "--filename",
             metavar="FILENAME",
-            help="an optional "
-            "filename to include in the request. By default, the name of the "
-            "local file is used",
+            help=(
+                "an optional filename to include in the request. By default, "
+                "the name of the local file is used"
+            ),
         )
         parser.add_argument(
             "-t",
             "--content-type",
             metavar="TYPE",
-            help="an optional content "
-            "type of the file. By default, the type is guessed from the "
-            "filename",
+            help=(
+                "an optional content type of the file. By default, the type "
+                "is guessed from the filename"
+            ),
         )
 
     @staticmethod
@@ -2803,22 +3391,25 @@ class HTTPDownloadCommand(Command):
             "path",
             nargs="?",
             metavar="LOCAL_PATH",
-            help="the path to which "
-            "to write the downloaded file. If not provided, the filename is "
-            "guessed from the URL",
+            help=(
+                "the path to which to write the downloaded file. If not "
+                "provided, the filename is guessed from the URL"
+            ),
         )
         parser.add_argument(
             "--print",
             action="store_true",
-            help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk",
+            help=(
+                "whether to print the download to stdout. If true, a file is "
+                "NOT written to disk"
+            ),
         )
         parser.add_argument(
             "-s",
             "--chunk-size",
             metavar="SIZE",
             type=int,
-            help="an optional " "chunk size (in bytes) to use",
+            help="an optional chunk size (in bytes) to use",
         )
 
     @staticmethod
@@ -2884,12 +3475,12 @@ class SFTPUploadCommand(Command):
         parser.add_argument(
             "local_path",
             metavar="LOCAL_PATH",
-            help="the path to the file to " "upload",
+            help="the path to the file to upload",
         )
         parser.add_argument(
             "remote_path",
             metavar="REMOTE_PATH",
-            help="the remote path to " "write the file",
+            help="the remote path to write the file",
         )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
@@ -2923,12 +3514,12 @@ class SFTPUploadDirCommand(Command):
         parser.add_argument(
             "local_dir",
             metavar="LOCAL_DIR",
-            help="the path to the directory " "to upload",
+            help="the path to the directory to upload",
         )
         parser.add_argument(
             "remote_dir",
             metavar="REMOTE_DIR",
-            help="the remote directory to " "write the uploaded directory",
+            help="the remote directory to write the uploaded directory",
         )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
@@ -2965,15 +3556,16 @@ class SFTPDownloadCommand(Command):
         parser.add_argument(
             "remote_path",
             metavar="REMOTE_PATH",
-            help="the remote file to " "download",
+            help="the remote file to download",
         )
         parser.add_argument(
             "local_path",
             nargs="?",
             metavar="LOCAL_PATH",
-            help="the path to "
-            "which to write the downloaded file. If not provided, the "
-            "filename is guessed from the remote path",
+            help=(
+                "the path to which to write the downloaded file. If not "
+                "provided, the filename is guessed from the remote path"
+            ),
         )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
@@ -2983,8 +3575,10 @@ class SFTPDownloadCommand(Command):
         parser.add_argument(
             "--print",
             action="store_true",
-            help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk",
+            help=(
+                "whether to print the download to stdout. If true, a file is "
+                "NOT written to disk"
+            ),
         )
 
     @staticmethod
@@ -3017,12 +3611,12 @@ class SFTPDownloadDirCommand(Command):
         parser.add_argument(
             "remote_dir",
             metavar="REMOTE_DIR",
-            help="the remote directory to " "download",
+            help="the remote directory to download",
         )
         parser.add_argument(
             "local_dir",
             metavar="LOCAL_DIR",
-            help="the local directory to " "write the downloaded directory",
+            help="the local directory to write the downloaded directory",
         )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
@@ -3056,7 +3650,7 @@ class SFTPDeleteCommand(Command):
         parser.add_argument(
             "remote_path",
             metavar="REMOTE_PATH",
-            help="the remote file to " "delete",
+            help="the remote file to delete",
         )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
@@ -3090,7 +3684,7 @@ class SFTPDeleteDirCommand(Command):
         parser.add_argument(
             "remote_dir",
             metavar="REMOTE_DIR",
-            help="the remote directory to " "delete",
+            help="the remote directory to delete",
         )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
@@ -3204,6 +3798,15 @@ _S3_SEARCH_FIELDS_MAP = {
 
 
 _GCS_SEARCH_FIELDS_MAP = {
+    "bucket": StringSearcher("bucket"),
+    "name": StringSearcher("object_name"),
+    "size": BytesSearcher("size"),
+    "type": StringSearcher("mime_type"),
+    "last_modified": DatetimeSearcher("last_modified"),
+}
+
+
+_MINIO_SEARCH_FIELDS_MAP = {
     "bucket": StringSearcher("bucket"),
     "name": StringSearcher("object_name"),
     "size": BytesSearcher("size"),
@@ -3385,6 +3988,51 @@ def _print_gcs_file_info_table(metadata, show_count=False):
 
 
 def _print_gcs_folder_info_table(metadata):
+    records = [
+        (
+            m["bucket"],
+            m["path"],
+            m["num_files"],
+            _render_bytes(m["size"]),
+            _render_datetime(m["last_modified"]),
+        )
+        for m in metadata
+    ]
+
+    table_str = tabulate(
+        records,
+        headers=["bucket", "path", "num files", "size", "last modified"],
+        tablefmt=_TABLE_FORMAT,
+    )
+
+    print(table_str)
+
+
+def _print_minio_file_info_table(metadata, show_count=False):
+    records = [
+        (
+            m["bucket"],
+            _render_name(m["object_name"]),
+            _render_bytes(m["size"]),
+            m["mime_type"],
+            _render_datetime(m["last_modified"]),
+        )
+        for m in metadata
+    ]
+
+    table_str = tabulate(
+        records,
+        headers=["bucket", "name", "size", "type", "last modified"],
+        tablefmt=_TABLE_FORMAT,
+    )
+
+    print(table_str)
+    if show_count:
+        total_size = _render_bytes(sum(m["size"] for m in metadata))
+        print("\n%d files, %s\n" % (len(records), total_size))
+
+
+def _print_minio_folder_info_table(metadata):
     records = [
         (
             m["bucket"],
