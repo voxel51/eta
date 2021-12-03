@@ -222,6 +222,17 @@ class CanSyncDirectories(object):
     that contains a collection of files of interest.
     """
 
+    def is_folder(self, remote_dir):
+        """Determines whether the given remote folder exists.
+
+        Args:
+            remote_dir: the remote directory
+
+        Returns:
+            True/False
+        """
+        raise NotImplementedError("subclass must implement is_folder()")
+
     def list_files_in_folder(self, remote_dir, recursive=True):
         """Returns a list of the files in the given remote directory.
 
@@ -561,6 +572,17 @@ class LocalStorageClient(StorageClient, CanSyncDirectories):
         """
         etau.delete_file(storage_path)
 
+    def is_folder(self, storage_dir):
+        """Determines whether the given storage directory exists.
+
+        Args:
+            storage_dir: the storage directory
+
+        Returns:
+            True/False
+        """
+        return os.path.isdir(storage_dir)
+
     def list_files_in_folder(self, storage_dir, recursive=True):
         """Returns a list of the files in the given storage directory.
 
@@ -832,6 +854,25 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
             "size": size,
             "last_modified": last_modified,
         }
+
+    def is_folder(self, cloud_folder):
+        """Determines whether the given cloud "folder" contains at least one
+        object.
+
+        Args:
+            cloud_folder: a cloud "folder" path
+
+        Returns:
+            True/False
+        """
+        bucket, folder_name = self._parse_path(cloud_folder)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        resp = self._client.list_objects_v2(
+            Bucket=bucket, Prefix=folder_name, MaxKeys=1
+        )
+        return bool(resp.get("Contents", []))
 
     def list_files_in_folder(
         self, cloud_folder, recursive=True, return_metadata=False
@@ -1950,12 +1991,14 @@ class GoogleCloudStorageClient(
             cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
         """
         bucket_name, folder_name = self._parse_path(cloud_folder)
-        bucket = self._client.get_bucket(bucket_name, retry=self._retry)
-
         if folder_name and not folder_name.endswith("/"):
             folder_name += "/"
 
-        for blob in bucket.list_blobs(prefix=folder_name):
+        blobs = self._client.list_blobs(
+            bucket_name, prefix=folder_name, retry=self._retry
+        )
+
+        for blob in blobs:
             blob.delete()
 
     def get_file_metadata(self, cloud_path):
@@ -2010,6 +2053,25 @@ class GoogleCloudStorageClient(
             "last_modified": last_modified,
         }
 
+    def is_folder(self, cloud_folder):
+        """Determines whether the given GCS "folder" contains at least one
+        object.
+
+        Args:
+            cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
+
+        Returns:
+            True/False
+        """
+        bucket_name, folder_name = self._parse_path(cloud_folder)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        blobs = self._client.list_blobs(
+            bucket_name, max_results=1, prefix=folder_name, retry=self._retry
+        )
+        return bool(list(blobs))
+
     def list_files_in_folder(
         self, cloud_folder, recursive=True, return_metadata=False
     ):
@@ -2030,13 +2092,16 @@ class GoogleCloudStorageClient(
                 for the files in the folder
         """
         bucket_name, folder_name = self._parse_path(cloud_folder)
-        bucket = self._client.get_bucket(bucket_name, retry=self._retry)
-
         if folder_name and not folder_name.endswith("/"):
             folder_name += "/"
 
         delimiter = "/" if not recursive else None
-        blobs = bucket.list_blobs(prefix=folder_name, delimiter=delimiter)
+        blobs = self._client.list_blobs(
+            bucket_name,
+            prefix=folder_name,
+            delimiter=delimiter,
+            retry=self._retry,
+        )
 
         # Return metadata dictionaries for each file
         if return_metadata:
@@ -2460,7 +2525,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             file_id: the ID of a file (or folder)
 
         Returns:
-            True/False whether the file is a folder
+            True/False
         """
         metadata = self._get_file_metadata(file_id, ["mimeType"])
         return self._is_folder(metadata)
