@@ -47,6 +47,7 @@ import requests
 
 try:
     import boto3
+    import botocore
     import botocore.config as bcc
     import google.api_core.exceptions as gae
     import google.api_core.retry as gar
@@ -203,6 +204,17 @@ class StorageClient(object):
                 which must be open for writing
         """
         raise NotImplementedError("subclass must implement download_stream()")
+
+    def is_file(self, remote_path):
+        """Determines whether the given remote file exists.
+
+        Args:
+            remote_path: the remote path
+
+        Returns:
+            True/False
+        """
+        raise NotImplementedError("subclass must implement is_file()")
 
     def delete(self, remote_path):
         """Deletes the file at the remote path.
@@ -572,6 +584,17 @@ class LocalStorageClient(StorageClient, CanSyncDirectories):
         """
         etau.delete_file(storage_path)
 
+    def is_file(self, storage_path):
+        """Determines whether the given file exists in storage.
+
+        Args:
+            storage_path: the path to the storage location
+
+        Returns:
+            True/False
+        """
+        return os.path.isfile(storage_path)
+
     def is_folder(self, storage_dir):
         """Determines whether the given storage directory exists.
 
@@ -854,6 +877,26 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
             "size": size,
             "last_modified": last_modified,
         }
+
+    def is_file(self, cloud_path):
+        """Determines whether the given cloud file exists.
+
+        Args:
+            cloud_path: the cloud path
+
+        Returns:
+            True/False
+        """
+        bucket, object_name = self._parse_path(cloud_path)
+
+        try:
+            self._client.head_object(Bucket=bucket, Key=object_name)
+            return True
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "404":
+                return False
+
+            raise
 
     def is_folder(self, cloud_folder):
         """Determines whether the given cloud "folder" contains at least one
@@ -2053,6 +2096,18 @@ class GoogleCloudStorageClient(
             "last_modified": last_modified,
         }
 
+    def is_file(self, cloud_path):
+        """Determines whether the given GCS file exists.
+
+        Args:
+            cloud_path: the path to the GCS object
+
+        Returns:
+            True/False
+        """
+        blob = self._get_blob(cloud_path)
+        return blob.exists()
+
     def is_folder(self, cloud_folder):
         """Determines whether the given GCS "folder" contains at least one
         object.
@@ -3208,6 +3263,25 @@ class HTTPStorageClient(StorageClient):
                 error
         """
         self._do_download(url, file_obj)
+
+    def is_file(self, url):
+        """Determines whether a file exists at the given URL.
+
+        Args:
+            url: the URL of the file
+
+        Returns:
+            True/False
+        """
+        res = self._session.head(url)
+
+        if res.status_code < 300:
+            return True
+
+        if res.status_code == 404:
+            return False
+
+        res.raise_for_status()
 
     def delete(self, url):
         """Deletes the file at the given URL via a DELETE request.
