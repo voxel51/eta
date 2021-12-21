@@ -494,6 +494,19 @@ def write(img, path):
     cv2.imwrite(path, _exchange_rb(img))
 
 
+def encode(img, ext):
+    """Encodes the given image.
+
+    Args:
+        img: a numpy array
+        ext: the image extension, e.g., `".jpg"`
+
+    Returns:
+        the encoded image bytes
+    """
+    return cv2.imencode(ext, _exchange_rb(img))[1].tobytes()
+
+
 def _get_opencv_imread_flag(flag, include_alpha):
     if flag is not None:
         return flag
