@@ -1632,6 +1632,7 @@ class ModelManager(Configurable, Serializable):
             else:
                 delete_archive = False
 
+            logger.info("Extracting archive '%s'", model_path)
             etau.extract_archive(model_path, delete_archive=delete_archive)
 
     def flush_model(self, model_path):
