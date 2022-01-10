@@ -4230,6 +4230,7 @@ class FFmpeg(object):
         if self.is_input_streaming or self.is_output_streaming:
             self._p.stdin.close()
             self._p.stdout.close()
+            self._p.stderr.close()
             self._p.wait()
         self._p = None
         self.is_input_streaming = False
