@@ -1,7 +1,7 @@
 """
 Core tools and data structures for working with data.
 
-Copyright 2017-2021, Voxel51, Inc.
+Copyright 2017-2022, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin

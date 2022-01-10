@@ -13,7 +13,7 @@
 #       - CUDA 9: tensorflow-gpu~=1.12
 #       - CUDA 10: tensorflow-gpu~=1.15
 #
-# Copyright 2017-2021, Voxel51, Inc.
+# Copyright 2017-2022, Voxel51, Inc.
 # voxel51.com
 #
 

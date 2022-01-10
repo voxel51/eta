@@ -1,7 +1,7 @@
 """
 Core data structures for working with data that can be read/written to disk.
 
-Copyright 2017-2021, Voxel51, Inc.
+Copyright 2017-2022, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin

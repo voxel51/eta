@@ -996,7 +996,7 @@
                     "packages": ["tensorflow>=2|tensorflow-gpu>=2"]
                 }
             },
-            "date_added": "2021-01-6 11:01:34"
+            "date_added": "2022-01-6 11:01:34"
         },
         {
             "base_name": "deeplabv3-cityscapes",

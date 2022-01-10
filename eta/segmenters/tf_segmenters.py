@@ -2,7 +2,7 @@
 Generic interface for performing inference on semantic segmentation models
 stored as frozen TF graphs.
 
-Copyright 2017-2021, Voxel51, Inc.
+Copyright 2017-2022, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin

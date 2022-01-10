@@ -2,7 +2,7 @@
 Interface to the TF-Slim image classification library available at
 https://github.com/voxel51/models/tree/master/research/slim.
 
-Copyright 2017-2021, Voxel51, Inc.
+Copyright 2017-2022, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
