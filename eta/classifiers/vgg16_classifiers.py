@@ -2,7 +2,7 @@
 Classifier interface to the VGG-16 implementation from the `eta.core.vgg16`
 module.
 
-Copyright 2017-2021, Voxel51, Inc.
+Copyright 2017-2022, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin

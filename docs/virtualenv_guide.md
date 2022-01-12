@@ -136,5 +136,5 @@ http://stuarteberg.github.io/conda-docs/_downloads/conda-pip-virtualenv-translat
 
 ## Copyright
 
-Copyright 2017-2021, Voxel51, Inc.<br>
+Copyright 2017-2022, Voxel51, Inc.<br>
 voxel51.com
