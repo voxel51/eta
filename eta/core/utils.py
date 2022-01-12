@@ -2066,10 +2066,12 @@ class ProgressBar(object):
 
         self._max_len = min(max(pstr_len, self._max_len), self._max_width)
         pstr += " " * (self._max_len - pstr_len)
+
         # substitute any characters that can't be printed to stdout
-        pstr = pstr.encode(sys.stdout.encoding, errors="replace").decode(
-            sys.stdout.encoding
-        )
+        if sys.stdout.encoding:
+            pstr = pstr.encode(sys.stdout.encoding, errors="replace").decode(
+                sys.stdout.encoding
+            )
 
         return pstr
 
@@ -2378,7 +2380,7 @@ def copy_file(inpath, outpath, check_ext=False):
         OSError if the copy failed, or if `check_ext == True` and the input and
             output paths have different extensions
     """
-    if not os.path.isdir(outpath) and check_ext:
+    if check_ext and os.path.splitext(outpath)[1]:
         assert_same_extensions(inpath, outpath)
 
     ensure_basedir(outpath)
