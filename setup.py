@@ -6,6 +6,8 @@ Copyright 2017-2022, Voxel51, Inc.
 voxel51.com
 """
 import os
+from pkg_resources import DistributionNotFound, get_distribution
+import re
 from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
@@ -18,6 +20,62 @@ class BdistWheelCustom(bdist_wheel):
         bdist_wheel.finalize_options(self)
         # Pure Python, so build a wheel for any Python version
         self.universal = True
+
+
+INSTALL_REQUIRES = [
+    "argcomplete",
+    "dill",
+    "future",
+    "glob2",
+    "importlib-metadata; python_version<'3.8'",
+    "ndjson",
+    "numpy",
+    "packaging",
+    "patool",
+    "Pillow>=6.2",
+    "python-dateutil",
+    "pytz",
+    "requests",
+    "retrying",
+    "six",
+    "scikit-image",
+    "sortedcontainers",
+    "tabulate",
+    "tzlocal",
+]
+
+
+CHOOSE_INSTALL_REQUIRES = [
+    (
+        (
+            "opencv-python",
+            "opencv-contrib-python",
+            "opencv-contrib-python-headless",
+        ),
+        "opencv-python-headless<5,>=4.1",
+    )
+]
+
+
+def choose_requirement(mains, secondary):
+    chosen = secondary
+    for main in mains:
+        try:
+            name = re.split(r"[!<>=]", main)[0]
+            get_distribution(name)
+            chosen = main
+            break
+        except DistributionNotFound:
+            pass
+
+    return str(chosen)
+
+
+def get_install_requirements(install_requires, choose_install_requires):
+    for mains, secondary in choose_install_requires:
+        install_requires.append(choose_requirement(mains, secondary))
+
+    return install_requires
 
 
 with open("README.md", "r") as fh:
@@ -48,29 +106,9 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),
-    include_package_data=True,
-    install_requires=[
-        "argcomplete",
-        "dill",
-        "future",
-        "glob2",
-        "importlib-metadata; python_version<'3.8'",
-        "ndjson",
-        "numpy",
-        "opencv-python-headless<5,>=4.1",
-        "packaging",
-        "patool",
-        "Pillow>=6.2",
-        "python-dateutil",
-        "pytz",
-        "requests",
-        "retrying",
-        "six",
-        "scikit-image",
-        "sortedcontainers",
-        "tabulate",
-        "tzlocal",
-    ],
+    install_requires=get_install_requirements(
+        INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES
+    ),
     extras_require={
         "pipeline": ["blockdiag", "Sphinx", "sphinxcontrib-napoleon"],
         "storage": [
