@@ -111,7 +111,7 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         self._model_dir = etau.split_archive(model_path)[0]
         if not os.path.isdir(self._model_dir):
             logger.info("Extracting archive '%s'", model_path)
-            etau.extract_archive(model_path, delete_archive=True)
+            etau.extract_archive(model_path)
 
         # Load class labels
         self._labels_map = etal.load_labels_map(self.config.labels_path)

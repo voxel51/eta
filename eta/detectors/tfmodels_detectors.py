@@ -447,7 +447,7 @@ class TF2ModelsDetector(etal.ObjectDetector):
         self._model_dir = etau.split_archive(model_path)[0]
         if not os.path.isdir(self._model_dir):
             logger.info("Extracting archive '%s'", model_path)
-            etau.extract_archive(model_path, delete_archive=True)
+            etau.extract_archive(model_path)
 
         # Load labels
         self._category_index, self._class_labels = _parse_labels_map(
