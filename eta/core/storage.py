@@ -32,18 +32,19 @@ import six
 
 import configparser
 import datetime
+import dateutil.parser
 import io
 import logging
 import os
 import re
+import requests
 
 try:
     import urllib.parse as urlparse  # Python 3
 except ImportError:
     import urlparse  # Python 2
 
-import dateutil.parser
-import requests
+import urllib3
 
 try:
     import boto3
@@ -3125,6 +3126,7 @@ class HTTPStorageClient(StorageClient):
         set_content_type=False,
         chunk_size=None,
         max_pool_connections=None,
+        retry=None,
     ):
         """Creates an HTTPStorageClient instance.
 
@@ -3134,16 +3136,28 @@ class HTTPStorageClient(StorageClient):
             chunk_size: an optional chunk size (in bytes) to use for downloads.
                 By default, `DEFAULT_CHUNK_SIZE` is used
             max_pool_connections: an optional maximum number of connections to
-                keep in the connection pool
+                keep in the connection pool. The default is 10
+            retry: an optional value for the ``max_retries`` parameter of
+                `requests.adapters.HTTPAdapter`. By default, a good general
+                purpose exponential backoff strategy is used
         """
+        if max_pool_connections is None:
+            max_pool_connections = 10
+
+        if retry is None:
+            retry = urllib3.util.retry.Retry(
+                total=10,
+                status_forcelist=[408, 429, 500, 502, 503, 504, 509],
+                backoff_factor=0.1,
+            )
+
         session = requests.Session()
 
-        if max_pool_connections is not None:
-            adapter = requests.adapters.HTTPAdapter(
-                pool_maxsize=max_pool_connections
-            )
-            session.mount("http://", adapter)
-            session.mount("https://", adapter)
+        adapter = requests.adapters.HTTPAdapter(
+            pool_maxsize=max_pool_connections, max_retries=retry
+        )
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
 
         self.set_content_type = set_content_type
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
