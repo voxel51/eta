@@ -594,6 +594,7 @@ class VideoEvent(
         index: (optional) an index assigned to the event
         support: a FrameRanges instance describing the support of the event
         attrs: an AttributeContainer of event-level attributes
+        tags: (optional) a list of tag strings
         objects: a VideoObjectContainer of objects
         frames: dictionary mapping frame numbers to `DetectedEvent`s
     """
@@ -606,6 +607,7 @@ class VideoEvent(
         index=None,
         support=None,
         attrs=None,
+        tags=None,
         objects=None,
         frames=None,
     ):
@@ -620,6 +622,7 @@ class VideoEvent(
             support: (optional) a FrameRanges instance describing the frozen
                 support of the event
             attrs: (optional) an AttributeContainer of event-level attributes
+            tags: (optional) a list of tag strings
             objects: (optional) a VideoObjectContainer of objects
             frames: (optional) dictionary mapping frame numbers to
                 `DetectedEvent`s
@@ -630,6 +633,7 @@ class VideoEvent(
         self.name = name
         self.index = index
         self.attrs = attrs or etad.AttributeContainer()
+        self.tags = tags or []
         self.objects = objects or etao.VideoObjectContainer()
         self.frames = frames or {}
         etal.HasLabelsSupport.__init__(self, support=support)
@@ -663,6 +667,11 @@ class VideoEvent(
     def has_index(self):
         """Whether the event has an index."""
         return self.index is not None
+
+    @property
+    def has_tags(self):
+        """Whether the event has tags."""
+        return bool(self.tags)
 
     @property
     def has_event_attributes(self):
@@ -986,6 +995,8 @@ class VideoEvent(
             _attrs.append("support")
         if self.attrs:
             _attrs.append("attrs")
+        if self.tags:
+            _attrs.append("tags")
         if self.objects:
             _attrs.append("objects")
         if self.frames:
@@ -1091,6 +1102,8 @@ class VideoEvent(
         if attrs is not None:
             attrs = etad.AttributeContainer.from_dict(attrs)
 
+        tags = d.get("tags", None)
+
         objects = d.get("objects", None)
         if objects is not None:
             objects = etao.VideoObjectContainer.from_dict(objects)
@@ -1109,6 +1122,7 @@ class VideoEvent(
             index=d.get("index", None),
             support=support,
             attrs=attrs,
+            tags=tags,
             objects=objects,
             frames=frames,
         )
