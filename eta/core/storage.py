@@ -683,8 +683,8 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
 
         self._role_arn = None
         self._web_identity_token = None
+        self._duration_seconds = None
         self._sts_client = None
-        self._duration = None
 
         session = self._make_session(credentials)
         config = bcc.Config(**kwargs)
@@ -723,13 +723,13 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
 
             try:
                 response = sts_client.get_role(RoleArn=role_arn)
-                duration = response["Role"]["MaxSessionDuration"]
+                duration_seconds = response["Role"]["MaxSessionDuration"]
             except:
-                duration = 3600
+                duration_seconds = 3600
 
             self._role_arn = role_arn
             self._web_identity_token = web_identity_token
-            self._duration = duration
+            self._duration_seconds = duration_seconds
             self._sts_client = sts_client
 
             _credentials = bcr.RefreshableCredentials.create_from_metadata(
@@ -754,7 +754,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
             RoleArn=self._role_arn,
             RoleSessionName="voxel51",
             WebIdentityToken=self._web_identity_token,
-            DurationSeconds=self._duration,
+            DurationSeconds=self._duration_seconds,
         )
 
         return {
