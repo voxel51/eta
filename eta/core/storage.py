@@ -681,6 +681,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
         self.alias = alias
         self.endpoint_url = endpoint_url
 
+        self._prefixes = tuple(prefixes)
         self._role_arn = None
         self._web_identity_token = None
         self._duration_seconds = None
@@ -690,7 +691,6 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
         config = bcc.Config(**kwargs)
         client = session.client("s3", endpoint_url=endpoint_url, config=config)
 
-        self._prefixes = tuple(prefixes)
         self._session = session
         self._client = client
 
