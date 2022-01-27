@@ -643,8 +643,8 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
 
                 -   credentials to be passed to `boto3` via
                     `boto3.client("s3", **credentials)`
-                -   a dict with `"role_arn"` and `"web_identity_token"` keys
-                    containing IAM role credentials
+                -   a dict with `"role_arn"` and `"web_identity_token_file"`
+                    keys containing IAM role credentials
             alias: a prefix for all cloud path strings, e.g., "s3"
             endpoint_url: the storage endpoint, if different from the default
                 AWS service endpoint
@@ -683,7 +683,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
 
         self._prefixes = tuple(prefixes)
         self._role_arn = None
-        self._web_identity_token = None
+        self._web_identity_token_file = None
         self._duration_seconds = None
         self._sts_client = None
 
@@ -710,13 +710,13 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
             # Create session from permanent credentials
             if (
                 "role_arn" not in credentials
-                or "web_identity_token" not in credentials
+                or "web_identity_token_file" not in credentials
             ):
                 return boto3.Session(**credentials)
 
             # Create session with autorefreshing temporary credentials
             role_arn = credentials["role_arn"]
-            web_identity_token = credentials["web_identity_token"]
+            web_identity_token_file = credentials["web_identity_token_file"]
             region_name = credentials.get("region_name", None)
 
             sts_client = boto3.client("sts", region_name=region_name)
@@ -728,7 +728,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
                 duration_seconds = 3600
 
             self._role_arn = role_arn
-            self._web_identity_token = web_identity_token
+            self._web_identity_token_file = web_identity_token_file
             self._duration_seconds = duration_seconds
             self._sts_client = sts_client
 
@@ -753,7 +753,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
         response = self._sts_client.assume_role_with_web_identity(
             RoleArn=self._role_arn,
             RoleSessionName="voxel51",
-            WebIdentityToken="file://" + self._web_identity_token,
+            WebIdentityToken="file://" + self._web_identity_token_file,
             DurationSeconds=self._duration_seconds,
         )
 
@@ -1378,7 +1378,7 @@ class NeedsAWSCredentials(object):
             )
             credentials = {
                 "role_arn": os.environ["AWS_ROLE_ARN"],
-                "web_identity_token": os.environ[
+                "web_identity_token_file": os.environ[
                     "AWS_WEB_IDENTITY_TOKEN_FILE"
                 ],
             }
