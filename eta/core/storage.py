@@ -753,7 +753,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
         response = self._sts_client.assume_role_with_web_identity(
             RoleArn=self._role_arn,
             RoleSessionName="voxel51",
-            WebIdentityToken=self._web_identity_token,
+            WebIdentityToken="file://" + self._web_identity_token,
             DurationSeconds=self._duration_seconds,
         )
 
