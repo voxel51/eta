@@ -49,6 +49,8 @@ try:
     import boto3
     import botocore
     import botocore.config as bcc
+    import botocore.credentials as bcr
+    import botocore.session as bcs
     import google.api_core.exceptions as gae
     import google.api_core.retry as gar
     import google.cloud.storage as gcs
@@ -636,8 +638,13 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
         """Creates a _BotoStorageClient instance.
 
         Args:
-            credentials: a credentials dictionary to be passed to `boto3` via
-                `boto3.client("s3", **credentials)`
+            credentials: a credentials dictionary, which must contain one of
+                the following:
+
+                -   credentials to be passed to `boto3` via
+                    `boto3.client("s3", **credentials)`
+                -   a dict with `"role_arn"` and `"web_identity_token_file"`
+                    keys to use to generate credentials
             alias: a prefix for all cloud path strings, e.g., "s3"
             endpoint_url: the storage endpoint, if different from the default
                 AWS service endpoint
@@ -646,9 +653,6 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
             **kwargs: optional configuration options for
                 `botocore.config.Config(**kwargs)`
         """
-        self.alias = alias
-        self.endpoint_url = endpoint_url
-
         prefixes = []
 
         if alias is not None:
@@ -662,8 +666,6 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
                 "At least one of `alias` and `endpoint_url` must be provided"
             )
 
-        self._prefixes = tuple(prefixes)
-
         if "retries" not in kwargs:
             kwargs["retries"] = {"max_attempts": 10, "mode": "standard"}
 
@@ -676,25 +678,90 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
         ):
             kwargs["max_pool_connections"] = max_pool_connections
 
+        self.alias = alias
+        self.endpoint_url = endpoint_url
+
+        self._prefixes = tuple(prefixes)
+        self._role_arn = None
+        self._web_identity_token = None
+        self._duration_seconds = None
+        self._sts_client = None
+
+        session = self._make_session(credentials)
+        config = bcc.Config(**kwargs)
+        client = session.client("s3", endpoint_url=endpoint_url, config=config)
+
+        self._session = session
+        self._client = client
+
+    def _make_session(self, credentials):
         #
-        # We allow users to provide credentials via numerous options, which
-        # have already been parsed from above. However, the AWS libraries seem
-        # to complain when a profile is specified whose credentials aren't
-        # configured via environment variables or `~/.aws/credentials`.
+        # We allow users to provide credentials via a dictionary. However, the
+        # AWS libraries seem to complain when a profile is specified whose
+        # credentials aren't configured via environment variables or
+        # `~/.aws/credentials`.
         #
-        # Temporarily hiding the `AWS_PROFILE` env var when creating the client
-        # with manually provided credentials as kwargs bypasses the issue
+        # Temporarily hiding the `AWS_PROFILE` environment varible when
+        # creating the session below seems to bypass the issue
         #
         aws_profile = os.environ.pop("AWS_PROFILE", None)
 
         try:
-            config = bcc.Config(**kwargs)
-            self._client = boto3.client(
-                "s3", endpoint_url=endpoint_url, config=config, **credentials,
+            # Create session from permanent credentials
+            if "role_arn" not in credentials:
+                return boto3.Session(**credentials)
+
+            # Create session with autorefreshing temporary credentials
+            role_arn = credentials["role_arn"]
+            web_identity_token_file = credentials["web_identity_token_file"]
+            region_name = credentials.get("region_name", None)
+
+            web_identity_token = etau.read_file(web_identity_token_file)
+
+            sts_client = boto3.client("sts", region_name=region_name)
+
+            try:
+                response = sts_client.get_role(RoleArn=role_arn)
+                duration_seconds = response["Role"]["MaxSessionDuration"]
+            except:
+                duration_seconds = 3600
+
+            self._role_arn = role_arn
+            self._web_identity_token = web_identity_token
+            self._duration_seconds = duration_seconds
+            self._sts_client = sts_client
+
+            _credentials = bcr.RefreshableCredentials.create_from_metadata(
+                metadata=self._refresh_temporary_credentials(),
+                refresh_using=self._refresh_temporary_credentials,
+                method="assume-role-with-web-identity",
+            )
+
+            session = bcs.get_session()
+            session._credentials = _credentials
+            session.set_config_variable("region", region_name)
+
+            return boto3.Session(
+                botocore_session=session, region_name=region_name
             )
         finally:
             if aws_profile is not None:
                 os.environ["AWS_PROFILE"] = aws_profile
+
+    def _refresh_temporary_credentials(self):
+        response = self._sts_client.assume_role_with_web_identity(
+            RoleArn=self._role_arn,
+            RoleSessionName="voxel51",
+            WebIdentityToken=self._web_identity_token,
+            DurationSeconds=self._duration_seconds,
+        )
+
+        return {
+            "access_key": response["Credentials"]["AccessKeyId"],
+            "secret_key": response["Credentials"]["SecretAccessKey"],
+            "token": response["Credentials"]["SessionToken"],
+            "expiry_time": response["Credentials"]["Expiration"].isoformat(),
+        }
 
     def upload(self, local_path, cloud_path, content_type=None, metadata=None):
         """Uploads the file to the cloud.
@@ -1160,6 +1227,12 @@ class NeedsAWSCredentials(object):
         (4) setting the `AWS_CONFIG_FILE` environment variable to point to a
             valid credentials `.ini` file
 
+        (4) generating auto-refreshing temporary credentials from an IAM role
+            configured via the following environment variables:
+
+            -   `AWS_ROLE_ARN`
+            -   `AWS_WEB_IDENTITY_TOKEN_FILE`
+
         (5) loading credentials from `~/.eta/aws-credentials.ini` that have
             been activated via `cls.activate_credentials()`
 
@@ -1294,6 +1367,30 @@ class NeedsAWSCredentials(object):
                 "AWS_CONFIG_FILE='%s'",
                 credentials_path,
             )
+        elif (
+            "AWS_ROLE_ARN" in os.environ
+            and "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ
+        ):
+            logger.debug(
+                "Loading role ARN and web identity token file from "
+                "'AWS_ROLE_ARN' and 'AWS_WEB_IDENTITY_TOKEN_FILE' environment "
+                "variables"
+            )
+            credentials = {
+                "role_arn": os.environ["AWS_ROLE_ARN"],
+                "web_identity_token_file": os.environ[
+                    "AWS_WEB_IDENTITY_TOKEN_FILE"
+                ],
+            }
+
+            if "AWS_DEFAULT_REGION" in os.environ:
+                logger.debug(
+                    "Loading region from 'AWS_DEFAULT_REGION' environment "
+                    "variable"
+                )
+                credentials["region"] = os.environ["AWS_DEFAULT_REGION"]
+
+            return credentials, None
         elif cls.has_active_credentials():
             credentials_path = cls.CREDENTIALS_PATH
             logger.debug(
