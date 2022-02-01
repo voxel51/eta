@@ -1466,7 +1466,7 @@ class ProgressBar(object):
     `start()` to start the task, call `pause()` before any `print` statements,
     and call `close()` when the task is finalized.
 
-    `ProgressBar`s can optionally be configured to print any of the following
+    `ProgressBar` can optionally be configured to print any of the following
     statistics about the task:
 
     -   the elapsed time since the task was started
