@@ -1067,6 +1067,7 @@ def convert_object_to_polygon(dobj, tolerance=2, filled=True):
     return etap.Polyline(
         name=dobj.name,
         label=dobj.label,
+        confidence=dobj.confidence,
         index=dobj.index,
         points=points,
         closed=True,
