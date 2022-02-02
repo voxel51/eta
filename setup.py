@@ -42,6 +42,7 @@ INSTALL_REQUIRES = [
     "sortedcontainers",
     "tabulate",
     "tzlocal",
+    "urllib3",
 ]
 
 

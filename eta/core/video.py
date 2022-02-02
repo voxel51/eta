@@ -2526,7 +2526,6 @@ def extract_clip(
         # Slower, more accurate option
         ffmpeg -ss <start_time> -i <video_path> -t <duration> <output_path>
 
-
     When fast is True, the following two-step ffmpeg process is used::
 
         # Faster, less accurate option
