@@ -2784,7 +2784,8 @@ def ensure_dir(dirname):
     Args:
         dirname: the directory path
     """
-    os.makedirs(dirname, exist_ok=True)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
 
 
 def has_extension(filename, *args):
