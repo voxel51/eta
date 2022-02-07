@@ -103,7 +103,7 @@ def read_json(path):
         ValueError: if the JSON file was invalid
     """
     try:
-        with open(path, "rt") as f:
+        with open(path, "rt", encoding='utf-8') as f:
             return json.load(f)
     except ValueError:
         raise ValueError("Unable to parse JSON file '%s'" % path)
