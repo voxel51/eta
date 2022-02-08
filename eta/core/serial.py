@@ -36,11 +36,13 @@ import zlib
 
 import ndjson
 import numpy as np
+from chardet.universaldetector import UniversalDetector
 
 import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
+encoding_detector = UniversalDetector()
 
 
 def load_json(path_or_str):
@@ -90,6 +92,19 @@ def _load_json(str_or_bytes):
         return json.loads(str_or_bytes.decode("utf-8"))
 
 
+def _detect_encoding(path):
+    encoding_detector.reset()
+    try:
+        for line in open(path, 'rb'):
+            encoding_detector.feed(line)
+            if encoding_detector.done:
+                break
+    except ValueError:
+        raise ValueError("Unable to parse JSON file '%s'" % path)
+    encoding_detector.close()
+    return encoding_detector.result['encoding']
+
+
 def read_json(path):
     """Reads JSON from file.
 
@@ -102,8 +117,9 @@ def read_json(path):
     Raises:
         ValueError: if the JSON file was invalid
     """
+    file_encoding = _detect_encoding(path)
     try:
-        with open(path, "rt", encoding='utf-8') as f:
+        with open(path, "rt", encoding=file_encoding) as f:
             return json.load(f)
     except ValueError:
         raise ValueError("Unable to parse JSON file '%s'" % path)
