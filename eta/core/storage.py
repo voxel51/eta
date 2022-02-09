@@ -684,7 +684,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
 
         self._prefixes = tuple(prefixes)
         self._role_arn = None
-        self._web_identity_token = None
+        self._web_identity_token_file = None
         self._duration_seconds = None
         self._sts_client = None
 
@@ -712,12 +712,10 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
             if "role_arn" not in credentials:
                 return boto3.Session(**credentials)
 
-            # Create session with autorefreshing temporary credentials
+            # Create session with auto-refreshing temporary credentials
             role_arn = credentials["role_arn"]
             web_identity_token_file = credentials["web_identity_token_file"]
             region_name = credentials.get("region_name", None)
-
-            web_identity_token = etau.read_file(web_identity_token_file)
 
             sts_client = boto3.client("sts", region_name=region_name)
 
@@ -728,7 +726,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
                 duration_seconds = 3600
 
             self._role_arn = role_arn
-            self._web_identity_token = web_identity_token
+            self._web_identity_token_file = web_identity_token_file
             self._duration_seconds = duration_seconds
             self._sts_client = sts_client
 
@@ -750,10 +748,14 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
                 os.environ["AWS_PROFILE"] = aws_profile
 
     def _refresh_temporary_credentials(self):
+        # This token is refreshed periodically, so we re-read it just in case
+        # https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection
+        web_identity_token = etau.read_file(self._web_identity_token_file)
+
         response = self._sts_client.assume_role_with_web_identity(
             RoleArn=self._role_arn,
             RoleSessionName="voxel51",
-            WebIdentityToken=self._web_identity_token,
+            WebIdentityToken=web_identity_token,
             DurationSeconds=self._duration_seconds,
         )
 
