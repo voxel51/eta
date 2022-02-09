@@ -1017,7 +1017,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
             kwargs["Delimiter"] = "/"
 
         paths_or_metadata = []
-        prefix = self._prefixes[0] + bucket
+        prefix = self._get_prefix(cloud_folder) + bucket
         while True:
             resp = self._client.list_objects_v2(**kwargs)
 
@@ -1180,6 +1180,9 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
             "etag": obj["ETag"][1:-1],
             "metadata": obj.get("Metadata", {}),
         }
+
+    def _get_prefix(self, cloud_path):
+        return _get_prefix(cloud_path, self._prefixes)
 
     def _strip_prefix(self, cloud_path):
         _cloud_path = _strip_prefix(cloud_path, self._prefixes)
@@ -3881,12 +3884,21 @@ def _to_bytes(val, encoding="utf-8"):
     return bytes_str
 
 
-def _strip_prefix(path, prefixes):
+def _get_prefix(path, prefixes):
     if not path:
         return None
 
     for prefix in prefixes:
         if path.startswith(prefix):
-            return path[len(prefix) :]
+            return prefix
+
+    return None
+
+
+def _strip_prefix(path, prefixes):
+    prefix = _get_prefix(path, prefixes)
+
+    if prefix:
+        return path[len(prefix): ]
 
     return None
