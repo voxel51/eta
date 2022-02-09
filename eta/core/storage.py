@@ -279,6 +279,7 @@ class CanSyncDirectories(object):
                 default, this is True
             skip_failures: whether to skip failures. By default, this is False
         """
+        remote_dir = remote_dir.rstrip("/")
         files = etau.list_files(local_dir, recursive=recursive)
         if not files:
             return
@@ -286,7 +287,7 @@ class CanSyncDirectories(object):
         logger.info("Uploading %d files to '%s'", len(files), remote_dir)
         for f in files:
             local_path = os.path.join(local_dir, f)
-            remote_path = os.path.join(remote_dir, f)
+            remote_path = remote_dir + "/" + f
             self._do_upload_sync(local_path, remote_path, skip_failures)
 
     def upload_dir_sync(
@@ -315,6 +316,7 @@ class CanSyncDirectories(object):
                 default, this is True
             skip_failures: whether to skip failures. By default, this is False
         """
+        remote_dir = remote_dir.rstrip("/")
         local_files = set(etau.list_files(local_dir, recursive=recursive))
         remote_files = set(
             os.path.relpath(f, remote_dir)
@@ -335,7 +337,7 @@ class CanSyncDirectories(object):
                 "Deleting %d files from '%s'", len(delete_files), remote_dir
             )
             for f in delete_files:
-                remote_path = os.path.join(remote_dir, f)
+                remote_path = remote_dir + "/" + f
                 self._do_remote_delete_sync(remote_path, skip_failures)
 
         if upload_files:
@@ -344,7 +346,7 @@ class CanSyncDirectories(object):
             )
             for f in upload_files:
                 local_path = os.path.join(local_dir, f)
-                remote_path = os.path.join(remote_dir, f)
+                remote_path = remote_dir + "/" + f
                 self._do_upload_sync(local_path, remote_path, skip_failures)
 
     def download_dir(
@@ -363,6 +365,7 @@ class CanSyncDirectories(object):
                 default, this is True
             skip_failures: whether to skip failures. By default, this is False
         """
+        remote_dir = remote_dir.rstrip("/")
         remote_paths = self.list_files_in_folder(
             remote_dir, recursive=recursive
         )
@@ -404,6 +407,7 @@ class CanSyncDirectories(object):
                 default, this is True
             skip_failures: whether to skip failures. By default, this is False
         """
+        remote_dir = remote_dir.rstrip("/")
         remote_files = set(
             os.path.relpath(f, remote_dir)
             for f in self.list_files_in_folder(remote_dir, recursive=recursive)
@@ -432,7 +436,7 @@ class CanSyncDirectories(object):
                 "Downloading %d files to '%s'", len(download_files), local_dir
             )
             for f in download_files:
-                remote_path = os.path.join(remote_dir, f)
+                remote_path = remote_dir + "/" + f
                 local_path = os.path.join(local_dir, f)
                 self._do_download_sync(remote_path, local_path, skip_failures)
 
@@ -1013,7 +1017,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
             kwargs["Delimiter"] = "/"
 
         paths_or_metadata = []
-        prefix = self._prefixes[0] + bucket
+        prefix = self._get_prefix(cloud_folder) + bucket
         while True:
             resp = self._client.list_objects_v2(**kwargs)
 
@@ -1025,7 +1029,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
                             self._get_object_metadata(bucket, obj)
                         )
                     else:
-                        paths_or_metadata.append(os.path.join(prefix, path))
+                        paths_or_metadata.append(prefix + "/" + path)
 
             try:
                 kwargs["ContinuationToken"] = resp["NextContinuationToken"]
@@ -1176,6 +1180,9 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
             "etag": obj["ETag"][1:-1],
             "metadata": obj.get("Metadata", {}),
         }
+
+    def _get_prefix(self, cloud_path):
+        return _get_prefix(cloud_path, self._prefixes)
 
     def _strip_prefix(self, cloud_path):
         _cloud_path = _strip_prefix(cloud_path, self._prefixes)
@@ -2270,7 +2277,7 @@ class GoogleCloudStorageClient(
         prefix = "gs://" + bucket_name
         for blob in blobs:
             if not blob.name.endswith("/"):
-                paths.append(os.path.join(prefix, blob.name))
+                paths.append(prefix + "/" + blob.name)
 
         return paths
 
@@ -2737,7 +2744,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             for folder in folders:
                 for f in self.list_subfolders(folder["id"], recursive=True):
                     # Embed <root>/<subdir> namespace in folder name
-                    f["name"] = os.path.join(folder["name"], f["name"])
+                    f["name"] = folder["name"] + "/" + f["name"]
                     folders.append(f)
 
         return [self._parse_folder_metadata(f) for f in folders]
@@ -2766,7 +2773,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 )
                 for f in contents:
                     # Embed <folder-name>/<file-name> namespace in filename
-                    f["name"] = os.path.join(folder["name"], f["name"])
+                    f["name"] = folder["name"] + "/" + f["name"]
                     files.append(f)
 
         return files
@@ -3877,12 +3884,21 @@ def _to_bytes(val, encoding="utf-8"):
     return bytes_str
 
 
-def _strip_prefix(path, prefixes):
+def _get_prefix(path, prefixes):
     if not path:
         return None
 
     for prefix in prefixes:
         if path.startswith(prefix):
-            return path[len(prefix) :]
+            return prefix
+
+    return None
+
+
+def _strip_prefix(path, prefixes):
+    prefix = _get_prefix(path, prefixes)
+
+    if prefix:
+        return path[len(prefix): ]
 
     return None
