@@ -187,12 +187,12 @@ class GoogleDriveSession(WebSession):
 
     def get(self, fid):
         return super(GoogleDriveSession, self).get(
-            self.BASE_URL, params={"id": fid}
+            self.BASE_URL, params={"id": fid, "confirm": "t"}
         )
 
     def write(self, path, fid):
         return super(GoogleDriveSession, self).write(
-            path, self.BASE_URL, params={"id": fid}
+            path, self.BASE_URL, params={"id": fid, "confirm": "t"}
         )
 
     def _get_streaming_response(self, url, params=None):
