@@ -1128,7 +1128,16 @@ def _draw_keypoints(img, keypoints, annotation_config):
     color = _parse_hex_color(colormap.get_color(title_hash))
 
     # Render coordinates for image
-    points = keypoints.coords_in(img=img)
+    frame_size = np.array(etai.to_frame_size(img=img))
+    points = np.array(keypoints.points, dtype=float)  # converts None -> NaN
+
+    # Keypoints can be nan/inf, in which case they aren't rendered
+    points = points[np.isfinite(points).all(axis=1)]
+
+    if len(points) == 0:
+        return img
+
+    points = np.rint(frame_size * points).astype(int)
 
     #
     # Draw keypoints
