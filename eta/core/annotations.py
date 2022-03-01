@@ -135,8 +135,8 @@ class AnnotationConfig(Config):
             available
         show_keypoints_labels: (True) whether to render keypoints labels, if
             available
-        show_keypoints_attrs: (True) whether to render keypoints attributes, if
-            available
+        show_keypoints_attrs: (True) whether to render keypoints attributes,
+            if available
         show_keypoints_attr_names: (True) whether to render keypoint attribute
             names, if available
         show_keypoints_attr_confidences: (False) whether to render keypoint
@@ -145,8 +145,25 @@ class AnnotationConfig(Config):
             different names in different colors
         per_keypoints_label_colors: (True) whether to render keypoints with
             different labels in different colors
-        keypoints_size: (4) the size to render keypoints
+        keypoints_size: (6) the size to render keypoints
         keypoints_alpha: (0.75) the transparency of keypoints
+        keypoints_skeleton: (None) an optional keypoint skeleton dictionary of
+            the following form::
+
+                {
+                    "labels": [
+                        "left hand" "left shoulder", "right shoulder",
+                        "right hand", "left eye", "right eye", "mouth"
+                    ],
+                    "edges": [[0, 1, 2, 3], [4, 5, 6]],
+                }
+
+        draw_keypoints_skeletons: (True) whether to render keypoint skeletons,
+            if available
+        keypoints_edge_linewidth (2): the linewidth, in pixels, of keypoint
+            skeleton edges
+        keypoints_edge_alpha: (0.75) the transparency of keypoint skeleton
+            edges
         show_polyline_names: (True) whether to render polyline names, if
             available
         show_polyline_labels: (True) whether to render polyline labels, if
@@ -372,7 +389,7 @@ class AnnotationConfig(Config):
             d, "show_keypoints_attr_names", default=True
         )
         self.show_keypoints_attr_confidences = self.parse_bool(
-            d, "show_keypoints_attr_confidences", default=True
+            d, "show_keypoints_attr_confidences", default=False
         )
         self.per_keypoints_name_colors = self.parse_bool(
             d, "per_keypoints_name_colors", default=True
@@ -380,9 +397,21 @@ class AnnotationConfig(Config):
         self.per_keypoints_label_colors = self.parse_bool(
             d, "per_keypoints_label_colors", default=True
         )
-        self.keypoints_size = self.parse_number(d, "keypoints_size", default=4)
+        self.keypoints_size = self.parse_number(d, "keypoints_size", default=6)
         self.keypoints_alpha = self.parse_number(
             d, "keypoints_alpha", default=0.75
+        )
+        self.keypoints_skeleton = self.parse_dict(
+            d, "keypoints_skeleton", default=None
+        )
+        self.draw_keypoints_skeletons = self.parse_bool(
+            d, "draw_keypoints_skeletons", default=True
+        )
+        self.keypoints_edge_linewidth = self.parse_number(
+            d, "keypoints_edge_linewidth", default=2
+        )
+        self.keypoints_edge_alpha = self.parse_number(
+            d, "keypoints_edge_alpha", default=0.75
         )
 
         # POLYLINES ###########################################################
@@ -400,7 +429,7 @@ class AnnotationConfig(Config):
             d, "show_polyline_attr_names", default=True
         )
         self.show_polyline_attr_confidences = self.parse_bool(
-            d, "show_polyline_attr_confidences", default=True
+            d, "show_polyline_attr_confidences", default=False
         )
         self.hide_non_filled_polyline_annos = self.parse_bool(
             d, "hide_non_filled_polyline_annos", default=False
@@ -1087,6 +1116,15 @@ def _draw_keypoints(img, keypoints, annotation_config):
         )
     )
     gap = annotation_config.linewidth
+    skeleton = annotation_config.keypoints_skeleton
+    draw_skeletons = annotation_config.draw_keypoints_skeletons
+    edge_linewidth = int(
+        round(
+            annotation_config.scale_factor
+            * annotation_config.keypoints_edge_linewidth
+        )
+    )
+    edge_alpha = annotation_config.keypoints_edge_alpha
 
     colormap = annotation_config.colormap
 
@@ -1130,31 +1168,49 @@ def _draw_keypoints(img, keypoints, annotation_config):
     # Render coordinates for image
     frame_size = np.array(etai.to_frame_size(img=img))
     points = np.array(keypoints.points, dtype=float)  # converts None -> NaN
+    points = np.nan_to_num(points, nan=-1, posinf=-1, neginf=-1)
+    points = np.rint(frame_size * points).astype(np.int32)
+    _points = points[(points >= 0).all(axis=1)]  # omits nans
 
-    # Keypoints can be nan/inf, in which case they aren't rendered
-    points = points[np.isfinite(points).all(axis=1)]
-
-    if len(points) == 0:
+    if len(_points) == 0:
         return img
-
-    points = np.rint(frame_size * points).astype(int)
 
     #
     # Draw keypoints
     #
 
     overlay = img.copy()
+    img_anno = img
 
-    for x, y in points:
+    # Draw skeleton
+    if draw_skeletons and skeleton is not None:
+        edges = []
+        for e in skeleton["edges"]:
+            pts = points[e]
+            missing = np.nonzero((pts < 0).any(axis=1))[0]
+            if missing.size > 0:
+                edges.extend(np.split(pts, missing))
+            else:
+                edges.append(pts)
+
+        overlay = cv2.polylines(
+            overlay, edges, False, color, thickness=edge_linewidth
+        )
+        img_anno = cv2.addWeighted(
+            overlay, edge_alpha, img_anno, 1 - edge_alpha, 0
+        )
+
+    # Draw points
+    for x, y in _points:
         overlay = cv2.circle(overlay, (x, y), size, color, thickness=-1)
 
-    img_anno = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
+    img_anno = cv2.addWeighted(overlay, alpha, img_anno, 1 - alpha, 0)
 
     #
     # Draw title string
     #
 
-    tcx, tcy = points[int(round(0.5 * len(points)))]
+    tcx, tcy = _points[0]
     tcx += size
     tcy += size
     ttlx, ttly, tw, th = _get_panel_coords(
