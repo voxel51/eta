@@ -1185,20 +1185,26 @@ def _draw_keypoints(img, keypoints, annotation_config):
     # Draw skeleton
     if draw_skeletons and skeleton is not None:
         edges = []
-        for e in skeleton["edges"]:
-            pts = points[e]
-            missing = np.nonzero((pts < 0).any(axis=1))[0]
-            if missing.size > 0:
-                edges.extend(np.split(pts, missing))
-            else:
-                edges.append(pts)
+        for inds in skeleton["edges"]:
+            segment = []
+            for pt in points[inds]:
+                if pt[0] < 0 or pt[1] < 0:
+                    if segment:
+                        edges.append(np.array(segment))
+                        segment = []
+                else:
+                    segment.append(pt)
 
-        overlay = cv2.polylines(
-            overlay, edges, False, color, thickness=edge_linewidth
-        )
-        img_anno = cv2.addWeighted(
-            overlay, edge_alpha, img_anno, 1 - edge_alpha, 0
-        )
+            if segment:
+                edges.append(np.array(segment))
+
+        if edges:
+            overlay = cv2.polylines(
+                overlay, edges, False, color, thickness=edge_linewidth
+            )
+            img_anno = cv2.addWeighted(
+                overlay, edge_alpha, img_anno, 1 - edge_alpha, 0
+            )
 
     # Draw points
     for x, y in _points:
