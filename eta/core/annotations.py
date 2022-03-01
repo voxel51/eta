@@ -135,8 +135,8 @@ class AnnotationConfig(Config):
             available
         show_keypoints_labels: (True) whether to render keypoints labels, if
             available
-        show_keypoints_attrs: (True) whether to render keypoints attributes,
-            if available
+        show_keypoints_attrs: (True) whether to render keypoints attributes, if
+            available
         show_keypoints_attr_names: (True) whether to render keypoint attribute
             names, if available
         show_keypoints_attr_confidences: (False) whether to render keypoint
