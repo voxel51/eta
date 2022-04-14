@@ -39,7 +39,7 @@ class Keypoints(etal.Labels):
         label: (optional) keypoints label
         index: (optional) an index assigned to the keypoints
         points: a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
-        confidences: (optional) a list of per-point confidences in ``[0, 1]``
+        confidence: (optional) a list of per-point confidences in ``[0, 1]``
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
             attributes for the keypoints
         tags: (optional) a list of tag strings
@@ -50,7 +50,7 @@ class Keypoints(etal.Labels):
         label (None): a label for the keypoints
         index (None): an integer index assigned to the keypoints
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
-        confidences (None): a list of per-point confidences in ``[0, 1]``
+        confidence (None): a list of per-point confidences in ``[0, 1]``
         attrs (None): an :class:`eta.core.data.AttributeContainer` of
             attributes for the keypoints
         tags (None): a list of tag strings
@@ -62,7 +62,7 @@ class Keypoints(etal.Labels):
         label=None,
         index=None,
         points=None,
-        confidences=None,
+        confidence=None,
         attrs=None,
         tags=None,
     ):
@@ -71,7 +71,7 @@ class Keypoints(etal.Labels):
         self.label = label
         self.index = index
         self.points = points or []
-        self.confidences = confidences
+        self.confidence = confidence
         self.attrs = attrs or etad.AttributeContainer()
         self.tags = tags or []
 
@@ -91,9 +91,9 @@ class Keypoints(etal.Labels):
         return self.label is not None
 
     @property
-    def has_confidences(self):
-        """Whether the keypoints have ``confidences``."""
-        return self.confidences is not None
+    def has_confidence(self):
+        """Whether the keypoints have ``confidence``."""
+        return self.confidence is not None
 
     @property
     def has_index(self):
@@ -238,8 +238,8 @@ class Keypoints(etal.Labels):
             _attrs.append("name")
         if self.label:
             _attrs.append("label")
-        if self.confidences:
-            _attrs.append("confidences")
+        if self.confidence:
+            _attrs.append("confidence")
         if self.index:
             _attrs.append("index")
         if self.attrs:
@@ -301,7 +301,7 @@ class Keypoints(etal.Labels):
         """
         name = d.get("name", None)
         label = d.get("label", None)
-        confidences = d.get("confidences", None)
+        confidence = d.get("confidence", None)
         index = (d.get("index", None),)
         points = d.get("points", None)
         tags = d.get("tags", None)
@@ -315,7 +315,7 @@ class Keypoints(etal.Labels):
             label=label,
             index=index,
             points=points,
-            confidences=confidences,
+            confidence=confidence,
             attrs=attrs,
             tags=tags,
         )
