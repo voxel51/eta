@@ -37,9 +37,9 @@ class Keypoints(etal.Labels):
         name: (optional) the name for the keypoints, e.g., ``ground_truth`` or
             the name of the model that produced it
         label: (optional) keypoints label
-        confidence: (optional) a confidence for the keypoints, in ``[0, 1]``
         index: (optional) an index assigned to the keypoints
         points: a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
+        confidence: (optional) a list of per-point confidences in ``[0, 1]``
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
             attributes for the keypoints
         tags: (optional) a list of tag strings
@@ -48,9 +48,9 @@ class Keypoints(etal.Labels):
         name (None): a name for the keypoints, e.g., ``ground_truth`` or the
             name of the model that produced it
         label (None): a label for the keypoints
-        confidence (None): a confidence for the keypoints, in ``[0, 1]``
         index (None): an integer index assigned to the keypoints
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
+        confidence (None): a list of per-point confidences in ``[0, 1]``
         attrs (None): an :class:`eta.core.data.AttributeContainer` of
             attributes for the keypoints
         tags (None): a list of tag strings
@@ -60,18 +60,18 @@ class Keypoints(etal.Labels):
         self,
         name=None,
         label=None,
-        confidence=None,
         index=None,
         points=None,
+        confidence=None,
         attrs=None,
         tags=None,
     ):
         self.type = etau.get_class_name(self)
         self.name = name
         self.label = label
-        self.confidence = confidence
         self.index = index
         self.points = points or []
+        self.confidence = confidence
         self.attrs = attrs or etad.AttributeContainer()
         self.tags = tags or []
 
@@ -92,7 +92,7 @@ class Keypoints(etal.Labels):
 
     @property
     def has_confidence(self):
-        """Whether the keypoints has a ``confidence``."""
+        """Whether the keypoints have ``confidence``."""
         return self.confidence is not None
 
     @property
@@ -313,9 +313,9 @@ class Keypoints(etal.Labels):
         return cls(
             name=name,
             label=label,
-            confidence=confidence,
             index=index,
             points=points,
+            confidence=confidence,
             attrs=attrs,
             tags=tags,
         )
@@ -361,16 +361,6 @@ class KeypointsContainer(etal.LabelsContainer):
         """
         for keypoints in self:
             keypoints.clear_index()
-
-    def sort_by_confidence(self, reverse=False):
-        """Sorts the :class:`Keypoints` instances by confidence.
-
-        Keypoints whose confidence is ``None`` are always put last.
-
-        Args:
-            reverse (False): whether to sort in descending order
-        """
-        self.sort_by("confidence", reverse=reverse)
 
     def sort_by_index(self, reverse=False):
         """Sorts the :class:`Keypoints` instances by index.
