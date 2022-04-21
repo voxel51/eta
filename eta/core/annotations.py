@@ -131,13 +131,13 @@ class AnnotationConfig(Config):
             in attribute boxes
         attrs_box_text_line_spacing_pixels: (1) the padding, in pixels, between
             each line of text in attribute boxes
-        show_keypoints_names: (True) whether to render keypoints names, if
+        show_keypoints_names: (False) whether to render keypoints names, if
             available
-        show_keypoints_labels: (True) whether to render keypoints labels, if
+        show_keypoints_labels: (False) whether to render keypoints labels, if
             available
-        show_keypoints_attrs: (True) whether to render keypoints attributes, if
+        show_keypoints_attrs: (False) whether to render keypoints attributes, if
             available
-        show_keypoints_attr_names: (True) whether to render keypoint attribute
+        show_keypoints_attr_names: (False) whether to render keypoint attribute
             names, if available
         show_keypoints_attr_confidences: (False) whether to render keypoint
             attribute confidences, if available
@@ -377,16 +377,16 @@ class AnnotationConfig(Config):
         # KEYPOINTS ###########################################################
 
         self.show_keypoints_names = self.parse_bool(
-            d, "show_keypoints_names", default=True
+            d, "show_keypoints_names", default=False
         )
         self.show_keypoints_labels = self.parse_bool(
-            d, "show_keypoints_labels", default=True
+            d, "show_keypoints_labels", default=False
         )
         self.show_keypoints_attrs = self.parse_bool(
-            d, "show_keypoints_attrs", default=True
+            d, "show_keypoints_attrs", default=False
         )
         self.show_keypoints_attr_names = self.parse_bool(
-            d, "show_keypoints_attr_names", default=True
+            d, "show_keypoints_attr_names", default=False
         )
         self.show_keypoints_attr_confidences = self.parse_bool(
             d, "show_keypoints_attr_confidences", default=False
