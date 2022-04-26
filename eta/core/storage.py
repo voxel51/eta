@@ -54,6 +54,7 @@ try:
     import botocore.session as bcs
     import google.api_core.exceptions as gae
     import google.api_core.retry as gar
+    import google.auth as ga
     import google.cloud.storage as gcs
     from google.cloud.storage._signing import generate_signed_url_v4
     import google.oauth2.service_account as gos
@@ -1794,9 +1795,10 @@ class NeedsGoogleCredentials(object):
         (1) manually constructing an instance of the class via the
             `cls.from_json()` method by providing a path to a valid service
             account JSON file
+            https://cloud.google.com/docs/authentication/production#manually
 
-        (2) setting the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
-            to point to a service account JSON file
+        (2) automatically find your credentials using Application Default Credentials
+            https://cloud.google.com/docs/authentication/production#automatically
 
         (3) loading credentials from `~/.eta/google-credentials.json` that have
             been activated via `cls.activate_credentials()`
@@ -1865,6 +1867,21 @@ class NeedsGoogleCredentials(object):
         return os.path.isfile(cls.CREDENTIALS_PATH)
 
     @classmethod
+    def _load_explicit(cls, credentials_path=None):
+        info = etas.read_json(credentials_path)
+        credentials = gos.Credentials.from_service_account_info(info)
+        return credentials
+
+    @classmethod
+    def _load_implicit(cls):        
+        try:            
+            # https://google-auth.readthedocs.io/en/master/reference/google.auth.html
+            credentials, _ = ga.default()
+            return credentials
+        except ga.exceptions.DefaultCredentialsError as e:
+            return None
+
+    @classmethod
     def load_credentials(cls, credentials_path=None):
         """Loads Google credentials as an `google.auth.credentials.Credentials`
         instance.
@@ -1879,35 +1896,30 @@ class NeedsGoogleCredentials(object):
                 `google.auth.credentials.Credentials` instance and the path
                 from which it was loaded
         """
-        info, credentials_path = cls.load_credentials_json(
-            credentials_path=credentials_path
-        )
-        credentials = gos.Credentials.from_service_account_info(info)
-        return credentials, credentials_path
 
-    @classmethod
-    def load_credentials_json(cls, credentials_path=None):
-        """Loads the Google credentials as a JSON dictionary.
-
-        Args:
-            credentials_path: an optional path to a service account JSON file.
-                If omitted, the strategy described in the class docstring of
-                `NeedsGoogleCredentials` is used to locate credentials
-
-        Returns:
-            a (credentials_dict, path) tuple containing the service account
-                dictionary and the path from which it was loaded
-        """
         if credentials_path is not None:
+            credentials = cls._load_explicit(credentials_path)
             logger.debug(
                 "Loading Google credentials from manually provided path '%s'",
                 credentials_path,
             )
-        else:
-            credentials_path = cls._find_active_credentials()
+            return credentials, credentials_path
+        
+        credentials = cls._load_implicit()
+        if credentials:
+            logger.debug("Loading Google credentials (Application Default Credentials)")
+            return credentials, None
 
-        credentials_dict = etas.read_json(credentials_path)
-        return credentials_dict, credentials_path
+        if cls.has_active_credentials():
+            credentials_path = cls.CREDENTIALS_PATH
+            credentials = cls._load_explicit(credentials_path)
+            logger.debug(
+                "Loading activated Google credentials from '%s'",
+                credentials_path,
+            )
+            return credentials, credentials_path
+            
+        raise GoogleCredentialsError("No Google credentials found")
 
     @classmethod
     def from_json(cls, credentials_path):
@@ -1923,28 +1935,6 @@ class NeedsGoogleCredentials(object):
             credentials_path=credentials_path
         )
         return cls(credentials=credentials)
-
-    @classmethod
-    def _find_active_credentials(cls):
-        credentials_path = os.environ.get(
-            "GOOGLE_APPLICATION_CREDENTIALS", None
-        )
-        if credentials_path is not None:
-            logger.debug(
-                "Loading Google credentials from environment variable "
-                "'GOOGLE_APPLICATION_CREDENTIALS=%s'",
-                credentials_path,
-            )
-        elif cls.has_active_credentials():
-            credentials_path = cls.CREDENTIALS_PATH
-            logger.debug(
-                "Loading activated Google credentials from '%s'",
-                credentials_path,
-            )
-        else:
-            raise GoogleCredentialsError("No Google credentials found")
-
-        return credentials_path
 
 
 class GoogleCredentialsError(Exception):
@@ -1998,9 +1988,7 @@ class GoogleCloudStorageClient(
         if credentials is None:
             credentials, _ = self.load_credentials()
 
-        client = gcs.Client(
-            credentials=credentials, project=credentials.project_id, **kwargs
-        )
+        client = gcs.Client(credentials=credentials, **kwargs)
 
         # https://github.com/googleapis/python-bigquery/issues/59#issuecomment-650432896
         if max_pool_connections is not None:
