@@ -1225,7 +1225,7 @@ class NeedsAWSCredentials(object):
             `cls.from_ini()` method by providing a path to a valid credentials
             `.ini` file
 
-        (2) setting the following environment variables directly:
+        (2) setting the following environment variables directly: **[supported by Boto3]**
 
             -   `AWS_ACCESS_KEY_ID`
             -   `AWS_SECRET_ACCESS_KEY`
@@ -1233,13 +1233,13 @@ class NeedsAWSCredentials(object):
             -   `AWS_DEFAULT_REGION`
 
         (3) setting the `AWS_SHARED_CREDENTIALS_FILE` environment variable to
-            point to a valid credentials `.ini` file
+            point to a valid credentials `.ini` file **[supported by Boto3]**
 
         (4) setting the `AWS_CONFIG_FILE` environment variable to point to a
-            valid credentials `.ini` file
+            valid credentials `.ini` file **[supported by Boto3]**
 
         (4) generating auto-refreshing temporary credentials from an IAM role
-            configured via the following environment variables:
+            configured via the following environment variables: **[supported by Boto3]**
 
             -   `AWS_ROLE_ARN`
             -   `AWS_WEB_IDENTITY_TOKEN_FILE`
@@ -1302,6 +1302,7 @@ class NeedsAWSCredentials(object):
 
     @classmethod
     def load_credentials(cls, credentials_path=None, profile=None):
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials
         """Loads the AWS credentials as a dictionary.
 
         Args:
@@ -1795,13 +1796,14 @@ class NeedsGoogleCredentials(object):
         (1) manually constructing an instance of the class via the
             `cls.from_json()` method by providing a path to a valid service
             account JSON file
-            https://cloud.google.com/docs/authentication/production#manually
 
-        (2) automatically find your credentials using Application Default Credentials
+        (2) loading credentials from `~/.eta/google-credentials.json` that have
+            been activated via `cls.activate_credentials()`
+
+        (3) setting credentials in any manner used by Application Default Credentials
             https://cloud.google.com/docs/authentication/production#automatically
 
-        (3) loading credentials from `~/.eta/google-credentials.json` that have
-            been activated via `cls.activate_credentials()`
+
 
     In the above, the service account JSON file should have syntax similar to
     the following::
@@ -1867,21 +1869,6 @@ class NeedsGoogleCredentials(object):
         return os.path.isfile(cls.CREDENTIALS_PATH)
 
     @classmethod
-    def _load_explicit(cls, credentials_path=None):
-        info = etas.read_json(credentials_path)
-        credentials = gos.Credentials.from_service_account_info(info)
-        return credentials
-
-    @classmethod
-    def _load_implicit(cls):        
-        try:            
-            # https://google-auth.readthedocs.io/en/master/reference/google.auth.html
-            credentials, _ = ga.default()
-            return credentials
-        except ga.exceptions.DefaultCredentialsError as e:
-            return None
-
-    @classmethod
     def load_credentials(cls, credentials_path=None):
         """Loads Google credentials as an `google.auth.credentials.Credentials`
         instance.
@@ -1898,28 +1885,24 @@ class NeedsGoogleCredentials(object):
         """
 
         if credentials_path is not None:
-            credentials = cls._load_explicit(credentials_path)
             logger.debug(
                 "Loading Google credentials from manually provided path '%s'",
                 credentials_path,
             )
-            return credentials, credentials_path
-        
-        credentials = cls._load_implicit()
-        if credentials:
-            logger.debug("Loading Google credentials (Application Default Credentials)")
-            return credentials, None
-
-        if cls.has_active_credentials():
+        elif cls.has_active_credentials():
             credentials_path = cls.CREDENTIALS_PATH
-            credentials = cls._load_explicit(credentials_path)
             logger.debug(
                 "Loading activated Google credentials from '%s'",
                 credentials_path,
             )
-            return credentials, credentials_path
-            
-        raise GoogleCredentialsError("No Google credentials found")
+        else:
+            return None, None
+
+        info = etas.read_json(credentials_path)
+        credentials = gos.Credentials.from_service_account_info(info)
+        return credentials, credentials_path
+
+
 
     @classmethod
     def from_json(cls, credentials_path):
@@ -1985,10 +1968,14 @@ class GoogleCloudStorageClient(
             **kwargs: optional keyword arguments for
                 `google.cloud.storage.Client(**kwargs)`
         """
+
         if credentials is None:
             credentials, _ = self.load_credentials()
 
-        client = gcs.Client(credentials=credentials, **kwargs)
+        try:
+            client = gcs.Client(credentials=credentials, **kwargs)
+        except ga.exceptions.DefaultCredentialsError as e:
+            raise GoogleCredentialsError("No Google credentials found")
 
         # https://github.com/googleapis/python-bigquery/issues/59#issuecomment-650432896
         if max_pool_connections is not None:
