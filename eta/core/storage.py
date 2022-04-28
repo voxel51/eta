@@ -50,10 +50,6 @@ try:
     import boto3
     import botocore
     import botocore.config as bcc
-
-    # TODO: remove the following
-    # import botocore.credentials as bcr
-    # import botocore.session as bcs
     import botocore.exceptions as bce
     import google.api_core.exceptions as gae
     import google.api_core.retry as gar
