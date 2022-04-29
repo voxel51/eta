@@ -21,6 +21,7 @@ __pycache__
 !/eta/models/manifest.json
 /eta/out
 
+/build
 /docs/*.tex
 /docs/*.html
 /docs/*.pdf
