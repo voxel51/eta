@@ -22,7 +22,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-from builtins import *  # noqa
+from builtins import *
 from future.utils import iteritems
 import six
 
@@ -1237,8 +1237,8 @@ class NeedsAWSCredentials(object):
 
         Returns:
             a (credentials, path) tuple containing the credentials and the path
-                from which they were loaded. If the credentials were loaded
-                from environment variables, `path` will be None
+                from which they were loaded. If no credentials can be loaded,
+                `credentials` and `path` will be both be None.
         """
         if credentials_path:
             logger.debug(
@@ -1466,7 +1466,9 @@ class NeedsMinIOCredentials(object):
         Returns:
             a (credentials, path) tuple containing the credentials and the path
                 from which they were loaded. If the credentials were loaded
-                from environment variables, `path` will be None
+                from environment variables, `path` will be None. If no
+                credentials can be loaded, `credentials` and `path` will be
+                both be None.
         """
         if profile is None and "MINIO_PROFILE" in os.environ:
             logger.debug(
@@ -1741,7 +1743,8 @@ class NeedsGoogleCredentials(object):
         Returns:
             a (credentials, path) tuple containing the
                 `google.auth.credentials.Credentials` instance and the path
-                from which it was loaded
+                from which it was loaded. If no credentials can be loaded,
+                `credentials` and `path` will be both be None.
         """
 
         if credentials_path is not None:
