@@ -243,12 +243,12 @@ if [ "${GCARD}" == "ON" ]; then
         CRITICAL pip install --upgrade tensorflow-gpu~=1.15
     else
         # Couldn't find CUDA
-        MSG "Installing tensorflow-gpu 1.15"
-        CRITICAL pip install --upgrade tensorflow-gpu~=1.15
+        MSG "Installing tensorflow-gpu"
+        CRITICAL pip install --upgrade tensorflow-gpu
     fi
 else
-    MSG "Installing tensorflow 1.15"
-    CRITICAL pip install --upgrade tensorflow~=1.15
+    MSG "Installing tensorflow"
+    CRITICAL pip install --upgrade tensorflow
 fi
 
 

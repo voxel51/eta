@@ -50,10 +50,10 @@ try:
     import boto3
     import botocore
     import botocore.config as bcc
-    import botocore.credentials as bcr
-    import botocore.session as bcs
+    import botocore.exceptions as bce
     import google.api_core.exceptions as gae
     import google.api_core.retry as gar
+    import google.auth as ga
     import google.cloud.storage as gcs
     from google.cloud.storage._signing import generate_signed_url_v4
     import google.oauth2.service_account as gos
@@ -629,6 +629,11 @@ class LocalStorageClient(StorageClient, CanSyncDirectories):
         )
 
 
+class _BotoCredentialsError(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+
+
 class _BotoStorageClient(StorageClient, CanSyncDirectories):
     """Base client for reading/writing data using Amazon's ``boto3`` API."""
 
@@ -685,90 +690,24 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
 
         self.alias = alias
         self.endpoint_url = endpoint_url
-
         self._prefixes = tuple(prefixes)
-        self._role_arn = None
-        self._web_identity_token_file = None
-        self._duration_seconds = None
-        self._sts_client = None
 
-        session = self._make_session(credentials)
-        config = bcc.Config(**kwargs)
-        client = session.client("s3", endpoint_url=endpoint_url, config=config)
+        credentials = credentials or {}
+        session = None
+        try:
+            session = boto3.Session(**credentials)
+            if not session or not session.get_credentials():
+                raise bce.NoCredentialsError()
+
+            config = bcc.Config(**kwargs)
+            client = session.client(
+                "s3", endpoint_url=endpoint_url, config=config
+            )
+        except bce.NoCredentialsError:
+            raise _BotoCredentialsError("No Boto3 credentials found")
 
         self._session = session
         self._client = client
-
-    def _make_session(self, credentials):
-        #
-        # We allow users to provide credentials via a dictionary. However, the
-        # AWS libraries seem to complain when a profile is specified whose
-        # credentials aren't configured via environment variables or
-        # `~/.aws/credentials`.
-        #
-        # Temporarily hiding the `AWS_PROFILE` environment varible when
-        # creating the session below seems to bypass the issue
-        #
-        aws_profile = os.environ.pop("AWS_PROFILE", None)
-
-        try:
-            # Create session from permanent credentials
-            if "role_arn" not in credentials:
-                return boto3.Session(**credentials)
-
-            # Create session with auto-refreshing temporary credentials
-            role_arn = credentials["role_arn"]
-            web_identity_token_file = credentials["web_identity_token_file"]
-            region_name = credentials.get("region_name", None)
-
-            sts_client = boto3.client("sts", region_name=region_name)
-
-            try:
-                response = sts_client.get_role(RoleArn=role_arn)
-                duration_seconds = response["Role"]["MaxSessionDuration"]
-            except:
-                duration_seconds = 3600
-
-            self._role_arn = role_arn
-            self._web_identity_token_file = web_identity_token_file
-            self._duration_seconds = duration_seconds
-            self._sts_client = sts_client
-
-            _credentials = bcr.RefreshableCredentials.create_from_metadata(
-                metadata=self._refresh_temporary_credentials(),
-                refresh_using=self._refresh_temporary_credentials,
-                method="assume-role-with-web-identity",
-            )
-
-            session = bcs.get_session()
-            session._credentials = _credentials
-            session.set_config_variable("region", region_name)
-
-            return boto3.Session(
-                botocore_session=session, region_name=region_name
-            )
-        finally:
-            if aws_profile is not None:
-                os.environ["AWS_PROFILE"] = aws_profile
-
-    def _refresh_temporary_credentials(self):
-        # This token is refreshed periodically, so we re-read it just in case
-        # https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection
-        web_identity_token = etau.read_file(self._web_identity_token_file)
-
-        response = self._sts_client.assume_role_with_web_identity(
-            RoleArn=self._role_arn,
-            RoleSessionName="voxel51",
-            WebIdentityToken=web_identity_token,
-            DurationSeconds=self._duration_seconds,
-        )
-
-        return {
-            "access_key": response["Credentials"]["AccessKeyId"],
-            "secret_key": response["Credentials"]["SecretAccessKey"],
-            "token": response["Credentials"]["SessionToken"],
-            "expiry_time": response["Credentials"]["Expiration"].isoformat(),
-        }
 
     def upload(self, local_path, cloud_path, content_type=None, metadata=None):
         """Uploads the file to the cloud.
@@ -1224,27 +1163,12 @@ class NeedsAWSCredentials(object):
             `cls.from_ini()` method by providing a path to a valid credentials
             `.ini` file
 
-        (2) setting the following environment variables directly:
-
-            -   `AWS_ACCESS_KEY_ID`
-            -   `AWS_SECRET_ACCESS_KEY`
-            -   `AWS_SESSION_TOKEN` (if applicable)
-            -   `AWS_DEFAULT_REGION`
-
-        (3) setting the `AWS_SHARED_CREDENTIALS_FILE` environment variable to
-            point to a valid credentials `.ini` file
-
-        (4) setting the `AWS_CONFIG_FILE` environment variable to point to a
-            valid credentials `.ini` file
-
-        (4) generating auto-refreshing temporary credentials from an IAM role
-            configured via the following environment variables:
-
-            -   `AWS_ROLE_ARN`
-            -   `AWS_WEB_IDENTITY_TOKEN_FILE`
-
-        (5) loading credentials from `~/.eta/aws-credentials.ini` that have
+        (2) loading credentials from `~/.eta/aws-credentials.ini` that have
             been activated via `cls.activate_credentials()`
+
+        (3) setting credentials in any manner used by Boto3
+            https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html
+
 
     In the above, the `.ini` file should have syntax similar to the following::
 
@@ -1313,105 +1237,32 @@ class NeedsAWSCredentials(object):
 
         Returns:
             a (credentials, path) tuple containing the credentials and the path
-                from which they were loaded. If the credentials were loaded
-                from environment variables, `path` will be None
+                from which they were loaded. If no credentials can be loaded,
+                `credentials` and `path` will be both be None.
         """
-        if profile is None and "AWS_PROFILE" in os.environ:
-            logger.debug(
-                "Loading profile from 'AWS_PROFILE' environment variable"
-            )
-            profile = os.environ["AWS_PROFILE"]
-
         if credentials_path:
             logger.debug(
                 "Loading AWS credentials from manually provided path '%s'",
                 credentials_path,
             )
-            credentials = cls._load_credentials_ini(
-                credentials_path, profile=profile
-            )
-            return credentials, credentials_path
-
-        if (
-            "AWS_ACCESS_KEY_ID" in os.environ
-            and "AWS_SECRET_ACCESS_KEY" in os.environ
-        ):
-            logger.debug(
-                "Loading access key and secret key from 'AWS_ACCESS_KEY_ID' "
-                "and 'AWS_SECRET_ACCESS_KEY' environment variables"
-            )
-            credentials = {
-                "aws_access_key_id": os.environ["AWS_ACCESS_KEY_ID"],
-                "aws_secret_access_key": os.environ["AWS_SECRET_ACCESS_KEY"],
-            }
-
-            if "AWS_DEFAULT_REGION" in os.environ:
-                logger.debug(
-                    "Loading region from 'AWS_DEFAULT_REGION' environment "
-                    "variable"
-                )
-                credentials["region"] = os.environ["AWS_DEFAULT_REGION"]
-
-            if "AWS_SESSION_TOKEN" in os.environ:
-                logger.debug(
-                    "Loading session token from 'AWS_SESSION_TOKEN' "
-                    "environment variable"
-                )
-                credentials["aws_session_token"] = os.environ[
-                    "AWS_SESSION_TOKEN"
-                ]
-
-            return credentials, None
-
-        if "AWS_SHARED_CREDENTIALS_FILE" in os.environ:
-            credentials_path = os.environ["AWS_SHARED_CREDENTIALS_FILE"]
-            logger.debug(
-                "Loading AWS credentials from environment variable "
-                "AWS_SHARED_CREDENTIALS_FILE='%s'",
-                credentials_path,
-            )
-        elif "AWS_CONFIG_FILE" in os.environ:
-            credentials_path = os.environ["AWS_CONFIG_FILE"]
-            logger.debug(
-                "Loading AWS credentials from environment variable "
-                "AWS_CONFIG_FILE='%s'",
-                credentials_path,
-            )
-        elif (
-            "AWS_ROLE_ARN" in os.environ
-            and "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ
-        ):
-            logger.debug(
-                "Loading role ARN and web identity token file from "
-                "'AWS_ROLE_ARN' and 'AWS_WEB_IDENTITY_TOKEN_FILE' environment "
-                "variables"
-            )
-            credentials = {
-                "role_arn": os.environ["AWS_ROLE_ARN"],
-                "web_identity_token_file": os.environ[
-                    "AWS_WEB_IDENTITY_TOKEN_FILE"
-                ],
-            }
-
-            if "AWS_DEFAULT_REGION" in os.environ:
-                logger.debug(
-                    "Loading region from 'AWS_DEFAULT_REGION' environment "
-                    "variable"
-                )
-                credentials["region"] = os.environ["AWS_DEFAULT_REGION"]
-
-            return credentials, None
         elif cls.has_active_credentials():
             credentials_path = cls.CREDENTIALS_PATH
             logger.debug(
                 "Loading activated AWS credentials from '%s'", credentials_path
             )
         else:
-            raise AWSCredentialsError("No AWS credentials found")
+            return None, None
+
+        if profile is None and "AWS_PROFILE" in os.environ:
+            logger.debug(
+                "Loading profile from 'AWS_PROFILE' environment variable"
+            )
+            profile = os.environ["AWS_PROFILE"]
 
         credentials = cls._load_credentials_ini(
             credentials_path, profile=profile
         )
+
         return credentials, credentials_path
 
     @classmethod
@@ -1480,7 +1331,12 @@ class S3StorageClient(_BotoStorageClient, NeedsAWSCredentials):
     strategy used by this class.
     """
 
-    def __init__(self, credentials=None, max_pool_connections=None, **kwargs):
+    def __init__(
+        self,
+        credentials=None,
+        max_pool_connections=None,
+        **kwargs,
+    ):
         """Creates an S3StorageClient instance.
 
         Args:
@@ -1496,14 +1352,18 @@ class S3StorageClient(_BotoStorageClient, NeedsAWSCredentials):
             credentials, _ = self.load_credentials()
 
         # The .ini files use `region` but `boto3.client` uses `region_name`
-        credentials["region_name"] = credentials.pop("region", None)
+        if credentials is not None:
+            credentials["region_name"] = credentials.pop("region", None)
 
-        super(S3StorageClient, self).__init__(
-            credentials,
-            alias="s3",
-            max_pool_connections=max_pool_connections,
-            **kwargs,
-        )
+        try:
+            super(S3StorageClient, self).__init__(
+                credentials,
+                alias="s3",
+                max_pool_connections=max_pool_connections,
+                **kwargs,
+            )
+        except _BotoCredentialsError:
+            raise AWSCredentialsError("No AWS credentials found")
 
 
 class NeedsMinIOCredentials(object):
@@ -1517,7 +1377,10 @@ class NeedsMinIOCredentials(object):
             `cls.from_ini()` method by providing a path to a valid credentials
             `.ini` file
 
-        (2) setting the following environment variables directly:
+        (2) loading credentials from `~/.eta/minio-credentials.ini` that have
+            been activated via `cls.activate_credentials()`
+
+        (3) setting the following environment variables directly:
 
             -   `MINIO_ACCESS_KEY`
             -   `MINIO_SECRET_ACCESS_KEY`
@@ -1525,14 +1388,12 @@ class NeedsMinIOCredentials(object):
             -   `MINIO_ALIAS`  # optional
             -   `MINIO_REGION`  # if applicable
 
-        (3) setting the `MINIO_CONFIG_FILE` environment variable to point to a
-            valid credentials `.ini` file
-
         (4) setting the `MINIO_SHARED_CREDENTIALS_FILE` environment variable to
             point to a valid credentials `.ini` file
 
-        (5) loading credentials from `~/.eta/minio-credentials.ini` that have
-            been activated via `cls.activate_credentials()`
+        (5) setting the `MINIO_CONFIG_FILE` environment variable to point to a
+            valid credentials `.ini` file
+
 
     In the above, the `.ini` file should have syntax similar to the following::
 
@@ -1605,7 +1466,9 @@ class NeedsMinIOCredentials(object):
         Returns:
             a (credentials, path) tuple containing the credentials and the path
                 from which they were loaded. If the credentials were loaded
-                from environment variables, `path` will be None
+                from environment variables, `path` will be None. If no
+                credentials can be loaded, `credentials` and `path` will be
+                both be None.
         """
         if profile is None and "MINIO_PROFILE" in os.environ:
             logger.debug(
@@ -1618,12 +1481,13 @@ class NeedsMinIOCredentials(object):
                 "Loading MinIO credentials from manually provided path '%s'",
                 credentials_path,
             )
-            credentials = cls._load_credentials_ini(
-                credentials_path, profile=profile
+        elif cls.has_active_credentials():
+            credentials_path = cls.CREDENTIALS_PATH
+            logger.debug(
+                "Loading activated MinIO credentials from '%s'",
+                credentials_path,
             )
-            return credentials, credentials_path
-
-        if (
+        elif (
             "MINIO_ACCESS_KEY" in os.environ
             and "MINIO_SECRET_ACCESS_KEY" in os.environ
         ):
@@ -1657,7 +1521,7 @@ class NeedsMinIOCredentials(object):
 
             return credentials, None
 
-        if "MINIO_SHARED_CREDENTIALS_FILE" in os.environ:
+        elif "MINIO_SHARED_CREDENTIALS_FILE" in os.environ:
             credentials_path = os.environ["MINIO_SHARED_CREDENTIALS_FILE"]
             logger.debug(
                 "Loading MinIO credentials from environment variable "
@@ -1671,14 +1535,8 @@ class NeedsMinIOCredentials(object):
                 "MINIO_CONFIG_FILE='%s'",
                 credentials_path,
             )
-        elif cls.has_active_credentials():
-            credentials_path = cls.CREDENTIALS_PATH
-            logger.debug(
-                "Loading activated MinIO credentials from '%s'",
-                credentials_path,
-            )
         else:
-            raise MinIOCredentialsError("No MinIO credentials found")
+            return None, None
 
         credentials = cls._load_credentials_ini(
             credentials_path, profile=profile
@@ -1766,6 +1624,9 @@ class MinIOStorageClient(_BotoStorageClient, NeedsMinIOCredentials):
         if credentials is None:
             credentials, _ = self.load_credentials()
 
+        if credentials is None:
+            raise MinIOCredentialsError("No MinIO credentials found")
+
         _credentials = {
             "aws_access_key_id": credentials["access_key"],
             "aws_secret_access_key": credentials["secret_access_key"],
@@ -1775,13 +1636,16 @@ class MinIOStorageClient(_BotoStorageClient, NeedsMinIOCredentials):
         alias = credentials.pop("alias", None)
         endpoint_url = credentials.pop("endpoint_url")
 
-        super(MinIOStorageClient, self).__init__(
-            _credentials,
-            alias=alias,
-            endpoint_url=endpoint_url,
-            max_pool_connections=max_pool_connections,
-            **kwargs,
-        )
+        try:
+            super(MinIOStorageClient, self).__init__(
+                _credentials,
+                alias=alias,
+                endpoint_url=endpoint_url,
+                max_pool_connections=max_pool_connections,
+                **kwargs,
+            )
+        except _BotoCredentialsError:
+            raise MinIOCredentialsError("No MinIO credentials found")
 
 
 class NeedsGoogleCredentials(object):
@@ -1795,11 +1659,13 @@ class NeedsGoogleCredentials(object):
             `cls.from_json()` method by providing a path to a valid service
             account JSON file
 
-        (2) setting the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
-            to point to a service account JSON file
-
-        (3) loading credentials from `~/.eta/google-credentials.json` that have
+        (2) loading credentials from `~/.eta/google-credentials.json` that have
             been activated via `cls.activate_credentials()`
+
+        (3) setting credentials in any manner used by Application Default Credentials
+            https://cloud.google.com/docs/authentication/production#automatically
+
+
 
     In the above, the service account JSON file should have syntax similar to
     the following::
@@ -1877,37 +1743,27 @@ class NeedsGoogleCredentials(object):
         Returns:
             a (credentials, path) tuple containing the
                 `google.auth.credentials.Credentials` instance and the path
-                from which it was loaded
+                from which it was loaded. If no credentials can be loaded,
+                `credentials` and `path` will be both be None.
         """
-        info, credentials_path = cls.load_credentials_json(
-            credentials_path=credentials_path
-        )
-        credentials = gos.Credentials.from_service_account_info(info)
-        return credentials, credentials_path
 
-    @classmethod
-    def load_credentials_json(cls, credentials_path=None):
-        """Loads the Google credentials as a JSON dictionary.
-
-        Args:
-            credentials_path: an optional path to a service account JSON file.
-                If omitted, the strategy described in the class docstring of
-                `NeedsGoogleCredentials` is used to locate credentials
-
-        Returns:
-            a (credentials_dict, path) tuple containing the service account
-                dictionary and the path from which it was loaded
-        """
         if credentials_path is not None:
             logger.debug(
                 "Loading Google credentials from manually provided path '%s'",
                 credentials_path,
             )
+        elif cls.has_active_credentials():
+            credentials_path = cls.CREDENTIALS_PATH
+            logger.debug(
+                "Loading activated Google credentials from '%s'",
+                credentials_path,
+            )
         else:
-            credentials_path = cls._find_active_credentials()
+            return None, None
 
-        credentials_dict = etas.read_json(credentials_path)
-        return credentials_dict, credentials_path
+        info = etas.read_json(credentials_path)
+        credentials = gos.Credentials.from_service_account_info(info)
+        return credentials, credentials_path
 
     @classmethod
     def from_json(cls, credentials_path):
@@ -1923,28 +1779,6 @@ class NeedsGoogleCredentials(object):
             credentials_path=credentials_path
         )
         return cls(credentials=credentials)
-
-    @classmethod
-    def _find_active_credentials(cls):
-        credentials_path = os.environ.get(
-            "GOOGLE_APPLICATION_CREDENTIALS", None
-        )
-        if credentials_path is not None:
-            logger.debug(
-                "Loading Google credentials from environment variable "
-                "'GOOGLE_APPLICATION_CREDENTIALS=%s'",
-                credentials_path,
-            )
-        elif cls.has_active_credentials():
-            credentials_path = cls.CREDENTIALS_PATH
-            logger.debug(
-                "Loading activated Google credentials from '%s'",
-                credentials_path,
-            )
-        else:
-            raise GoogleCredentialsError("No Google credentials found")
-
-        return credentials_path
 
 
 class GoogleCredentialsError(Exception):
@@ -1995,12 +1829,14 @@ class GoogleCloudStorageClient(
             **kwargs: optional keyword arguments for
                 `google.cloud.storage.Client(**kwargs)`
         """
+
         if credentials is None:
             credentials, _ = self.load_credentials()
 
-        client = gcs.Client(
-            credentials=credentials, project=credentials.project_id, **kwargs
-        )
+        try:
+            client = gcs.Client(credentials=credentials, **kwargs)
+        except ga.exceptions.DefaultCredentialsError:
+            raise GoogleCredentialsError("No Google credentials found")
 
         # https://github.com/googleapis/python-bigquery/issues/59#issuecomment-650432896
         if max_pool_connections is not None:
@@ -3806,7 +3642,12 @@ class _SFTPConnection(object):
     """
 
     def __init__(
-        self, hostname, username, private_key_path, port, keep_open=False,
+        self,
+        hostname,
+        username,
+        private_key_path,
+        port,
+        keep_open=False,
     ):
         """Creates an _SFTPConnection instance.
 
@@ -3901,6 +3742,6 @@ def _strip_prefix(path, prefixes):
     prefix = _get_prefix(path, prefixes)
 
     if prefix:
-        return path[len(prefix): ]
+        return path[len(prefix) :]
 
     return None
