@@ -4141,8 +4141,11 @@ class FFmpeg(object):
         # where it's a sequence pattern (e.g. %06d.jpg).  The default behavior
         # from ffmpeg is to start at 0 and look in the range [0,4].  If the first
         # matched pattern begins above 4 we want to explicitly set that.
-        start_number = next(iter(etau.parse_pattern(inpath)), None) or 0
-        in_opts.extend(("-start_number", str(start_number)))
+        if "-start_number" not in in_opts and is_supported_image_sequence(
+            inpath
+        ):
+            start_number = next(iter(etau.parse_pattern(inpath)), None) or 0
+            in_opts.extend(["-start_number", str(start_number)])
 
         # Output options
         if self._out_opts is None:
