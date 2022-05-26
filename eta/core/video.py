@@ -4145,7 +4145,11 @@ class FFmpeg(object):
             inpath
         ):
             start_number = next(iter(etau.parse_pattern(inpath)), 0)
-            in_opts.extend(["-start_number", str(start_number)])
+
+            # Ensure in_opts modification is a per-call change
+            in_opts = in_opts.copy().extend(
+                ["-start_number", str(start_number)]
+            )
 
         # Output options
         if self._out_opts is None:
