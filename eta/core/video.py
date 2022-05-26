@@ -4144,7 +4144,7 @@ class FFmpeg(object):
         if "-start_number" not in in_opts and is_supported_image_sequence(
             inpath
         ):
-            start_number = next(iter(etau.parse_pattern(inpath)), None) or 0
+            start_number = next(iter(etau.parse_pattern(inpath)), 0)
             in_opts.extend(["-start_number", str(start_number)])
 
         # Output options
