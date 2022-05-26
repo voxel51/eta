@@ -1882,7 +1882,9 @@ class GoogleCloudStorageClient(
         if metadata:
             blob.metadata = metadata
 
-        blob.upload_from_filename(local_path, content_type=content_type)
+        blob.upload_from_filename(
+            local_path, content_type=content_type, retry=self._retry
+        )
 
     def upload_bytes(
         self, bytes_str, cloud_path, content_type=None, metadata=None
@@ -1902,7 +1904,9 @@ class GoogleCloudStorageClient(
         if metadata:
             blob.metadata = metadata
 
-        blob.upload_from_string(bytes_str, content_type=content_type)
+        blob.upload_from_string(
+            bytes_str, content_type=content_type, retry=self._retry
+        )
 
     def upload_stream(
         self, file_obj, cloud_path, content_type=None, metadata=None
@@ -1923,7 +1927,9 @@ class GoogleCloudStorageClient(
         if metadata:
             blob.metadata = metadata
 
-        blob.upload_from_file(file_obj, content_type=content_type)
+        blob.upload_from_file(
+            file_obj, content_type=content_type, retry=self._retry
+        )
 
     def download(self, cloud_path, local_path):
         """Downloads the file from GCS to the given location.
@@ -1934,7 +1940,7 @@ class GoogleCloudStorageClient(
         """
         blob = self._get_blob(cloud_path)
         etau.ensure_basedir(local_path)
-        blob.download_to_filename(local_path, checksum=None)
+        blob.download_to_filename(local_path, checksum=None, retry=self._retry)
 
     def download_bytes(self, cloud_path, start=None, end=None):
         """Downloads the file from GCS and returns the bytes string.
@@ -1948,7 +1954,9 @@ class GoogleCloudStorageClient(
             the downloaded bytes string
         """
         blob = self._get_blob(cloud_path)
-        return blob.download_as_bytes(start=start, end=end, checksum=None)
+        return blob.download_as_bytes(
+            start=start, end=end, checksum=None, retry=self._retry
+        )
 
     def download_stream(self, cloud_path, file_obj):
         """Downloads the file from GCS to the given file-like object.
@@ -1959,7 +1967,7 @@ class GoogleCloudStorageClient(
                 which must be open for writing
         """
         blob = self._get_blob(cloud_path)
-        blob.download_to_file(file_obj, checksum=None)
+        blob.download_to_file(file_obj, checksum=None, retry=self._retry)
 
     def delete(self, cloud_path):
         """Deletes the given file from GCS.
