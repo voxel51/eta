@@ -1976,7 +1976,7 @@ class GoogleCloudStorageClient(
             cloud_path: the path to the GCS object to delete
         """
         blob = self._get_blob(cloud_path)
-        blob.delete()
+        blob.delete(retry=self._retry)
 
     def delete_folder(self, cloud_folder):
         """Deletes all files in the given GCS "folder".
@@ -1993,7 +1993,7 @@ class GoogleCloudStorageClient(
         )
 
         for blob in blobs:
-            blob.delete()
+            blob.delete(retry=self._retry)
 
     def get_file_metadata(self, cloud_path):
         """Returns metadata about the given file in GCS.
@@ -2057,7 +2057,7 @@ class GoogleCloudStorageClient(
             True/False
         """
         blob = self._get_blob(cloud_path)
-        return blob.exists()
+        return blob.exists(retry=self._retry)
 
     def is_folder(self, cloud_folder):
         """Determines whether the given GCS "folder" contains at least one
@@ -2171,7 +2171,7 @@ class GoogleCloudStorageClient(
         else:
             blob.metadata = metadata
 
-        blob.patch()
+        blob.patch(retry=self._retry)
 
     def _get_blob(self, cloud_path, include_metadata=False):
         bucket_name, object_name = self._parse_path(cloud_path)
@@ -2179,7 +2179,7 @@ class GoogleCloudStorageClient(
         blob = bucket.blob(object_name, chunk_size=self.chunk_size)
 
         if include_metadata:
-            blob.reload()
+            blob.reload(retry=self._retry)
 
         return blob
 
