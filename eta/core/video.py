@@ -1957,14 +1957,12 @@ class VideoSetLabels(etal.LabelsSet):
         self.sort_by("filename", reverse=reverse)
 
     def clear_video_attributes(self):
-        """Removes all video-level attributes from all VideoLabels in the set.
-        """
+        """Removes all video-level attributes from all VideoLabels in the set."""
         for video_labels in self:
             video_labels.clear_video_attributes()
 
     def clear_frame_attributes(self):
-        """Removes all frame-level attributes from all VideoLabels in the set.
-        """
+        """Removes all frame-level attributes from all VideoLabels in the set."""
         for video_labels in self:
             video_labels.clear_frame_attributes()
 
@@ -4138,6 +4136,20 @@ class FFmpeg(object):
             in_opts = self.DEFAULT_IN_OPTS
         else:
             in_opts = self._in_opts
+
+        # Automatically determine the starting number of the inpath for cases
+        # where it's a sequence pattern (e.g. %06d.jpg).  The default behavior
+        # from ffmpeg is to start at 0 and look in the range [0,4].  If the first
+        # matched pattern begins above 4 we want to explicitly set that.
+        if "-start_number" not in in_opts and is_supported_image_sequence(
+            inpath
+        ):
+            start_number = next(iter(etau.parse_pattern(inpath)), 0)
+
+            # Ensure in_opts modification is a per-call change
+            in_opts = in_opts.copy().extend(
+                ["-start_number", str(start_number)]
+            )
 
         # Output options
         if self._out_opts is None:
