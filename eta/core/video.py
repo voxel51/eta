@@ -4138,18 +4138,16 @@ class FFmpeg(object):
             in_opts = self._in_opts
 
         # Automatically determine the starting number of the inpath for cases
-        # where it's a sequence pattern (e.g. %06d.jpg).  The default behavior
-        # from ffmpeg is to start at 0 and look in the range [0,4].  If the first
-        # matched pattern begins above 4 we want to explicitly set that.
-        if "-start_number" not in in_opts and is_supported_image_sequence(
-            inpath
+        # where it's a sequence pattern (e.g. %06d.jpg). The default behavior
+        # from ffmpeg is to start at 0 and look in the range [0, 4]. If the
+        # first matched pattern begins above 4 we want to explicitly set that.
+        if is_supported_image_sequence(inpath) and (
+            "-start_number" not in in_opts
         ):
             start_number = next(iter(etau.parse_pattern(inpath)), 0)
 
-            # Ensure in_opts modification is a per-call change
-            in_opts = in_opts.copy().extend(
-                ["-start_number", str(start_number)]
-            )
+            # Note that `in_opts` modification must be a per-call change
+            in_opts = in_opts + ["-start_number", str(start_number)]
 
         # Output options
         if self._out_opts is None:
