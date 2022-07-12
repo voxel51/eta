@@ -6,11 +6,7 @@ describes how to use ETA's logging infrastructure.
 
 ## Logging in a module
 
-By convention, ETA names loggers at the module-level, which propagate their
-messages up to the root logger, which is configured to write logs to stdout
-and/or log files.
-
-Therefore, logging in an ETA module is as simple as:
+By convention, all ETA library code uses module-level loggers:
 
 ```python
 import logging
@@ -37,58 +33,94 @@ raise Exception("A FATAL ERROR HERE")
 
 ETA supports various mechanisms for customizing logging.
 
-#### Default logging
+If you are running [ETA modules](modules_dev_guide.md) or
+[pipelines](pipelines_dev_guide.md), `eta.core.logging.custom_setup()` is
+implicitly called during execution:
 
-By default, the top-level `eta/__init__.py` automatically configures logging
-to write messages to stdout at level `logging.INFO` or greater the first time
-any ETA module is imported:
+```py
+import eta.core.logging as etal
 
-```python
-import eta
+# This is how pipelines configure logging
+etal.custom_setup(pipeline_config.logging_config)
 
-logger = logging.getLogger(__name__)
-
-# Logging is printed to stdout
-logger.info(...)
+# This is how individual modules configure logging
+etal.custom_setup(module_config.base.logging_config)
 ```
+
+However, if you are simply using ETA as a dependency, no logging configuration
+is automatically performed.
+
+Note that, when invoked, ETA's logging configuration modifies your **root
+logger**.
 
 #### Basic logging
 
-If you prefer ETA messages to be logged to stdout at a different level or
-format, you can override the default configuration using the
-`eta.core.log.basic_setup()` method. For example:
+You can use the `eta.core.logging.basic_setup()` utility to quickly configure
+your root logger to log to stdout at a specified level and/or with a specified
+format:
 
 ```python
 import logging
-from eta.core import log
+import eta.core.logging as etal
 
 logger = logging.getLogger(__name__)
 
-log.basic_setup(level=logging.DEBUG, fmt="%(levelname)s:%(message)s")
+# Default: log messages only at INFO level or higher
+etal.basic_setup()
+logger.info("Hello, world!")
 
-# Logging is printed to stdout at the specified level and format
-logger.debug(...)
+# Custom logging level/format
+etal.basic_setup(level=logging.DEBUG, fmt="%(levelname)s:%(message)s")
+logger.debug("Hello, world!")
 ```
 
 #### Custom logging
 
-You can perform more sophisticated custom logging configurations in ETA via
-the `eta.core.log.custom_setup()` method. The configuration itself is defined
-by instantiating the `eta.core.log.LoggingConfig` class.
+You can use the `eta.core.logging.custom_setup()` method to perform more
+sophisticated custom logging.
 
-For example, assuming `logging_config_path` contains a `LoggingConfig` JSON
-dictionary, you can do:
+The configuration itself is defined by instantiating the
+`eta.core.logging.LoggingConfig` class. For example, you can configure
+dynamically:
 
 ```python
-from eta.core import log
+import logging
+import eta.core.logging as etal
 
 logger = logging.getLogger(__name__)
 
-logging_config = log.LoggingConfig.from_json(logging_config_path)
-log.custom_setup(logging_config)
+# Customize logging via `LoggingConfig` instance
+logging_config = etal.LoggingConfig.default()
+logging_config.stream_to_stdout = False
+logging_config.filename = "/tmp/eta.log"
+print(logging_config)
 
-# Logging is handled according to the `LoggingConfig` instance
-logger.info(...)
+etal.custom_setup(logging_config)
+
+logger.info("Hello, world!")
+```
+
+```shell
+cat /tmp/eta.log
+rm /tmp/eta.log
+```
+
+Or you can store logging configuration on disk:
+
+```json
+{
+    "stream_to_stdout": false,
+    "filename": "/tmp/eta.log"
+}
+```
+
+and load it as follows:
+
+```python
+import eta.core.logging as etal
+
+logging_config = etal.LoggingConfig.from_json("/path/to/logging_config.json")
+print(logging_config)
 ```
 
 
@@ -96,15 +128,15 @@ logger.info(...)
 
 General logging resources
 
-* https://docs.python.org/2/howto/logging.html
+-   https://docs.python.org/2/howto/logging.html
 
-* https://docs.python.org/2.7/howto/logging-cookbook.html#logging-cookbook
+-   https://docs.python.org/2.7/howto/logging-cookbook.html#logging-cookbook
 
-* https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python
+-   https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python
 
 Formatter syntax
 
-* https://docs.python.org/3.1/library/logging.html#formatter-objects
+-   https://docs.python.org/3.1/library/logging.html#formatter-objects
 
 
 ## Copyright
