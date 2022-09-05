@@ -712,7 +712,10 @@ def resize(img, width=None, height=None, *args, **kwargs):
         width = int(round(iw * (height * 1.0 / ih)))
 
     if ih == 0 | iw == 0 | width == 0 | height == 0:
-        return np.zeros((height, width), dtype=img.dtype)
+        shape = list(img.shape)
+        shape[:2] = (height, width)
+
+        return np.zeros(shape, dtype=img.dtype)
 
     return cv2.resize(img, (width, height), *args, **kwargs)
 
