@@ -711,7 +711,7 @@ def resize(img, width=None, height=None, *args, **kwargs):
     if width is None or width < 0:
         width = int(round(iw * (height * 1.0 / ih)))
 
-    if ih == 0 | iw == 0 | width == 0 | height == 0:
+    if (ih == 0) | (iw == 0) | (width == 0) | (height == 0):
         shape = list(img.shape)
         shape[:2] = (height, width)
 
