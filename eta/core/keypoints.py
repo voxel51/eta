@@ -302,7 +302,7 @@ class Keypoints(etal.Labels):
         name = d.get("name", None)
         label = d.get("label", None)
         confidence = d.get("confidence", None)
-        index = (d.get("index", None),)
+        index = d.get("index", None)
         points = d.get("points", None)
         tags = d.get("tags", None)
 
@@ -357,8 +357,7 @@ class KeypointsContainer(etal.LabelsContainer):
             keypoints.offset_index(offset)
 
     def clear_indexes(self):
-        """Clears the ``index`` of all keypoints in the container.
-        """
+        """Clears the ``index`` of all keypoints in the container."""
         for keypoints in self:
             keypoints.clear_index()
 
