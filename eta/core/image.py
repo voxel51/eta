@@ -711,6 +711,12 @@ def resize(img, width=None, height=None, *args, **kwargs):
     if width is None or width < 0:
         width = int(round(iw * (height * 1.0 / ih)))
 
+    if (ih == 0) | (iw == 0) | (width == 0) | (height == 0):
+        shape = list(img.shape)
+        shape[:2] = (height, width)
+
+        return np.zeros(shape, dtype=img.dtype)
+
     return cv2.resize(img, (width, height), *args, **kwargs)
 
 
@@ -1200,7 +1206,10 @@ class Convert(object):
     """Interface for the ImageMagick convert binary."""
 
     def __init__(
-        self, executable="convert", in_opts=None, out_opts=None,
+        self,
+        executable="convert",
+        in_opts=None,
+        out_opts=None,
     ):
         """Constructs a convert command, minus the input/output paths.
 
