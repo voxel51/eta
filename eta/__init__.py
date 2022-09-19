@@ -24,7 +24,6 @@ import sys
 
 import eta.constants as etac
 from eta.core.config import Config, EnvConfig
-import eta.core.logging as etal
 import eta.core.utils as etau
 
 
@@ -202,9 +201,6 @@ def is_python3():
     """Returns True/False whether the Python version running is 3.X."""
     return sys.version_info[0] == 3
 
-
-# Default logging behavior
-etal.basic_setup()
 
 # Load global ETA config
 config = ETAConfig.from_json(etac.CONFIG_JSON_PATH)
