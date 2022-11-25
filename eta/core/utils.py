@@ -1556,7 +1556,7 @@ class ProgressBar(object):
         max_width=None,
         num_decimals=1,
         max_fps=10,
-        quiet=False,
+        quiet=None,
     ):
         """Creates a ProgressBar instance.
 
@@ -1598,8 +1598,8 @@ class ProgressBar(object):
                 will be executed. The default is 15
             quiet: whether to suppress printing of the bar
         """
-        if not eta.config.show_progress_bars:
-            quiet = True
+        if quiet is None:
+            quiet = not eta.config.show_progress_bars
 
         num_pct_decimals = 0
 
@@ -1810,10 +1810,10 @@ class ProgressBar(object):
         if self.is_finalized:
             raise Exception("Cannot start a finalized ProgressBar")
 
-        self._cap_obj = CaptureStdout(parent=self)
-        self._is_nested = self._cap_obj.__enter__()
-
         if not self.quiet:
+            self._cap_obj = CaptureStdout(parent=self)
+            self._is_nested = self._cap_obj.__enter__()
+
             if self._start_msg:
                 logger.info(self._start_msg)
 
@@ -1828,10 +1828,13 @@ class ProgressBar(object):
         if self.is_finalized or not self.is_running:
             return
 
-        self._flush_capture()
-        self._cap_obj.__exit__()
-        self._cap_obj = None
-        self._is_capturing_stdout = False
+        if self._cap_obj is not None:
+            self._flush_capture()
+            self._is_capturing_stdout = False
+
+            self._cap_obj.__exit__()
+            self._cap_obj = None
+
         self._final_elapsed_time = self.elapsed_time
         self._timer.stop()
         self._draw(force=True, last=True)
@@ -1924,7 +1927,8 @@ class ProgressBar(object):
             return None
 
     def _start_capture(self):
-        self._cap_obj.start()
+        if self._cap_obj is not None:
+            self._cap_obj.start()
 
     def _draw(self, force=False, last=False):
         if self.quiet:
