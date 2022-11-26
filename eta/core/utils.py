@@ -1457,8 +1457,7 @@ class CaptureStdout(object):
 
     def _get_stdout_loggers(self):
         all_loggers = it.chain(
-            [logging.getLogger()],
-            logging.Logger.manager.loggerDict.values()
+            [logging.getLogger()], logging.Logger.manager.loggerDict.values()
         )
 
         stdout_loggers = {}
