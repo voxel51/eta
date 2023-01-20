@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs the `eta/tensorflow/automl` submodule.
 #
-# Copyright 2017-2022, Voxel51, Inc.
+# Copyright 2017-2023, Voxel51, Inc.
 # voxel51.com
 #
 

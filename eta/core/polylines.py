@@ -1,7 +1,7 @@
 """
 Core data structures for working with polylines and polygons.
 
-Copyright 2017-2022, Voxel51, Inc.
+Copyright 2017-2023, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
