@@ -4,7 +4,7 @@ Core infrastructure for managing models across local and remote storage.
 See `docs/models_dev_guide.md` for detailed information about the design of
 the ETA model management system.
 
-Copyright 2017-2022, Voxel51, Inc.
+Copyright 2017-2023, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
