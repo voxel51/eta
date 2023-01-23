@@ -399,8 +399,7 @@ class DetectedObjectContainer(etal.LabelsContainer):
             dobj.offset_index(offset)
 
     def clear_indexes(self):
-        """Clears the ``index`` of all objects in the container.
-        """
+        """Clears the ``index`` of all objects in the container."""
         for dobj in self:
             dobj.clear_index()
 
@@ -635,8 +634,7 @@ class VideoObject(
 
     @property
     def framewise_renderer_cls(self):
-        """The :class:`eta.core.labels.LabelsFrameRenderer` used by this class.
-        """
+        """The :class:`eta.core.labels.LabelsFrameRenderer` used by this class."""
         return VideoObjectFrameRenderer
 
     @property
@@ -972,8 +970,7 @@ class VideoObjectContainer(
 
     @property
     def framewise_renderer_cls(self):
-        """The :class:`eta.core.labels.LabelsFrameRenderer` used by this class.
-        """
+        """The :class:`eta.core.labels.LabelsFrameRenderer` used by this class."""
         return VideoObjectContainerFrameRenderer
 
     @property
@@ -2178,6 +2175,8 @@ class VideoObjectFrameRenderer(etal.LabelsFrameRenderer):
             dobj.label = self._obj.label
         if self._obj.confidence is not None:
             dobj.confidence = self._obj.confidence
+        if self._obj.name is not None:
+            dobj.name = self._obj.name
         if self._obj.index is not None:
             dobj.index = self._obj.index
 

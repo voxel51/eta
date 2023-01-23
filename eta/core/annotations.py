@@ -106,7 +106,7 @@ class AnnotationConfig(Config):
         show_event_masks: (True) whether to render event segmentation masks, if
             available
         show_event_label_on_objects: (True) whether to render event labels as
-            attributes ob objects that belong to events
+            attributes on objects that belong to events
         show_event_objects_in_same_color: (True) whether to render objects that
             belong to events in the same color as their parent event
         occluded_event_attr: ("occluded") the name of the boolean attribute
@@ -1315,8 +1315,8 @@ def _draw_event(img, event, annotation_config, color=None):
     per_label_colors = annotation_config.per_event_label_colors
     per_index_colors = annotation_config.per_event_index_colors
 
-    # If the event has no bounding box, return event attributes for rendering
-    # via another method
+    # If the event has no bounding box, return label and attributes for
+    # rendering via another method
     return_attrs = not event.has_bounding_box
 
     img_anno, attr_strs, event_color = _draw_bbox_with_attrs(
@@ -1497,6 +1497,8 @@ def _draw_bbox_with_attrs(
     if return_now:
         return img, [], None
 
+    non_rendered_attr_strs = []
+
     # Scale alpha by confidence, if requested
     if confidence_scaled_alpha and obj_or_event.confidence is not None:
         bbox_alpha *= obj_or_event.confidence
@@ -1514,6 +1516,9 @@ def _draw_bbox_with_attrs(
         per_label_colors=per_label_colors,
         per_index_colors=per_index_colors,
     )
+
+    if return_attrs:
+        non_rendered_attr_strs.append(title_str)
 
     # Choose box color
     if color:
@@ -1581,12 +1586,10 @@ def _draw_bbox_with_attrs(
             show_attr_confidences,
         )
 
-        # Return attributes instead of drawing them, if requested
-        if return_attrs:
-            return img_anno, attr_strs, bbox_color
-
         # Draw attributes
-        if has_bounding_box and show_attrs and attr_strs:
+        if return_attrs:
+            non_rendered_attr_strs.extend(attr_strs)
+        elif has_bounding_box and show_attrs and attr_strs:
             logger.debug("Rendering %d bbox attributes", len(attr_strs))
 
             bounding_box = obj_or_event.bounding_box
@@ -1594,7 +1597,7 @@ def _draw_bbox_with_attrs(
                 img_anno, bounding_box, attr_strs, annotation_config
             )
 
-    return img_anno, [], bbox_color
+    return img_anno, non_rendered_attr_strs, bbox_color
 
 
 def _draw_bbox_attrs(img, bounding_box, attr_strs, annotation_config):
@@ -1963,7 +1966,9 @@ def _render_attrs(
 
         attr_strs.append(
             _render_attr_name_value(
-                attr, show_name=show_name, show_confidence=show_confidence,
+                attr,
+                show_name=show_name,
+                show_confidence=show_confidence,
             )
         )
 
