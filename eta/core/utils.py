@@ -1368,7 +1368,7 @@ class CaptureStdout(object):
 
     def __init__(self, parent=None):
         """Creates a CaptureStdout instance."""
-        self._stdout_loggers = None
+        self._stdout_handlers = None
         self._orig_stdout = None
         self._cache_stdout = None
         self._stdout_str = None
@@ -1420,8 +1420,8 @@ class CaptureStdout(object):
         if self.is_capturing:
             return
 
-        if self._stdout_loggers is None:
-            self._stdout_loggers = self._get_stdout_loggers()
+        if self._stdout_handlers is None:
+            self._stdout_handlers = self._get_stdout_handlers()
 
         self._stdout_str = None
         self._orig_stdout = sys.stdout
@@ -1430,9 +1430,8 @@ class CaptureStdout(object):
         # Update `sys.stdout`
         sys.stdout.flush()
         sys.stdout = self._cache_stdout
-        for logger, inds in self._stdout_loggers.items():
-            for idx in inds:
-                logger.handlers[idx].stream = self._cache_stdout
+        for handler in self._stdout_handlers:
+            handler.setStream(self._cache_stdout)
 
     def stop(self):
         """Stop capturing stdout.
@@ -1449,31 +1448,26 @@ class CaptureStdout(object):
 
         # Revert `sys.stdout`
         sys.stdout = self._orig_stdout
-        for logger, inds in self._stdout_loggers.items():
-            for idx in inds:
-                logger.handlers[idx].stream = self._orig_stdout
+        for handler in self._stdout_handlers:
+            handler.setStream(self._orig_stdout)
 
         return self.stdout
 
-    def _get_stdout_loggers(self):
-        all_loggers = it.chain(
+    def _get_stdout_handlers(self):
+        loggers = it.chain(
             [logging.getLogger()], logging.Logger.manager.loggerDict.values()
         )
 
-        stdout_loggers = {}
-        for logger in all_loggers:
-            inds = [
-                i
-                for i, handler in enumerate(getattr(logger, "handlers", []))
+        handlers = set()
+        for logger in loggers:
+            for handler in getattr(logger, "handlers", []):
                 if (
                     isinstance(handler, logging.StreamHandler)
-                    and getattr(handler, "stream", None) == sys.stdout
-                )
-            ]
-            if inds:
-                stdout_loggers[logger] = inds
+                    and getattr(handler, "stream", None) is sys.stdout
+                ):
+                    handlers.add(handler)
 
-        return stdout_loggers
+        return handlers
 
 
 class ProgressBar(object):
