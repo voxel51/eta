@@ -2434,7 +2434,11 @@ def copy_file(inpath, outpath, check_ext=False):
         assert_same_extensions(inpath, outpath)
 
     ensure_basedir(outpath)
-    shutil.copy(inpath, outpath)
+
+    try:
+        shutil.copy(inpath, outpath)
+    except shutil.SameFileError:
+        pass
 
 
 def link_file(filepath, linkpath, check_ext=False):
