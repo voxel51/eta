@@ -157,7 +157,7 @@ def is_supported_image_sequence(path):
     try:
         _ = path % 1
         return etai.is_supported_image(path)
-    except (TypeError, ValueError):
+    except:
         return False
 
 
