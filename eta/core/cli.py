@@ -1,7 +1,7 @@
 """
 Definition of the `eta` command-line interface (CLI).
 
-Copyright 2017-2022, Voxel51, Inc.
+Copyright 2017-2023, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
@@ -25,6 +25,7 @@ import logging
 import operator
 import os
 import re
+import warnings
 
 import argcomplete
 import dateutil.parser
@@ -131,7 +132,10 @@ class InstallCommand(Command):
             help="list the available install scripts",
         )
         parser.add_argument(
-            "-a", "--all", action="store_true", help="run all install scripts",
+            "-a",
+            "--all",
+            action="store_true",
+            help="run all install scripts",
         )
         parser.add_argument(
             "name",
@@ -1069,7 +1073,11 @@ class ShowAuthCommand(Command):
 
 
 def _print_google_credentials_info():
-    credentials, path = etast.NeedsGoogleCredentials.load_credentials_json()
+    credentials, path = etast.NeedsGoogleCredentials.load_credentials()
+    if credentials is None:
+        _warn_default_credentials()
+        return
+
     contents = [
         ("project id", credentials["project_id"]),
         ("client email", credentials["client_email"]),
@@ -1084,6 +1092,10 @@ def _print_google_credentials_info():
 
 def _print_aws_credentials_info():
     credentials, path = etast.NeedsAWSCredentials.load_credentials()
+    if credentials is None:
+        _warn_default_credentials()
+        return
+
     contents = []
     for key in sorted(credentials):
         value = credentials[key]
@@ -1100,6 +1112,10 @@ def _print_aws_credentials_info():
 
 def _print_minio_credentials_info():
     credentials, path = etast.NeedsMinIOCredentials.load_credentials()
+    if credentials is None:
+        _warn_default_credentials()
+        return
+
     contents = []
     for key in sorted(credentials):
         value = credentials[key]
@@ -1123,6 +1139,11 @@ def _print_ssh_credentials_info():
         contents, headers=["SSH credentials", ""], tablefmt="simple"
     )
     print(table_str + "\n")
+
+
+def _warn_default_credentials():
+    msg = "Cloud credentials are now implicitly loaded at runtime"
+    warnings.warn(msg)
 
 
 class ActivateAuthCommand(Command):

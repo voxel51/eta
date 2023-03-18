@@ -10,7 +10,7 @@ Notes::
         produced outside of this library must be converted to RGB. This
         conversion can be done via `eta.core.image.bgr_to_rgb()`
 
-Copyright 2017-2022, Voxel51, Inc.
+Copyright 2017-2023, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
@@ -157,7 +157,7 @@ def is_supported_image_sequence(path):
     try:
         _ = path % 1
         return etai.is_supported_image(path)
-    except TypeError:
+    except Exception:
         return False
 
 

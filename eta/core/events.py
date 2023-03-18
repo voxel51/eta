@@ -3,7 +3,7 @@ Core tools and data structures for working with events in images and videos.
 
 @todo add support for storing polylines and keypoints within events
 
-Copyright 2017-2022, Voxel51, Inc.
+Copyright 2017-2023, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
@@ -476,8 +476,7 @@ class DetectedEventContainer(etal.LabelsContainer):
             devent.offset_object_indexes(offset)
 
     def clear_object_indexes(self):
-        """Clears the `index`es of all objects in all events in the container.
-        """
+        """Clears the `index`es of all objects in all events in the container."""
         for devent in self:
             devent.clear_object_indexes()
 
@@ -1294,8 +1293,7 @@ class VideoEventContainer(
             event.offset_object_indexes(offset)
 
     def clear_object_indexes(self):
-        """Clears the `index`es of all objects in all events in the container.
-        """
+        """Clears the `index`es of all objects in all events in the container."""
         for event in self:
             event.clear_object_indexes()
 
@@ -3229,6 +3227,8 @@ class VideoEventFrameRenderer(etal.LabelsFrameRenderer):
             devent.label = event.label
         if event.confidence is not None:
             devent.confidence = event.confidence
+        if event.name is not None:
+            devent.name = event.name
         if event.index is not None:
             devent.index = event.index
 
@@ -3268,8 +3268,7 @@ class VideoEventFrameRenderer(etal.LabelsFrameRenderer):
 
 
 class VideoEventContainerFrameRenderer(etal.LabelsContainerFrameRenderer):
-    """Class for rendering labels for a VideoEventContainer at the frame-level.
-    """
+    """Class for rendering labels for a VideoEventContainer at the frame-level."""
 
     _LABELS_CLS = VideoEventContainer
     _FRAME_LABELS_CLS = DetectedEventContainer

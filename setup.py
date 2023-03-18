@@ -2,7 +2,7 @@
 """
 Installs ETA.
 
-Copyright 2017-2022, Voxel51, Inc.
+Copyright 2017-2023, Voxel51, Inc.
 voxel51.com
 """
 import os
@@ -12,7 +12,7 @@ from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
 
-VERSION = "0.8.1"
+VERSION = "0.8.4"
 
 
 class BdistWheelCustom(bdist_wheel):
@@ -140,6 +140,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
     entry_points={"console_scripts": ["eta=eta.core.cli:main"]},
     python_requires=">=2.7",

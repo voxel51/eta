@@ -1,7 +1,7 @@
 """
 Core tools and data structures for working with frames of videos.
 
-Copyright 2017-2022, Voxel51, Inc.
+Copyright 2017-2023, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin

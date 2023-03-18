@@ -1,7 +1,7 @@
 """
 Core system and file I/O utilities.
 
-Copyright 2017-2022, Voxel51, Inc.
+Copyright 2017-2023, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
@@ -604,7 +604,10 @@ def get_function(function_name, module_name=None):
 
 
 def install_package(
-    requirement_str, error_level=0, error_msg=None, error_suffix=None,
+    requirement_str,
+    error_level=0,
+    error_msg=None,
+    error_suffix=None,
 ):
     """Installs the newest compliant version of the package.
 
@@ -1326,6 +1329,12 @@ def query_yes_no(question, default=None):
         print("Please respond with 'y[es]' or 'n[o]'")
 
 
+class _ETAStringIO(_StringIO):
+    def __init__(self, parent=None, **kwargs):
+        super().__init__(**kwargs)
+        self._parent = parent
+
+
 class CaptureStdout(object):
     """Class for temporarily capturing stdout.
 
@@ -1357,20 +1366,42 @@ class CaptureStdout(object):
         print(cap.stdout)
     """
 
-    def __init__(self):
+    def __init__(self, parent=None):
         """Creates a CaptureStdout instance."""
-        self._root_logger = logging.getLogger()
+        self._stdout_handlers = None
         self._orig_stdout = None
         self._cache_stdout = None
-        self._handler_inds = None
         self._stdout_str = None
 
+        self._parent = parent
+        self._is_nested = None
+        self._enter_stdout = None
+
     def __enter__(self):
+        self._enter_stdout = sys.stdout
+        self._is_nested = isinstance(self._enter_stdout, _ETAStringIO)
+
+        if self._is_nested:
+            progress_bar = getattr(
+                getattr(self._enter_stdout, "_parent", None), "_parent", None
+            )
+            if progress_bar is not None:
+                progress_bar._flush_capture()
+
         self.start()
-        return self
+        return self._is_nested
 
     def __exit__(self, *args):
         self.stop()
+
+        if self._is_nested:
+            self._is_nested = None
+
+            progress_bar = getattr(
+                getattr(self._enter_stdout, "_parent", None), "_parent", None
+            )
+            if progress_bar is not None:
+                progress_bar._start_capture()
 
     @property
     def is_capturing(self):
@@ -1389,21 +1420,18 @@ class CaptureStdout(object):
         if self.is_capturing:
             return
 
+        if self._stdout_handlers is None:
+            self._stdout_handlers = self._get_stdout_handlers()
+
         self._stdout_str = None
         self._orig_stdout = sys.stdout
-        self._cache_stdout = _StringIO()
-        self._handler_inds = []
-
-        # Update root logger handlers, if necessary
-        for idx, handler in enumerate(self._root_logger.handlers):
-            if isinstance(handler, logging.StreamHandler):
-                if handler.stream == sys.stdout:
-                    handler.stream = self._cache_stdout
-                    self._handler_inds.append(idx)
+        self._cache_stdout = _ETAStringIO(parent=self)
 
         # Update `sys.stdout`
         sys.stdout.flush()
         sys.stdout = self._cache_stdout
+        for handler in self._stdout_handlers:
+            handler.setStream(self._cache_stdout)
 
     def stop(self):
         """Stop capturing stdout.
@@ -1418,16 +1446,28 @@ class CaptureStdout(object):
         self._cache_stdout.close()
         self._cache_stdout = None
 
-        # Revert root logger handlers, if necessary
-        for idx in self._handler_inds:
-            self._root_logger.handlers[idx].stream = self._orig_stdout
-
-        self._handler_inds = None
-
         # Revert `sys.stdout`
         sys.stdout = self._orig_stdout
+        for handler in self._stdout_handlers:
+            handler.setStream(self._orig_stdout)
 
         return self.stdout
+
+    def _get_stdout_handlers(self):
+        loggers = it.chain(
+            [logging.getLogger()], logging.Logger.manager.loggerDict.values()
+        )
+
+        handlers = set()
+        for logger in loggers:
+            for handler in getattr(logger, "handlers", []):
+                if (
+                    isinstance(handler, logging.StreamHandler)
+                    and getattr(handler, "stream", None) is sys.stdout
+                ):
+                    handlers.add(handler)
+
+        return handlers
 
 
 class ProgressBar(object):
@@ -1524,7 +1564,7 @@ class ProgressBar(object):
         max_width=None,
         num_decimals=1,
         max_fps=10,
-        quiet=False,
+        quiet=None,
     ):
         """Creates a ProgressBar instance.
 
@@ -1566,8 +1606,8 @@ class ProgressBar(object):
                 will be executed. The default is 15
             quiet: whether to suppress printing of the bar
         """
-        if not eta.config.show_progress_bars:
-            quiet = True
+        if quiet is None:
+            quiet = not eta.config.show_progress_bars
 
         num_pct_decimals = 0
 
@@ -1604,6 +1644,7 @@ class ProgressBar(object):
         self._complete = False
         self._is_capturing_stdout = False
         self._cap_obj = None
+        self._is_nested = False
         self._is_finalized = False
         self._final_elapsed_time = None
         self._time_remaining = None
@@ -1766,8 +1807,7 @@ class ProgressBar(object):
 
     @property
     def quiet(self):
-        """Whether the progress bar is in quiet mode (no printing to stdout).
-        """
+        """Whether the progress bar is in quiet mode (no printing to stdout)."""
         return self._quiet
 
     def start(self):
@@ -1778,8 +1818,10 @@ class ProgressBar(object):
         if self.is_finalized:
             raise Exception("Cannot start a finalized ProgressBar")
 
-        self._cap_obj = CaptureStdout()
         if not self.quiet:
+            self._cap_obj = CaptureStdout(parent=self)
+            self._is_nested = self._cap_obj.__enter__()
+
             if self._start_msg:
                 logger.info(self._start_msg)
 
@@ -1794,9 +1836,13 @@ class ProgressBar(object):
         if self.is_finalized or not self.is_running:
             return
 
-        self._flush_capture()
-        self._is_capturing_stdout = False
-        self._cap_obj = None
+        if self._cap_obj is not None:
+            self._flush_capture()
+            self._is_capturing_stdout = False
+
+            self._cap_obj.__exit__()
+            self._cap_obj = None
+
         self._final_elapsed_time = self.elapsed_time
         self._timer.stop()
         self._draw(force=True, last=True)
@@ -1889,7 +1935,8 @@ class ProgressBar(object):
             return None
 
     def _start_capture(self):
-        self._cap_obj.start()
+        if self._cap_obj is not None:
+            self._cap_obj.start()
 
     def _draw(self, force=False, last=False):
         if self.quiet:
@@ -1917,8 +1964,11 @@ class ProgressBar(object):
         progress_str = self._render_progress(elapsed_time)
 
         if last:
-            sys.stdout.write("\r")
-            logger.info(progress_str)
+            if self._is_nested:
+                self.pause()
+            else:
+                sys.stdout.write("\r")
+                logger.info(progress_str)
         else:
             sys.stdout.write("\r" + progress_str)
             if self.is_capturing_stdout:
@@ -2384,7 +2434,11 @@ def copy_file(inpath, outpath, check_ext=False):
         assert_same_extensions(inpath, outpath)
 
     ensure_basedir(outpath)
-    shutil.copy(inpath, outpath)
+
+    try:
+        shutil.copy(inpath, outpath)
+    except shutil.SameFileError:
+        pass
 
 
 def link_file(filepath, linkpath, check_ext=False):
@@ -3213,7 +3267,7 @@ def from_human_decimal_str(num_str):
     for idx in reversed(range(len(_DECIMAL_UNITS))[1:]):
         unit = _DECIMAL_UNITS[idx]
         if num_str.endswith(unit):
-            return float(num_str[: -len(unit)]) * (1000 ** idx)
+            return float(num_str[: -len(unit)]) * (1000**idx)
 
     return float(num_str)
 
@@ -3287,7 +3341,7 @@ def from_human_bytes_str(bytes_str):
     for idx in reversed(range(len(_BYTES_UNITS))):
         unit = _BYTES_UNITS[idx]
         if bytes_str.endswith(unit):
-            return int(float(bytes_str[: -len(unit)]) * 1024 ** idx)
+            return int(float(bytes_str[: -len(unit)]) * 1024**idx)
 
     return int(bytes_str)
 
@@ -3361,7 +3415,7 @@ def from_human_bits_str(bits_str):
     for idx in reversed(range(len(_BITS_UNITS))):
         unit = _BITS_UNITS[idx]
         if bits_str.endswith(unit):
-            return int(float(bits_str[: -len(unit)]) * 1024 ** idx)
+            return int(float(bits_str[: -len(unit)]) * 1024**idx)
 
     return int(bits_str)
 

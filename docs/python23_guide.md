@@ -257,5 +257,5 @@ http://python-future.org/compatible_idioms.html#compatible-idioms
 
 ## Copyright
 
-Copyright 2017-2022, Voxel51, Inc.<br>
+Copyright 2017-2023, Voxel51, Inc.<br>
 voxel51.com
