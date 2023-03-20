@@ -114,6 +114,8 @@ setup(
     extras_require={
         "pipeline": ["blockdiag", "Sphinx", "sphinxcontrib-napoleon"],
         "storage": [
+            "azure-identity",
+            "azure-storage-blob>=12.4.0",
             "boto3>=1.15",
             "google-api-python-client",
             "google-cloud-storage>=1.36",
