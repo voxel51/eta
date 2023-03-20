@@ -2493,7 +2493,7 @@ class AzureStorageClient(
                         "connection string"
                     )
 
-                account_url = "https://%s.blob.core.windows.net" % account_name
+                account_url = self._to_account_url(account_name)
 
             client = azb.BlobServiceClient(
                 account_url=account_url,
@@ -2511,6 +2511,9 @@ class AzureStorageClient(
             vault_url = os.environ["AZURE_KEY_VAULT_URL"]
             secret_name = os.environ["AZURE_ACOUNT_KEY_SECRET_NAME"]
             account_key = self.load_secret(vault_url, secret_name, credential)
+
+        if account_url is not None:
+            account_url = account_url.rstrip("/")
 
         self._client = client
         self._credential = credential
@@ -2812,7 +2815,7 @@ class AzureStorageClient(
         )
 
         root = self._account_url
-        return root + container_name + "/" + blob_name + "?" + signature
+        return root + "/" + container_name + "/" + blob_name + "?" + signature
 
     def add_metadata(self, cloud_path, metadata):
         """Adds custom metadata key-value pairs to the given Azure Storage
@@ -2934,6 +2937,10 @@ class AzureStorageClient(
                 )
         except aze.ResourceNotFoundError:
             return []
+
+    @staticmethod
+    def _to_account_url(account_name):
+        return "https://%s.blob.core.windows.net" % account_name
 
     @staticmethod
     def _get_file_metadata(blob):
