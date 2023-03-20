@@ -1515,7 +1515,7 @@ class NeedsMinIOCredentials(object):
 
             if "MINIO_ALIAS" in os.environ:
                 logger.debug(
-                    "Loading region from 'MINIO_ALIAS' environment variable"
+                    "Loading alias from 'MINIO_ALIAS' environment variable"
                 )
                 credentials["alias"] = os.environ["MINIO_ALIAS"]
 
@@ -2257,8 +2257,8 @@ class NeedsAzureCredentials(object):
             -   `AZURE_TENANT_ID`
             -   `AZURE_STORAGE_ACCOUNT`
 
-        (7) setting credentials in any manner used by Application Default Credentials
-            https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli
+        (7) setting credentials in any manner recognized by
+            `azure.identity.DefaultAzureCredential`
 
     In the above, the credentials file should have syntax simliar to the
     following::
@@ -2269,8 +2269,10 @@ class NeedsAzureCredentials(object):
         tenant= ...
         account_name= ...
 
-    See the following page for more information:
-    https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/storage/azure-storage-blob
+    See the following pages for more information:
+
+    -   https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli
+    -   https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/storage/azure-storage-blob
     """
 
     CREDENTIALS_PATH = os.path.join(
@@ -2347,17 +2349,43 @@ class NeedsAzureCredentials(object):
         else:
             credentials = {}
 
+            if "AZURE_STORAGE_ACCOUNT_URL" in os.environ:
+                logger.debug(
+                    "Loading account name from 'AZURE_STORAGE_ACCOUNT_URL' "
+                    "environment variable"
+                )
+                account_url = os.environ["AZURE_STORAGE_ACCOUNT_URL"]
+                credentials["account_url"] = account_url
+
             if "AZURE_STORAGE_ACCOUNT" in os.environ:
+                logger.debug(
+                    "Loading account name from 'AZURE_STORAGE_ACCOUNT' "
+                    "environment variable"
+                )
                 account_name = os.environ["AZURE_STORAGE_ACCOUNT"]
                 credentials["account_name"] = account_name
 
             if "AZURE_STORAGE_KEY" in os.environ:
+                logger.debug(
+                    "Loading account key from 'AZURE_STORAGE_KEY' "
+                    "environment variable"
+                )
                 account_key = os.environ["AZURE_STORAGE_KEY"]
                 credentials["account_key"] = account_key
 
             if "AZURE_STORAGE_CONNECTION_STRING" in os.environ:
+                logger.debug(
+                    "Loading connection string from "
+                    "'AZURE_STORAGE_CONNECTION_STRING' environment variable"
+                )
                 conn_str = os.environ["AZURE_STORAGE_CONNECTION_STRING"]
                 credentials["conn_str"] = conn_str
+
+            if "AZURE_ALIAS" in os.environ:
+                logger.debug(
+                    "Loading alias from 'AZURE_ALIAS' " "environment variable"
+                )
+                credentials["alias"] = os.environ["AZURE_ALIAS"]
 
             return credentials, None
 
@@ -2478,7 +2506,19 @@ class AzureStorageClient(
             credential = client.credential
         else:
             if account_key is not None:
-                credential = account_key
+                if account_url is not None:
+                    if account_name is None:
+                        raise AzureCredentialsError(
+                            "You must also provide your account name when "
+                            "using a custom account URL"
+                        )
+
+                    credential = {
+                        "account_name": account_name,
+                        "account_key": account_key,
+                    }
+                else:
+                    credential = account_key
             elif tenant_id and client_id and client_secret:
                 credential = azi.ClientSecretCredential(
                     tenant_id, client_id, client_secret
@@ -2493,7 +2533,7 @@ class AzureStorageClient(
                         "connection string"
                     )
 
-                account_url = self._to_account_url(account_name)
+                account_url = "https://%s.blob.core.windows.net" % account_name
 
             client = azb.BlobServiceClient(
                 account_url=account_url,
@@ -2508,17 +2548,17 @@ class AzureStorageClient(
             "AZURE_KEY_VAULT_URL" in os.environ
             and "AZURE_ACOUNT_KEY_SECRET_NAME" in os.environ
         ):
+            logger.debug(
+                "Loading vault URL and secret name from 'AZURE_KEY_VAULT_URL' "
+                "and 'AZURE_ACOUNT_KEY_SECRET_NAME' environment variables"
+            )
             vault_url = os.environ["AZURE_KEY_VAULT_URL"]
             secret_name = os.environ["AZURE_ACOUNT_KEY_SECRET_NAME"]
             account_key = self.load_secret(vault_url, secret_name, credential)
 
-        if account_url is not None:
-            account_url = account_url.rstrip("/")
-
         self._client = client
-        self._credential = credential
         self._account_name = account_name
-        self._account_url = account_url
+        self._account_url = account_url.rstrip("/")
         self._account_key = account_key
 
         self._user_delegation_key = None
@@ -2872,9 +2912,7 @@ class AzureStorageClient(
         return container_name + "/" + blob_name
 
     def _to_path(self, container_name, blob_name):
-        return "https://%s.blob.core.windows.net/%s/%s" % (
-            (self._account_name, container_name, blob_name)
-        )
+        return "%s/%s/%s" % (self._account_url, container_name, blob_name)
 
     def _do_upload(
         self, file_obj, cloud_path, content_type=None, metadata=None
