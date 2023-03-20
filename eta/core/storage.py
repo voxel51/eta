@@ -2443,7 +2443,7 @@ class AzureStorageClient(
     """Client for reading/writing data from Azure Blob Storage.
 
     All cloud path strings used by this class should have the form
-    "https://<container>.blob.core.windows.net/<container>/<path/to/object>".
+    "https://<account>.blob.core.windows.net/<container>/<path/to/object>".
 
     See `NeedsAzureCredentials` for more information about the authentication
     strategy used by this class.
