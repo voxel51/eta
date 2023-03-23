@@ -4513,6 +4513,7 @@ def get_terminal_size():
             getattr(errno, "ENOTTY", None),
             getattr(errno, "ENXIO", None),
             getattr(errno, "EBADF", None),
+            getattr(errno, "EOPNOTSUPP", None)
         ):
             return (80, 24)
 
