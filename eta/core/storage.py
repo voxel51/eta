@@ -34,6 +34,7 @@ import configparser
 import datetime
 import dateutil.parser
 import io
+import itertools
 import logging
 import os
 import re
@@ -2477,12 +2478,14 @@ class AzureStorageClient(
     strategy used by this class.
     """
 
-    def __init__(self, credentials=None):
+    def __init__(self, credentials=None, max_pool_connections=None):
         """Creates an AzureStorageClient instance.
 
         Args:
             credentials: the credentials to use. If not provided, this is
                 automatically loaded as described in `NeedsAzureCredentials`
+            max_pool_connections: an optional maximum number of connections to
+                keep in the connection pool
         """
         if credentials is None:
             credentials, _ = self.load_credentials()
@@ -2495,9 +2498,22 @@ class AzureStorageClient(
         account_key = credentials.get("account_key", None)
         conn_str = credentials.get("conn_str", None)
 
+        # https://github.com/Azure/azure-sdk-for-python/issues/12102#issuecomment-645641481
+        if max_pool_connections is not None:
+            adapter = requests.adapters.HTTPAdapter(
+                pool_maxsize=max_pool_connections
+            )
+
+            session = requests.Session()
+            session.mount("http://", adapter)
+            session.mount("https://", adapter)
+        else:
+            session = None
+
         if conn_str is not None:
             client = azb.BlobServiceClient.from_connection_string(
-                conn_str=conn_str
+                conn_str=conn_str,
+                session=session,
             )
 
             account_name = client.account_name
@@ -2538,6 +2554,7 @@ class AzureStorageClient(
             client = azb.BlobServiceClient(
                 account_url=account_url,
                 credential=credential,
+                session=session,
             )
 
             account_name = client.account_name
@@ -2678,9 +2695,9 @@ class AzureStorageClient(
 
         blobs = self._list_blobs(container_name, prefix=folder_name)
 
-        client = self._get_container_client(container_name)
+        client = self._client.get_container_client(container_name)
         for _blobs in etau.iter_batches(blobs, 256):
-            client.delete_blobs({"name": b.name for b in _blobs})
+            client.delete_blobs(*[b.name for b in _blobs])
 
     def get_file_metadata(self, cloud_path):
         """Returns metadata about the given file in Azure Storage.
@@ -2694,7 +2711,8 @@ class AzureStorageClient(
                 `last_modified`, `etag`, and `metadata`
         """
         blob = self._get_blob_client(cloud_path)
-        return self._get_file_metadata(blob)
+        blob_properties = blob.get_blob_properties()
+        return self._get_file_metadata(blob_properties)
 
     def get_folder_metadata(self, cloud_folder):
         """Returns metadata about the given "folder" in Azure Storage.
@@ -2763,9 +2781,7 @@ class AzureStorageClient(
             folder_name += "/"
 
         blobs = self._list_blobs(
-            container_name,
-            prefix=folder_name,
-            results_per_page=1,
+            container_name, prefix=folder_name, max_results=1
         )
 
         return bool(list(blobs))
@@ -2897,11 +2913,15 @@ class AzureStorageClient(
         return self._client.get_blob_client(container_name, blob_name)
 
     def _parse_path(self, cloud_path):
-        blob_client = azb.BlobClient.from_blob_url(blob_url=cloud_path)
-        return (
-            blob_client.container_name,
-            blob_client.blob_name,
-        )
+        try:
+            client = azb.BlobClient.from_blob_url(cloud_path)
+            return client.container_name, client.blob_name
+        except ValueError as e:
+            try:
+                client = azb.ContainerClient.from_container_url(cloud_path)
+                return client.container_name, ""
+            except:
+                raise e
 
     def _strip_prefix(self, cloud_path):
         container_name, blob_name = self._parse_path(cloud_path)
@@ -2958,21 +2978,22 @@ class AzureStorageClient(
             blob.download_blob(offset=offset, length=length).readinto(file_obj)
 
     def _list_blobs(
-        self, container_name, prefix=None, recursive=True, **kwargs
+        self, container_name, prefix=None, recursive=True, max_results=None
     ):
         container = self._client.get_container_client(container_name)
 
         try:
             if recursive:
-                return list(
-                    container.list_blobs(name_starts_with=prefix, **kwargs)
-                )
+                r = container.list_blobs(name_starts_with=prefix)
             else:
-                return list(
-                    container.walk_blobs(
-                        name_starts_with=prefix, delimiter="/", **kwargs
-                    )
+                r = container.walk_blobs(
+                    name_starts_with=prefix, delimiter="/"
                 )
+
+            if max_results is not None:
+                return itertools.islice(r, max_results)
+
+            return r
         except aze.ResourceNotFoundError:
             return []
 
@@ -2981,22 +3002,20 @@ class AzureStorageClient(
         return "https://%s.blob.core.windows.net" % account_name
 
     @staticmethod
-    def _get_file_metadata(blob):
-        properties = blob.get_blob_properties()
-
-        mime_type = properties.content_settings.content_type
+    def _get_file_metadata(blob_properties):
+        mime_type = blob_properties.content_settings.content_type
         if not mime_type:
-            mime_type = etau.guess_mime_type(properties.name)
+            mime_type = etau.guess_mime_type(blob_properties.name)
 
         return {
-            "bucket": properties.container,
-            "object_name": properties.name,
-            "name": os.path.basename(properties.name),
-            "size": properties.size,
+            "bucket": blob_properties.container,
+            "object_name": blob_properties.name,
+            "name": os.path.basename(blob_properties.name),
+            "size": blob_properties.size,
             "mime_type": mime_type,
-            "last_modified": properties.creation_time,
-            "etag": properties.etag,
-            "metadata": properties.metadata,
+            "last_modified": blob_properties.creation_time,
+            "etag": blob_properties.etag,
+            "metadata": blob_properties.metadata,
         }
 
 
