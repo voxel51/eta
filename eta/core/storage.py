@@ -3015,8 +3015,15 @@ class AzureStorageClient(
             return []
 
     @staticmethod
-    def _to_account_url(account_name):
-        return "https://%s.blob.core.windows.net" % account_name
+    def _to_account_url(conn_str=None, account_name=None):
+        if conn_str is not None:
+            client = azb.BlobServiceClient.from_connection_string(
+                conn_str=conn_str
+            )
+            return client.url
+
+        if account_name is not None:
+            return "https://%s.blob.core.windows.net" % account_name
 
     @staticmethod
     def _get_file_metadata(blob_properties):
