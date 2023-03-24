@@ -967,7 +967,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
             kwargs["Delimiter"] = "/"
 
         paths_or_metadata = []
-        prefix = self._get_prefix(cloud_folder) + bucket
+        prefix = self._get_prefix(cloud_folder) + bucket + "/"
         while True:
             resp = self._client.list_objects_v2(**kwargs)
 
@@ -979,7 +979,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
                             self._get_object_metadata(bucket, obj)
                         )
                     else:
-                        paths_or_metadata.append(prefix + "/" + path)
+                        paths_or_metadata.append(prefix + path)
 
             try:
                 kwargs["ContinuationToken"] = resp["NextContinuationToken"]
@@ -2497,6 +2497,7 @@ class AzureStorageClient(
         account_name = credentials.get("account_name", None)
         account_key = credentials.get("account_key", None)
         conn_str = credentials.get("conn_str", None)
+        alias = credentials.pop("alias", None)
 
         # https://github.com/Azure/azure-sdk-for-python/issues/12102#issuecomment-645641481
         if max_pool_connections is not None:
@@ -2573,10 +2574,18 @@ class AzureStorageClient(
             secret_name = os.environ["AZURE_ACOUNT_KEY_SECRET_NAME"]
             account_key = self.load_secret(vault_url, secret_name, credential)
 
+        prefixes = []
+        if alias is not None:
+            prefixes.append(alias + "://")
+
+        prefixes.append(account_url.rstrip("/") + "/")
+
         self._client = client
         self._account_name = account_name
         self._account_url = account_url.rstrip("/")
         self._account_key = account_key
+        self._alias = alias
+        self._prefixes = tuple(prefixes)
 
         self._user_delegation_key = None
         self._user_delegation_expiration = None
@@ -2825,7 +2834,7 @@ class AzureStorageClient(
 
         # Return paths for each file
         paths = []
-        prefix = self._to_path(container_name, "")
+        prefix = self._get_prefix(cloud_folder) + container_name + "/"
         for blob in blobs:
             if not blob.name.endswith("/"):
                 paths.append(prefix + blob.name)
@@ -2923,16 +2932,24 @@ class AzureStorageClient(
             except:
                 raise e
 
+    def _get_prefix(self, cloud_path):
+        return _get_prefix(cloud_path, self._prefixes)
+
     def _strip_prefix(self, cloud_path):
-        container_name, blob_name = self._parse_path(cloud_path)
+        _cloud_path = _strip_prefix(cloud_path, self._prefixes)
 
-        if not blob_name:
-            return container_name
+        if _cloud_path is None:
+            if len(self._prefixes) == 1:
+                valid_prefixes = "'%s'" % self._prefixes[0]
+            else:
+                valid_prefixes = self._prefixes
 
-        return container_name + "/" + blob_name
+            raise ValueError(
+                "Invalid path '%s'; must start with %s"
+                % (cloud_path, valid_prefixes)
+            )
 
-    def _to_path(self, container_name, blob_name):
-        return "%s/%s/%s" % (self._account_url, container_name, blob_name)
+        return _cloud_path
 
     def _do_upload(
         self, file_obj, cloud_path, content_type=None, metadata=None
