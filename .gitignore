@@ -5,6 +5,7 @@
 **/*.md5
 *.log
 **/*.log
+.idea
 
 __pycache__
 *.py[cod]

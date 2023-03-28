@@ -34,7 +34,7 @@ import pprint
 from uuid import uuid4
 import zlib
 
-import ndjson
+import jsonlines
 import numpy as np
 
 import eta.core.utils as etau
@@ -134,8 +134,12 @@ def read_ndjson(path):
     Returns:
         a list of JSON dicts
     """
-    with open(path, "rt") as f:
-        return ndjson.load(f)
+
+    objs = []
+    with jsonlines.open(path) as reader:
+        objs = [obj for obj in reader]
+
+    return objs
 
 
 def load_ndjson(path_or_str):
@@ -162,10 +166,15 @@ def load_ndjson(path_or_str):
 
 def _load_ndjson(str_or_bytes):
     try:
-        return ndjson.loads(str_or_bytes)
+        lines = [json.dumps(o) for o in json.loads(str_or_bytes)]
+        reader = jsonlines.Reader(lines)
+        return [obj for obj in reader]
     except TypeError:
-        # Must be a Python version for which ndjson.loads() cannot handle bytes
-        return ndjson.loads(str_or_bytes.decode("utf-8"))
+        lines = [
+            json.dumps(o) for o in json.loads(str_or_bytes.decode("utf-8"))
+        ]
+        reader = jsonlines.Reader(lines)
+        return [obj for obj in reader]
 
 
 def write_ndjson(obj, path, append=False):
@@ -185,7 +194,14 @@ def write_ndjson(obj, path, append=False):
 
     mode = "at" if append else "wt"
     with open(path, mode) as f:
-        f.write(prefix + ndjson.dumps(obj))
+        lines = [json.dumps(o) for o in obj]
+        if prefix:
+            f.write(prefix)
+        # content = json.dumps(obj)
+
+        jsonlines.Writer(f).write_all(obj)
+        # f.write(prefix + ndjson.dumps(obj))
+        # f.write(prefix + lines)
 
 
 def json_to_str(obj, pretty_print=True):
@@ -1142,8 +1158,8 @@ class BigMixin(object):
     def add_iterable(self, elements):
         """Adds the elements in the given iterable to the Big iterable.
 
-         Args:
-            elements: an iterable of elements
+        Args:
+           elements: an iterable of elements
         """
         raise NotImplementedError("subclasses must implement add_iterable()")
 

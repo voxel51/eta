@@ -28,7 +28,7 @@ INSTALL_REQUIRES = [
     "future",
     "glob2",
     "importlib-metadata; python_version<'3.8'",
-    "ndjson",
+    "jsonlines",
     "numpy",
     "packaging",
     "patool",
