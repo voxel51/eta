@@ -135,9 +135,8 @@ def read_ndjson(path):
         a list of JSON dicts
     """
 
-    objs = []
     with jsonlines.open(path) as reader:
-        objs = [obj for obj in reader]
+        objs = [obj for obj in reader.iter(skip_empty=True)]
 
     return objs
 
@@ -194,14 +193,10 @@ def write_ndjson(obj, path, append=False):
 
     mode = "at" if append else "wt"
     with open(path, mode) as f:
-        lines = [json.dumps(o) for o in obj]
         if prefix:
             f.write(prefix)
-        # content = json.dumps(obj)
 
         jsonlines.Writer(f).write_all(obj)
-        # f.write(prefix + ndjson.dumps(obj))
-        # f.write(prefix + lines)
 
 
 def json_to_str(obj, pretty_print=True):
