@@ -48,10 +48,11 @@ import math
 import mimetypes
 import numbers
 import os
+import py7zr
 from packaging.requirements import Requirement
-import patoolib
 import pkg_resources
 import pytz
+import rarfile
 import random
 import re
 import shutil
@@ -64,7 +65,6 @@ import tempfile
 import timeit
 import types
 import zipfile as zf
-
 import eta
 import eta.constants as etac
 
@@ -3563,8 +3563,8 @@ def extract_archive(archive_path, outdir=None, delete_archive=False):
     `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, `.tbz`.
 
     If an archive *not* in the above list is found, extraction will be
-    attempted via the `patool` package, which supports many formats but may
-    require that additional system packages be installed.
+    pass through to the _extract_other function, which will attempt to discern
+    the type of archive & handle extraction.
 
     Args:
         archive_path: the path to the archive file
@@ -3575,14 +3575,12 @@ def extract_archive(archive_path, outdir=None, delete_archive=False):
     """
     if archive_path.endswith(".zip"):
         extract_zip(archive_path, outdir=outdir, delete_zip=delete_archive)
-    elif archive_path.endswith(".rar"):
-        extract_rar(archive_path, outdir=outdir, delete_rar=delete_archive)
     elif archive_path.endswith((".tar", ".tar.gz", ".tgz", ".tar.bz", ".tbz")):
         extract_tar(archive_path, outdir=outdir, delete_tar=delete_archive)
+    elif archive_path.endswith(".rar"):
+        extract_rar(archive_path, outdir=outdir, delete_rar=delete_archive)
     else:
-        # Fallback to `patoolib`, which handles a lot of stuff, possibly
-        # requiring the user to install system packages
-        _extract_archive_patoolib(
+        _extract_other(
             archive_path, outdir=outdir, delete_archive=delete_archive
         )
 
@@ -3601,10 +3599,8 @@ def extract_rar(rar_path, outdir=None, delete_rar=False):
             this is False
     """
     try:
-        _extract_archive_patoolib(
-            rar_path, outdir=outdir, delete_archive=delete_rar
-        )
-    except patoolib.util.PatoolError as e:
+        _extract_other(rar_path, outdir=outdir, delete_archive=delete_rar)
+    except ValueError as e:
         message = (
             "Failed to extract RAR file '%s'. Extracting RAR files requires a "
             "system package like `unrar` to be installed on your machine, "
@@ -3665,14 +3661,26 @@ def extract_tar(tar_path, outdir=None, delete_tar=False):
         delete_file(tar_path)
 
 
-def _extract_archive_patoolib(archive_path, outdir=None, delete_archive=False):
+def _extract_other(archive_path, outdir=None, delete_archive=False):
     outdir = outdir or os.path.dirname(archive_path) or "."
 
     ensure_dir(outdir)
 
-    patoolib.extract_archive(
-        archive_path, outdir=outdir, verbosity=-1, interactive=False
-    )
+    if zf.is_zipfile(archive_path):
+        extract_zip(archive_path, outdir=outdir, delete_zip=delete_archive)
+    elif tarfile.is_tarfile(archive_path):
+        extract_tar(archive_path, outdir=outdir, delete_tar=delete_archive)
+    elif rarfile.is_rarfile(archive_path):
+        with rarfile.RarFile(archive_path, "r") as rar_ref:
+            rar_ref.extractall(path=outdir)
+    elif py7zr.is_7zfile(archive_path):
+        with py7zr.SevenZipFile(archive_path, "r") as z:
+            z.extractall(path=outdir)
+    else:
+        raise ValueError(
+            "Expected file '%s' to have extension .zip, .rar, .7z, .tar, .tar.gz, "
+            ".tgz, .tar.bz, or .tbz in order to extract it" % archive_path
+        )
 
     if delete_archive:
         delete_file(archive_path)
@@ -4511,7 +4519,7 @@ def get_terminal_size():
             getattr(errno, "ENOTTY", None),
             getattr(errno, "ENXIO", None),
             getattr(errno, "EBADF", None),
-            getattr(errno, "EOPNOTSUPP", None)
+            getattr(errno, "EOPNOTSUPP", None),
         ):
             return (80, 24)
 
