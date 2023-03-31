@@ -22,7 +22,7 @@ infrastructure.**
 ETA is very portable:
 
 -   Installable on Mac or Linux
--   Supports Python 2.7 and Python 3.6 or later
+-   Supports Python 3.6 or later
 -   Supports TensorFlow 1.X and 2.X
 -   Supports OpenCV 2.4+ and OpenCV 3.0+
 -   Supports CPU-only and GPU-enabled installations

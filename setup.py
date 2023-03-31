@@ -135,7 +135,6 @@ setup(
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
@@ -144,6 +143,6 @@ setup(
         "Programming Language :: Python :: 3.10",
     ],
     entry_points={"console_scripts": ["eta=eta.core.cli:main"]},
-    python_requires=">=2.7",
+    python_requires=">=3.6",
     cmdclass={"bdist_wheel": BdistWheelCustom},
 )
