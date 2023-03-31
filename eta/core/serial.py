@@ -134,11 +134,8 @@ def read_ndjson(path):
     Returns:
         a list of JSON dicts
     """
-
-    with jsonlines.open(path) as reader:
-        objs = [obj for obj in reader.iter(skip_empty=True)]
-
-    return objs
+    with jsonlines.open(path) as r:
+        return list(r.iter(skip_empty=True))
 
 
 def load_ndjson(path_or_str):
@@ -165,15 +162,13 @@ def load_ndjson(path_or_str):
 
 def _load_ndjson(str_or_bytes):
     try:
-        lines = [json.dumps(o) for o in json.loads(str_or_bytes)]
-        reader = jsonlines.Reader(lines)
-        return [obj for obj in reader]
-    except TypeError:
-        lines = [
-            json.dumps(o) for o in json.loads(str_or_bytes.decode("utf-8"))
-        ]
-        reader = jsonlines.Reader(lines)
-        return [obj for obj in reader]
+        ndjson_str = str_or_bytes.decode("utf-8")
+    except AttributeError:
+        ndjson_str = str_or_bytes
+
+    with io.StringIO(ndjson_str) as f:
+        with jsonlines.Reader(f) as r:
+            return list(r.iter(skip_empty=True))
 
 
 def write_ndjson(obj, path, append=False):
@@ -196,7 +191,8 @@ def write_ndjson(obj, path, append=False):
         if prefix:
             f.write(prefix)
 
-        jsonlines.Writer(f).write_all(obj)
+        with jsonlines.Writer(f) as w:
+            w.write_all(obj)
 
 
 def json_to_str(obj, pretty_print=True):
