@@ -4528,3 +4528,24 @@ def save_window_snapshot(window_name, filepath):
     """
     ensure_basedir(filepath)
     _run_system_os_cmd(["import", "-window", window_name, filepath])
+
+
+def iter_batches(iterable, batch_size):
+    """Iterates over the given iterable in batches.
+
+    Args:
+        iterable: an iterable
+        batch_size: the desired batch size, or None to return the contents in
+            a single batch
+
+    Returns:
+        a generator that emits tuples of elements of the requested batch size
+        from the input
+    """
+    i = iter(iterable)
+    while True:
+        chunk = tuple(it.islice(i, batch_size))
+        if not chunk:
+            return
+
+        yield chunk
