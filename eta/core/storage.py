@@ -2261,14 +2261,23 @@ class NeedsAzureCredentials(object):
         (7) setting credentials in any manner recognized by
             `azure.identity.DefaultAzureCredential`
 
-    In the above, the credentials file should have syntax simliar to the
+    In the above, the credentials file should have syntax simliar to one of the
     following::
 
         [default]
-        client_id= ...
-        secret= ...
-        tenant= ...
-        account_name= ...
+        conn_str = ...
+        alias = ...  # optional
+
+        [default]
+        account_name = ...
+        account_key = ...
+        alias = ...  # optional
+
+        [default]
+        client_id = ...
+        secret = ...
+        tenant = ...
+        account_name = ...
 
     See the following pages for more information:
 
@@ -2350,9 +2359,17 @@ class NeedsAzureCredentials(object):
         else:
             credentials = {}
 
+            if "AZURE_STORAGE_CONNECTION_STRING" in os.environ:
+                logger.debug(
+                    "Loading connection string from "
+                    "'AZURE_STORAGE_CONNECTION_STRING' environment variable"
+                )
+                conn_str = os.environ["AZURE_STORAGE_CONNECTION_STRING"]
+                credentials["conn_str"] = conn_str
+
             if "AZURE_STORAGE_ACCOUNT_URL" in os.environ:
                 logger.debug(
-                    "Loading account name from 'AZURE_STORAGE_ACCOUNT_URL' "
+                    "Loading account URL from 'AZURE_STORAGE_ACCOUNT_URL' "
                     "environment variable"
                 )
                 account_url = os.environ["AZURE_STORAGE_ACCOUNT_URL"]
@@ -2371,20 +2388,32 @@ class NeedsAzureCredentials(object):
                     "Loading account key from 'AZURE_STORAGE_KEY' "
                     "environment variable"
                 )
-                account_key = os.environ["AZURE_STORAGE_KEY"]
-                credentials["account_key"] = account_key
+                credentials["account_key"] = os.environ["AZURE_STORAGE_KEY"]
 
-            if "AZURE_STORAGE_CONNECTION_STRING" in os.environ:
+            if "AZURE_CLIENT_ID" in os.environ:
                 logger.debug(
-                    "Loading connection string from "
-                    "'AZURE_STORAGE_CONNECTION_STRING' environment variable"
+                    "Loading client ID from 'AZURE_CLIENT_ID' environment "
+                    "variable"
                 )
-                conn_str = os.environ["AZURE_STORAGE_CONNECTION_STRING"]
-                credentials["conn_str"] = conn_str
+                credentials["client_id"] = os.environ["AZURE_CLIENT_ID"]
+
+            if "AZURE_CLIENT_SECRET" in os.environ:
+                logger.debug(
+                    "Loading client secret from 'AZURE_CLIENT_SECRET' "
+                    "environment variable"
+                )
+                credentials["secret"] = os.environ["AZURE_CLIENT_SECRET"]
+
+            if "AZURE_TENANT_ID" in os.environ:
+                logger.debug(
+                    "Loading tenant ID from 'AZURE_TENANT_ID' environment "
+                    "variable"
+                )
+                credentials["tenant"] = os.environ["AZURE_TENANT_ID"]
 
             if "AZURE_ALIAS" in os.environ:
                 logger.debug(
-                    "Loading alias from 'AZURE_ALIAS' " "environment variable"
+                    "Loading alias from 'AZURE_ALIAS' environment variable"
                 )
                 credentials["alias"] = os.environ["AZURE_ALIAS"]
 
