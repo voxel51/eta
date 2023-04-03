@@ -143,7 +143,7 @@ def load_ndjson(path_or_str):
 
     The input argument can be any of the following:
         (a) the path to a NDJSON file on disk
-        (b) a string that can be directly parsed via `ndjson.loads`
+        (b) an NDJSON string or bytes
 
     Args:
         path_or_str: the NDJSON path or string
