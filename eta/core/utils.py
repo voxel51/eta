@@ -49,7 +49,11 @@ import mimetypes
 import numbers
 import os
 from packaging.requirements import Requirement
-import pkg_resources
+
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
 import py7zr
 import pytz
 import random
@@ -669,7 +673,7 @@ def ensure_package(
 ):
     """Ensures that the given package is installed.
 
-    This function uses `pkg_resources.get_distribution` to locate the package
+    This function uses `importlib.metadata.version` to locate the package
     by its pip name and does not actually import the module.
 
     Therefore, unlike `ensure_import()`, `requirement_str` should refer to the
@@ -721,9 +725,9 @@ def _get_package_version(requirement_str):
     req = Requirement(requirement_str)
 
     try:
-        version = pkg_resources.get_distribution(req.name).version
+        version = metadata.version(req.name)
         error = None
-    except pkg_resources.DistributionNotFound as e:
+    except importlib.PackageNotFoundError as e:
         version = None
         error = e
 
