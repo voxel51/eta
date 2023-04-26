@@ -6,7 +6,11 @@ Copyright 2017-2023, Voxel51, Inc.
 voxel51.com
 """
 import os
-from pkg_resources import DistributionNotFound, get_distribution
+
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
 import re
 from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
@@ -64,10 +68,10 @@ def choose_requirement(mains, secondary):
     for main in mains:
         try:
             name = re.split(r"[!<>=]", main)[0]
-            get_distribution(name)
+            metadata.version(name)
             chosen = main
             break
-        except DistributionNotFound:
+        except metadata.PackageNotFoundError:
             pass
 
     return str(chosen)
