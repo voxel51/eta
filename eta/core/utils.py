@@ -42,6 +42,11 @@ try:
 except ImportError:
     import urlparse  # Python 2
 
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
+
 import itertools as it
 import logging
 import math
@@ -49,11 +54,6 @@ import mimetypes
 import numbers
 import os
 from packaging.requirements import Requirement
-
-try:
-    from importlib import metadata
-except ImportError:
-    import importlib_metadata as metadata
 import py7zr
 import pytz
 import random
@@ -673,8 +673,8 @@ def ensure_package(
 ):
     """Ensures that the given package is installed.
 
-    This function uses `importlib.metadata.version` to locate the package
-    by its pip name and does not actually import the module.
+    This function uses `importlib.metadata` to locate the package by its pip
+    name and does not actually import the module.
 
     Therefore, unlike `ensure_import()`, `requirement_str` should refer to the
     package name (e.g., "tensorflow-gpu"), not the module name
@@ -727,7 +727,7 @@ def _get_package_version(requirement_str):
     try:
         version = metadata.version(req.name)
         error = None
-    except importlib.PackageNotFoundError as e:
+    except metadata.PackageNotFoundError as e:
         version = None
         error = e
 

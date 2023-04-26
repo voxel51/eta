@@ -5,12 +5,12 @@ Installs ETA.
 Copyright 2017-2023, Voxel51, Inc.
 voxel51.com
 """
-import os
-
 try:
     from importlib import metadata
 except ImportError:
     import importlib_metadata as metadata
+
+import os
 import re
 from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
