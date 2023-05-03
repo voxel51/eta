@@ -25,6 +25,7 @@ from collections import defaultdict
 from distutils.version import LooseVersion
 import logging
 import os
+from packaging.requirements import Requirement
 import sys
 
 import eta
@@ -688,29 +689,54 @@ class ModelRequirements(Serializable):
 
     Example requirements::
 
-        {
-            "packages": [
-                "numpy==1.14.0"
-            ],
-            "cpu": {
-                "support": true,
+        import eta.core.models as etam
+
+        requirements = etam.ModelRequirements.from_dict(
+            {
                 "packages": [
-                    "tensorflow>=1.14,<2"
-                ]
-            },
-            "gpu": {
-                "support": false,
-                "cuda_version": ">=9",
-                "cudnn_version": ">=7.5",
-                "packages": [
-                    "tensorflow-gpu>=1.14,<2"
-                ]
+                    "numpy==1.14.0"
+                ],
+                "cpu": {
+                    "support": True,
+                    "packages": [
+                        "tensorflow>=1.14,<2"
+                    ]
+                },
+                "gpu": {
+                    "support": False,
+                    "cuda_version": ">=9",
+                    "cudnn_version": ">=7.5",
+                    "packages": [
+                        "tensorflow-gpu>=1.14,<2"
+                    ]
+                }
             }
-        }
+        )
 
     Attributes:
-        packages: (optional) a list of `setuptools`-style package requirements
-            in order to use the model
+        packages: (optional) package requirements to use the model. Can be any
+            of the following:
+
+            -   a list of `setuptools`-style package requirements::
+
+                    packages = ["torch", "numpy==1.14.0"]
+
+            -   a comma-separated string of requirements
+
+                    packages = "torch,numpy==1.14.0"
+
+            -   a dict specifying a function that returns requirements in
+                either of the above formats::
+
+                    packages = {
+                        "entrypoint_fcn": "path.to.fcn",
+                        "entrypoint_args": {"key": value},
+                    }
+
+                The function is invoked as follows::
+
+                    packages = entrypoint_fcn(**entrypoint_args)
+
         cpu: (optional) a CPU requirements dict
         gpu: (optional) a GPU requirements dict
     """
@@ -772,15 +798,11 @@ class ModelRequirements(Serializable):
             error_suffix: an optional message to append to the error if the
                 installation fails and ``error_level == 0``
         """
-        if self.packages is None:
-            return
-
-        for requirement_str in self.packages:
-            etau.install_package(
-                requirement_str,
-                error_level=error_level,
-                error_suffix=error_suffix,
-            )
+        _install_requirements(
+            self.packages,
+            error_level=error_level,
+            error_suffix=error_suffix,
+        )
 
     def install_cpu_requirements(self, error_level=0, error_suffix=None):
         """Installs any CPU package requirements for the model.
@@ -794,15 +816,11 @@ class ModelRequirements(Serializable):
             error_suffix: an optional message to append to the error if the
                 installation fails and ``error_level == 0``
         """
-        if self.cpu_packages is None:
-            return
-
-        for requirement_str in self.cpu_packages:
-            etau.install_package(
-                requirement_str,
-                error_level=error_level,
-                error_suffix=error_suffix,
-            )
+        _install_requirements(
+            self.cpu_packages,
+            error_level=error_level,
+            error_suffix=error_suffix,
+        )
 
     def install_gpu_requirements(self, error_level=0, error_suffix=None):
         """Installs any GPU package requirements for the model.
@@ -816,15 +834,11 @@ class ModelRequirements(Serializable):
             error_suffix: an optional message to append to the error if the
                 installation fails and ``error_level == 0``
         """
-        if self.gpu_packages is None:
-            return
-
-        for requirement_str in self.gpu_packages:
-            etau.install_package(
-                requirement_str,
-                error_level=error_level,
-                error_suffix=error_suffix,
-            )
+        _install_requirements(
+            self.gpu_packages,
+            error_level=error_level,
+            error_suffix=error_suffix,
+        )
 
     def ensure_base_requirements(
         self, error_level=0, error_suffix=None, log_success=False
@@ -843,16 +857,12 @@ class ModelRequirements(Serializable):
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
-        if self.packages is None or error_level >= 2:
-            return
-
-        for requirement_str in self.packages:
-            etau.ensure_package(
-                requirement_str,
-                error_level=error_level,
-                error_suffix=error_suffix,
-                log_success=log_success,
-            )
+        _ensure_requirements(
+            self.packages,
+            error_level=error_level,
+            error_suffix=error_suffix,
+            log_success=log_success,
+        )
 
     def ensure_cpu_requirements(
         self, error_level=0, error_suffix=None, log_success=False
@@ -871,16 +881,12 @@ class ModelRequirements(Serializable):
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
-        if self.cpu_packages is None or error_level >= 2:
-            return
-
-        for requirement_str in self.cpu_packages:
-            etau.ensure_package(
-                requirement_str,
-                error_level=error_level,
-                error_suffix=error_suffix,
-                log_success=log_success,
-            )
+        _ensure_requirements(
+            self.cpu_packages,
+            error_level=error_level,
+            error_suffix=error_suffix,
+            log_success=log_success,
+        )
 
     def ensure_gpu_requirements(
         self, error_level=0, error_suffix=None, log_success=False
@@ -899,18 +905,13 @@ class ModelRequirements(Serializable):
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
-        if self.gpu_packages is None or error_level >= 2:
-            return
-
         self._ensure_cuda(error_level, error_suffix)
-
-        for requirement_str in self.gpu_packages:
-            etau.ensure_package(
-                requirement_str,
-                error_level=error_level,
-                error_suffix=error_suffix,
-                log_success=log_success,
-            )
+        _ensure_requirements(
+            self.gpu_packages,
+            error_level=error_level,
+            error_suffix=error_suffix,
+            log_success=log_success,
+        )
 
     def _ensure_cuda(self, error_level, error_suffix):
         if self.gpu is None or error_level >= 2:
@@ -961,6 +962,75 @@ class ModelRequirements(Serializable):
         cpu = d.get("cpu", None)
         gpu = d.get("gpu", None)
         return cls(packages=packages, cpu=cpu, gpu=gpu)
+
+
+def _install_requirements(packages, error_level=0, error_suffix=None):
+    packages = _parse_packages(packages)
+
+    if packages is None:
+        return
+
+    for requirement_str in packages:
+        etau.install_package(
+            requirement_str,
+            error_level=error_level,
+            error_suffix=error_suffix,
+        )
+
+
+def _ensure_requirements(
+    packages, error_level=0, error_suffix=None, log_success=False
+):
+    if error_level >= 2:
+        return
+
+    packages = _parse_packages(packages)
+
+    if packages is None:
+        return
+
+    for requirement_str in packages:
+        etau.ensure_package(
+            requirement_str,
+            error_level=error_level,
+            error_suffix=error_suffix,
+            log_success=log_success,
+        )
+
+
+def _parse_packages(packages):
+    if packages is None:
+        return
+
+    if isinstance(packages, dict):
+        entrypoint = etau.get_function(packages["entrypoint_fcn"])
+        kwargs = packages.get("entrypoint_args", {})
+        packages = entrypoint(**kwargs)
+
+    if etau.is_str(packages):
+        if os.path.isfile(packages):
+            packages = _load_requirements(packages)
+        else:
+            packages = packages.split(",")
+
+    return packages
+
+
+def _load_requirements(requirements_path):
+    packages = []
+    with open(requirements_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+
+            try:
+                _ = Requirement(line)
+                packages.append(line)
+            except:
+                logger.info("Ignoring unsupported requirement '%s'", line)
+
+    return packages
 
 
 class Model(Serializable):
