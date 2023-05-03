@@ -1428,7 +1428,9 @@ class ModelsManifest(Serializable):
                 "Manifest already contains model called '%s'" % model.name
             )
 
-        if self.has_model_with_filename(model.filename):
+        if model.filename is not None and self.has_model_with_filename(
+            model.filename
+        ):
             raise ModelError(
                 "Manifest already contains model with filename '%s'"
                 % (model.filename)
