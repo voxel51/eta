@@ -1807,15 +1807,12 @@ class ETAModelManager(ModelManager):
                 client = etas.GoogleDriveStorageClient()
                 client.download(gid, model_path)
                 logger.warning("Bandage applied")
-
         elif self.config.url:
             url = self.config.url
             logger.info("Downloading model from '%s' to '%s'", url, model_path)
             etaw.download_file(url, path=model_path)
         else:
-            raise ModelError(
-                "Invalid ETAModelManagerConfig '%s'" % str(self.config)
-            )
+            logger.info("Model downloading is not managed by ETA")
 
     def delete_model(self):
         raise NotImplementedError(
