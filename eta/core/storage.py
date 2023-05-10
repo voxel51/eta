@@ -58,6 +58,8 @@ try:
     import google.api_core.exceptions as gae
     import google.api_core.retry as gar
     import google.auth as ga
+    import google.auth.transport.requests as gatr
+    import google.auth.compute_engine as gace
     import google.cloud.storage as gcs
     from google.cloud.storage._signing import generate_signed_url_v4
     import google.oauth2.service_account as gos
@@ -1832,10 +1834,12 @@ class GoogleCloudStorageClient(
             max_pool_connections: an optional maximum number of connections to
                 keep in the connection pool
             **kwargs: optional keyword arguments for
-                `google.cloud.storage.Client(**kwargs)`
+                `google.cloud.storage.Client(credentials=credentials, **kwargs)`
         """
         if credentials is None:
             credentials, _ = self.load_credentials()
+
+        is_default_credentials = credentials is None
 
         try:
             client = gcs.Client(credentials=credentials, **kwargs)
@@ -1869,6 +1873,8 @@ class GoogleCloudStorageClient(
 
         self.chunk_size = chunk_size
         self._client = client
+        self._is_default_credentials = is_default_credentials
+        self._signing_credentials = None
         self._retry = retry
 
     def upload(self, local_path, cloud_path, content_type=None, metadata=None):
@@ -2151,15 +2157,51 @@ class GoogleCloudStorageClient(
         Returns:
             a URL for accessing the object via HTTP request
         """
+        credentials = self._get_signing_credentials(cloud_path)
         bucket, name = self._parse_path(cloud_path)
         resource = "/%s/%s" % (bucket, urlparse.quote(name, safe=b"/~"))
         return generate_signed_url_v4(
-            self._client._credentials,
+            credentials,
             resource=resource,
             expiration=datetime.timedelta(hours=hours),
             method=method.upper(),
             content_type=content_type,
         )
+
+    def _get_signing_credentials(self, cloud_path):
+        #
+        # When using default credentials, some extra work is required in
+        # order to retrieve credentials that can sign URLs
+        # https://gist.github.com/jezhumble/91051485db4462add82045ef9ac2a0ec
+        #
+        # Notes
+        # - This may *only* work in Compute Engine/App Engine environments
+        # - This requires the service account to have the
+        #   ``roles/iam.serviceAccountTokenCreator`` permission
+        #
+        if self._is_default_credentials and self._signing_credentials is None:
+            # May need to ensure the client has been used at least once
+            # https://gist.github.com/jezhumble/91051485db4462add82045ef9ac2a0ec?permalink_comment_id=3585157#gistcomment-3585157
+            _ = self._get_blob(cloud_path)
+
+            try:
+                r = gatr.Request()
+                self._signing_credentials = gace.IDTokenCredentials(r, "")
+            except Exception as e:
+                six.raise_from(
+                    GoogleCredentialsError(
+                        "Failed to generate signing credentials for your "
+                        "Application Default Credentials. Note that your "
+                        "service account must have the "
+                        "'roles/iam.serviceAccountTokenCreator' permission"
+                    ),
+                    e,
+                )
+
+        if self._signing_credentials is not None:
+            return self._signing_credentials
+
+        return self._client._credentials
 
     def add_metadata(self, cloud_path, metadata):
         """Adds custom metadata key-value pairs to the given GCS object.
