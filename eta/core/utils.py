@@ -42,6 +42,11 @@ try:
 except ImportError:
     import urlparse  # Python 2
 
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
+
 import itertools as it
 import logging
 import math
@@ -49,10 +54,10 @@ import mimetypes
 import numbers
 import os
 from packaging.requirements import Requirement
-import patoolib
-import pkg_resources
+import py7zr
 import pytz
 import random
+import rarfile
 import re
 import shutil
 import signal
@@ -668,8 +673,8 @@ def ensure_package(
 ):
     """Ensures that the given package is installed.
 
-    This function uses `pkg_resources.get_distribution` to locate the package
-    by its pip name and does not actually import the module.
+    This function uses `importlib.metadata` to locate the package by its pip
+    name and does not actually import the module.
 
     Therefore, unlike `ensure_import()`, `requirement_str` should refer to the
     package name (e.g., "tensorflow-gpu"), not the module name
@@ -720,9 +725,9 @@ def _get_package_version(requirement_str):
     req = Requirement(requirement_str)
 
     try:
-        version = pkg_resources.get_distribution(req.name).version
+        version = metadata.version(req.name)
         error = None
-    except pkg_resources.DistributionNotFound as e:
+    except metadata.PackageNotFoundError as e:
         version = None
         error = e
 
@@ -3559,12 +3564,8 @@ def split_archive(archive_path):
 def extract_archive(archive_path, outdir=None, delete_archive=False):
     """Extracts the contents of an archive.
 
-    The following formats are guaranteed to work:
-    `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, `.tbz`.
-
-    If an archive *not* in the above list is found, extraction will be
-    attempted via the `patool` package, which supports many formats but may
-    require that additional system packages be installed.
+    The following formats are supported:
+    `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, `.tbz`, `.7z`, and `.rar`.
 
     Args:
         archive_path: the path to the archive file
@@ -3575,43 +3576,17 @@ def extract_archive(archive_path, outdir=None, delete_archive=False):
     """
     if archive_path.endswith(".zip"):
         extract_zip(archive_path, outdir=outdir, delete_zip=delete_archive)
-    elif archive_path.endswith(".rar"):
-        extract_rar(archive_path, outdir=outdir, delete_rar=delete_archive)
     elif archive_path.endswith((".tar", ".tar.gz", ".tgz", ".tar.bz", ".tbz")):
         extract_tar(archive_path, outdir=outdir, delete_tar=delete_archive)
+    elif archive_path.endswith(".7z"):
+        extract_7z(archive_path, outdir=outdir, delete_zip=delete_archive)
+    elif archive_path.endswith(".rar"):
+        extract_rar(archive_path, outdir=outdir, delete_rar=delete_archive)
     else:
-        # Fallback to `patoolib`, which handles a lot of stuff, possibly
-        # requiring the user to install system packages
-        _extract_archive_patoolib(
-            archive_path, outdir=outdir, delete_archive=delete_archive
+        raise ValueError(
+            "Expected file '%s' to have extension .zip, .tar, .tar.gz, .tgz, "
+            ".tar.bz, .tbz, .7z, or .rar in order to extract it" % archive_path
         )
-
-
-def extract_rar(rar_path, outdir=None, delete_rar=False):
-    """Extracts the contents of a .rar file.
-
-    This method will complain if you do not have a system package like `unrar`
-    installed that can perform the actual extraction.
-
-    Args:
-        rar_path: the path to the RAR file
-        outdir: the directory into which to extract the RAR contents. By
-            default, the directory containing the RAR file is used
-        delete_rar: whether to delete the RAR after extraction. By default,
-            this is False
-    """
-    try:
-        _extract_archive_patoolib(
-            rar_path, outdir=outdir, delete_archive=delete_rar
-        )
-    except patoolib.util.PatoolError as e:
-        message = (
-            "Failed to extract RAR file '%s'. Extracting RAR files requires a "
-            "system package like `unrar` to be installed on your machine, "
-            "which you may need to install. Check the error message above for "
-            "more information."
-        ) % rar_path
-        six.raise_from(IOError(message), e)
 
 
 def extract_zip(zip_path, outdir=None, delete_zip=False):
@@ -3658,6 +3633,7 @@ def extract_tar(tar_path, outdir=None, delete_tar=False):
         )
 
     outdir = outdir or os.path.dirname(tar_path) or "."
+
     with tarfile.open(tar_path, fmt) as f:
         f.extractall(path=outdir)
 
@@ -3665,17 +3641,54 @@ def extract_tar(tar_path, outdir=None, delete_tar=False):
         delete_file(tar_path)
 
 
-def _extract_archive_patoolib(archive_path, outdir=None, delete_archive=False):
-    outdir = outdir or os.path.dirname(archive_path) or "."
+def extract_7z(zip_path, outdir=None, delete_zip=False):
+    """Extracts the contents of a .7z file.
 
-    ensure_dir(outdir)
+    Args:
+        zip_path: the path to the zip file
+        outdir: the directory into which to extract the zip contents. By
+            default, the directory containing the zip file is used
+        delete_zip: whether to delete the zip after extraction. By default,
+            this is False
+    """
+    outdir = outdir or os.path.dirname(zip_path) or "."
 
-    patoolib.extract_archive(
-        archive_path, outdir=outdir, verbosity=-1, interactive=False
-    )
+    with py7zr.SevenZipFile(zip_path, "r") as f:
+        f.extractall(path=outdir)
 
-    if delete_archive:
-        delete_file(archive_path)
+    if delete_zip:
+        delete_file(zip_path)
+
+
+def extract_rar(rar_path, outdir=None, delete_rar=False):
+    """Extracts the contents of a .rar file.
+
+    This method will complain if you do not have a system package like `unrar`
+    installed that can perform the actual extraction.
+
+    Args:
+        rar_path: the path to the RAR file
+        outdir: the directory into which to extract the RAR contents. By
+            default, the directory containing the RAR file is used
+        delete_rar: whether to delete the RAR after extraction. By default,
+            this is False
+    """
+    outdir = outdir or os.path.dirname(rar_path) or "."
+
+    try:
+        with rarfile.RarFile(rar_path, "r") as f:
+            f.extractall(path=outdir)
+    except ValueError as e:
+        message = (
+            "Failed to extract RAR file '%s'. Extracting RAR files requires a "
+            "system package like `unrar` to be installed on your machine, "
+            "which you may need to install. Check the error message above for "
+            "more information."
+        ) % rar_path
+        six.raise_from(IOError(message), e)
+
+    if delete_rar:
+        delete_file(rar_path)
 
 
 def multiglob(*patterns, **kwargs):
@@ -4511,6 +4524,7 @@ def get_terminal_size():
             getattr(errno, "ENOTTY", None),
             getattr(errno, "ENXIO", None),
             getattr(errno, "EBADF", None),
+            getattr(errno, "EOPNOTSUPP", None),
         ):
             return (80, 24)
 
@@ -4527,3 +4541,24 @@ def save_window_snapshot(window_name, filepath):
     """
     ensure_basedir(filepath)
     _run_system_os_cmd(["import", "-window", window_name, filepath])
+
+
+def iter_batches(iterable, batch_size):
+    """Iterates over the given iterable in batches.
+
+    Args:
+        iterable: an iterable
+        batch_size: the desired batch size, or None to return the contents in
+            a single batch
+
+    Returns:
+        a generator that emits tuples of elements of the requested batch size
+        from the input
+    """
+    i = iter(iterable)
+    while True:
+        chunk = tuple(it.islice(i, batch_size))
+        if not chunk:
+            return
+
+        yield chunk

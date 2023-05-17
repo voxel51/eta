@@ -34,6 +34,7 @@ import configparser
 import datetime
 import dateutil.parser
 import io
+import itertools
 import logging
 import os
 import re
@@ -47,6 +48,9 @@ except ImportError:
 import urllib3
 
 try:
+    import azure.identity as azi
+    import azure.storage.blob as azb
+    import azure.core.exceptions as aze
     import boto3
     import botocore
     import botocore.config as bcc
@@ -54,6 +58,8 @@ try:
     import google.api_core.exceptions as gae
     import google.api_core.retry as gar
     import google.auth as ga
+    import google.auth.transport.requests as gatr
+    import google.auth.compute_engine as gace
     import google.cloud.storage as gcs
     from google.cloud.storage._signing import generate_signed_url_v4
     import google.oauth2.service_account as gos
@@ -72,6 +78,11 @@ except ImportError as e:
 import eta.constants as etac
 import eta.core.serial as etas
 import eta.core.utils as etau
+
+aks = etau.lazy_import(
+    "azure.keyvault.secrets",
+    callback=lambda: etau.ensure_package("azure-keyvault-secrets"),
+)
 
 
 logger = logging.getLogger(__name__)
@@ -958,7 +969,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
             kwargs["Delimiter"] = "/"
 
         paths_or_metadata = []
-        prefix = self._get_prefix(cloud_folder) + bucket
+        prefix = self._get_prefix(cloud_folder) + bucket + "/"
         while True:
             resp = self._client.list_objects_v2(**kwargs)
 
@@ -970,7 +981,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
                             self._get_object_metadata(bucket, obj)
                         )
                     else:
-                        paths_or_metadata.append(prefix + "/" + path)
+                        paths_or_metadata.append(prefix + path)
 
             try:
                 kwargs["ContinuationToken"] = resp["NextContinuationToken"]
@@ -1168,7 +1179,6 @@ class NeedsAWSCredentials(object):
 
         (3) setting credentials in any manner used by Boto3
             https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html
-
 
     In the above, the `.ini` file should have syntax similar to the following::
 
@@ -1394,7 +1404,6 @@ class NeedsMinIOCredentials(object):
         (5) setting the `MINIO_CONFIG_FILE` environment variable to point to a
             valid credentials `.ini` file
 
-
     In the above, the `.ini` file should have syntax similar to the following::
 
         [default]
@@ -1509,7 +1518,7 @@ class NeedsMinIOCredentials(object):
 
             if "MINIO_ALIAS" in os.environ:
                 logger.debug(
-                    "Loading region from 'MINIO_ALIAS' environment variable"
+                    "Loading alias from 'MINIO_ALIAS' environment variable"
                 )
                 credentials["alias"] = os.environ["MINIO_ALIAS"]
 
@@ -1664,8 +1673,6 @@ class NeedsGoogleCredentials(object):
 
         (3) setting credentials in any manner used by Application Default Credentials
             https://cloud.google.com/docs/authentication/production#automatically
-
-
 
     In the above, the service account JSON file should have syntax similar to
     the following::
@@ -1827,11 +1834,12 @@ class GoogleCloudStorageClient(
             max_pool_connections: an optional maximum number of connections to
                 keep in the connection pool
             **kwargs: optional keyword arguments for
-                `google.cloud.storage.Client(**kwargs)`
+                `google.cloud.storage.Client(credentials=credentials, **kwargs)`
         """
-
         if credentials is None:
             credentials, _ = self.load_credentials()
+
+        is_default_credentials = credentials is None
 
         try:
             client = gcs.Client(credentials=credentials, **kwargs)
@@ -1865,6 +1873,8 @@ class GoogleCloudStorageClient(
 
         self.chunk_size = chunk_size
         self._client = client
+        self._is_default_credentials = is_default_credentials
+        self._signing_credentials = None
         self._retry = retry
 
     def upload(self, local_path, cloud_path, content_type=None, metadata=None):
@@ -2147,15 +2157,51 @@ class GoogleCloudStorageClient(
         Returns:
             a URL for accessing the object via HTTP request
         """
+        credentials = self._get_signing_credentials(cloud_path)
         bucket, name = self._parse_path(cloud_path)
         resource = "/%s/%s" % (bucket, urlparse.quote(name, safe=b"/~"))
         return generate_signed_url_v4(
-            self._client._credentials,
+            credentials,
             resource=resource,
             expiration=datetime.timedelta(hours=hours),
             method=method.upper(),
             content_type=content_type,
         )
+
+    def _get_signing_credentials(self, cloud_path):
+        #
+        # When using default credentials, some extra work is required in
+        # order to retrieve credentials that can sign URLs
+        # https://gist.github.com/jezhumble/91051485db4462add82045ef9ac2a0ec
+        #
+        # Notes
+        # - This may *only* work in Compute Engine/App Engine environments
+        # - This requires the service account to have the
+        #   ``roles/iam.serviceAccountTokenCreator`` permission
+        #
+        if self._is_default_credentials and self._signing_credentials is None:
+            # May need to ensure the client has been used at least once
+            # https://gist.github.com/jezhumble/91051485db4462add82045ef9ac2a0ec?permalink_comment_id=3585157#gistcomment-3585157
+            _ = self._get_blob(cloud_path)
+
+            try:
+                r = gatr.Request()
+                self._signing_credentials = gace.IDTokenCredentials(r, "")
+            except Exception as e:
+                six.raise_from(
+                    GoogleCredentialsError(
+                        "Failed to generate signing credentials for your "
+                        "Application Default Credentials. Note that your "
+                        "service account must have the "
+                        "'roles/iam.serviceAccountTokenCreator' permission"
+                    ),
+                    e,
+                )
+
+        if self._signing_credentials is not None:
+            return self._signing_credentials
+
+        return self._client._credentials
 
     def add_metadata(self, cloud_path, metadata):
         """Adds custom metadata key-value pairs to the given GCS object.
@@ -2219,6 +2265,853 @@ class GoogleCloudStorageClient(
             return chunks[0], ""
 
         return chunks[0], chunks[1]
+
+
+class NeedsAzureCredentials(object):
+    """Mixin for classes that need Azure credentials to take authenticated
+    actions.
+
+    Storage clients that derive from this class should allow users to provide
+    credentials in the following ways (in order of precedence):
+
+        (1) manually constructing an instance of the class via the
+            `cls.from_ini()` method by providing a path to a valid
+            credentials file
+
+        (2) loading credentials from `~/.eta/azure-credentials.ini` that have
+            been activated via `cls.activate_credentials()`
+
+        (3) setting the `AZURE_CREDENTIALS_FILE` environment variable to point
+            to a valid credentials `.ini` file
+
+        (4) setting the following environment variables directly:
+
+            -   `AZURE_STORAGE_CONNECTION_STRING`
+
+        (5) setting the following environment variables directly:
+
+            -   `AZURE_STORAGE_ACCOUNT`
+            -   `AZURE_STORAGE_KEY`
+
+        (6) setting the following environment variables directly:
+
+            -   `AZURE_CLIENT_ID`
+            -   `AZURE_CLIENT_SECRET`
+            -   `AZURE_TENANT_ID`
+            -   `AZURE_STORAGE_ACCOUNT`
+
+        (7) setting credentials in any manner recognized by
+            `azure.identity.DefaultAzureCredential`
+
+    In the above, the credentials file should have syntax simliar to one of the
+    following::
+
+        [default]
+        conn_str = ...
+        alias = ...  # optional
+
+        [default]
+        account_name = ...
+        account_key = ...
+        alias = ...  # optional
+
+        [default]
+        client_id = ...
+        secret = ...
+        tenant = ...
+        account_name = ...
+
+    See the following pages for more information:
+
+    -   https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli
+    -   https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/storage/azure-storage-blob
+    """
+
+    CREDENTIALS_PATH = os.path.join(
+        etac.ETA_CONFIG_DIR, "azure-credentials.ini"
+    )
+
+    @classmethod
+    def activate_credentials(cls, credentials_path):
+        """Activate the credentials by copying them to
+        `~/.eta/azure-credentials.ini`.
+
+        Args:
+            credentials_path: the path to a credentials `.ini` file
+        """
+        etau.copy_file(credentials_path, cls.CREDENTIALS_PATH)
+        logger.info(
+            "Azure credentials successfully activated at '%s'",
+            cls.CREDENTIALS_PATH,
+        )
+
+    @classmethod
+    def deactivate_credentials(cls):
+        """Deactivates (deletes) the currently active credentials, if any.
+
+        Active credentials (if any) are at `~/.eta/azure-credentials.ini`.
+        """
+        try:
+            os.remove(cls.CREDENTIALS_PATH)
+            logger.info(
+                "Azure credentials '%s' successfully deactivated",
+                cls.CREDENTIALS_PATH,
+            )
+        except OSError:
+            logger.info("No Azure credentials to deactivate")
+
+    @classmethod
+    def has_active_credentials(cls):
+        """Determines whether there are any active credentials stored at
+        `~/.eta/azure-credentials.ini`.
+
+        Returns:
+            True/False
+        """
+        return os.path.isfile(cls.CREDENTIALS_PATH)
+
+    @classmethod
+    def load_credentials(cls, credentials_path=None, profile=None):
+        """Loads the Azure credentials as a dictionary.
+
+        Args:
+            credentials_path: an optional path to a credentials `.ini` file.
+                If omitted, active credentials are located using the strategy
+                described in the class docstring of `NeedsAzureCredentials`
+            profile: an optional profile to load when a credentials `.ini` file
+                is loaded (if applicable). If not provided, the "default"
+                section is loaded
+
+        Returns:
+            a (credentials, path) tuple containing the credentials and the path
+                from which they were loaded. If no credentials can be loaded,
+                `credentials` and `path` will be both be None.
+        """
+        if credentials_path:
+            logger.debug(
+                "Loading Azure credentials from manually provided path '%s'",
+                credentials_path,
+            )
+        elif cls.has_active_credentials():
+            credentials_path = cls.CREDENTIALS_PATH
+            logger.debug(
+                "Loading activated Azure credentials from '%s'",
+                credentials_path,
+            )
+        else:
+            credentials = {}
+
+            if "AZURE_STORAGE_CONNECTION_STRING" in os.environ:
+                logger.debug(
+                    "Loading connection string from "
+                    "'AZURE_STORAGE_CONNECTION_STRING' environment variable"
+                )
+                conn_str = os.environ["AZURE_STORAGE_CONNECTION_STRING"]
+                credentials["conn_str"] = conn_str
+
+            if "AZURE_STORAGE_ACCOUNT_URL" in os.environ:
+                logger.debug(
+                    "Loading account URL from 'AZURE_STORAGE_ACCOUNT_URL' "
+                    "environment variable"
+                )
+                account_url = os.environ["AZURE_STORAGE_ACCOUNT_URL"]
+                credentials["account_url"] = account_url
+
+            if "AZURE_STORAGE_ACCOUNT" in os.environ:
+                logger.debug(
+                    "Loading account name from 'AZURE_STORAGE_ACCOUNT' "
+                    "environment variable"
+                )
+                account_name = os.environ["AZURE_STORAGE_ACCOUNT"]
+                credentials["account_name"] = account_name
+
+            if "AZURE_STORAGE_KEY" in os.environ:
+                logger.debug(
+                    "Loading account key from 'AZURE_STORAGE_KEY' "
+                    "environment variable"
+                )
+                credentials["account_key"] = os.environ["AZURE_STORAGE_KEY"]
+
+            if "AZURE_CLIENT_ID" in os.environ:
+                logger.debug(
+                    "Loading client ID from 'AZURE_CLIENT_ID' environment "
+                    "variable"
+                )
+                credentials["client_id"] = os.environ["AZURE_CLIENT_ID"]
+
+            if "AZURE_CLIENT_SECRET" in os.environ:
+                logger.debug(
+                    "Loading client secret from 'AZURE_CLIENT_SECRET' "
+                    "environment variable"
+                )
+                credentials["secret"] = os.environ["AZURE_CLIENT_SECRET"]
+
+            if "AZURE_TENANT_ID" in os.environ:
+                logger.debug(
+                    "Loading tenant ID from 'AZURE_TENANT_ID' environment "
+                    "variable"
+                )
+                credentials["tenant"] = os.environ["AZURE_TENANT_ID"]
+
+            if "AZURE_ALIAS" in os.environ:
+                logger.debug(
+                    "Loading alias from 'AZURE_ALIAS' environment variable"
+                )
+                credentials["alias"] = os.environ["AZURE_ALIAS"]
+
+            return credentials, None
+
+        if profile is None and "AZURE_PROFILE" in os.environ:
+            logger.debug(
+                "Loading profile from 'AZURE_PROFILE' environment variable"
+            )
+            profile = os.environ["AZURE_PROFILE"]
+
+        credentials = cls._load_credentials_ini(
+            credentials_path, profile=profile
+        )
+
+        return credentials, credentials_path
+
+    @classmethod
+    def load_secret(cls, key_vault_url, secret_name, credential):
+        """Loads the secret with the given name from Azure Key Vault.
+
+        Args:
+            key_vault_url: the key vault URL
+            secret_name: the name of the secret to load
+            credential: an `azure.core.credentials.TokenCredential` to use
+        """
+        # Reference
+        # https://learn.microsoft.com/en-us/azure/key-vault/secrets/quick-create-python?tabs=azure-cli
+        client = aks.SecretClient(
+            vault_url=key_vault_url, credential=credential
+        )
+        return client.get_secret(secret_name).value
+
+    @classmethod
+    def from_ini(cls, credentials_path, profile=None):
+        """Creates a `cls` instance from the given credentials `.ini` file.
+
+        Args:
+            credentials_path: the path to a credentials `.ini` file
+            profile: an optional profile to load. If not provided the "default"
+                section is loaded
+
+        Returns:
+            an instance of cls with the given credentials
+        """
+        credentials, _ = cls.load_credentials(
+            credentials_path=credentials_path, profile=profile
+        )
+        return cls(credentials=credentials)
+
+    @classmethod
+    def _load_credentials_ini(cls, credentials_path, profile=None):
+        if profile is None:
+            profile = "default"
+
+        if not os.path.isfile(credentials_path):
+            raise FileNotFoundError(
+                "File '%s' does not exist" % credentials_path
+            )
+
+        config = configparser.ConfigParser()
+        config.read(credentials_path)
+        return dict(config[profile])
+
+
+class AzureCredentialsError(Exception):
+    """Error raised when a problem with Azure credentials is encountered."""
+
+    def __init__(self, message):
+        """Creates an AzureCredentialsError instance.
+
+        Args:
+            message: the error message
+        """
+        super(AzureCredentialsError, self).__init__(
+            "%s. Read the documentation for "
+            "`eta.core.storage.NeedsAzureCredentials` for more information "
+            "about authenticating with Azure services." % message
+        )
+
+
+class AzureStorageClient(
+    StorageClient, CanSyncDirectories, NeedsAzureCredentials
+):
+    """Client for reading/writing data from Azure Blob Storage.
+
+    All cloud path strings used by this class should have the form
+    "https://<account>.blob.core.windows.net/<container>/<path/to/object>".
+
+    See `NeedsAzureCredentials` for more information about the authentication
+    strategy used by this class.
+    """
+
+    def __init__(self, credentials=None, max_pool_connections=None):
+        """Creates an AzureStorageClient instance.
+
+        Args:
+            credentials: the credentials to use. If not provided, this is
+                automatically loaded as described in `NeedsAzureCredentials`
+            max_pool_connections: an optional maximum number of connections to
+                keep in the connection pool
+        """
+        if credentials is None:
+            credentials, _ = self.load_credentials()
+
+        tenant_id = credentials.get("tenant", None)
+        client_id = credentials.get("client_id", None)
+        client_secret = credentials.get("secret", None)
+        account_url = credentials.get("account_url", None)
+        account_name = credentials.get("account_name", None)
+        account_key = credentials.get("account_key", None)
+        conn_str = credentials.get("conn_str", None)
+        alias = credentials.pop("alias", None)
+
+        # https://github.com/Azure/azure-sdk-for-python/issues/12102#issuecomment-645641481
+        if max_pool_connections is not None:
+            adapter = requests.adapters.HTTPAdapter(
+                pool_maxsize=max_pool_connections
+            )
+
+            session = requests.Session()
+            session.mount("http://", adapter)
+            session.mount("https://", adapter)
+        else:
+            session = None
+
+        if conn_str is not None:
+            client = azb.BlobServiceClient.from_connection_string(
+                conn_str=conn_str,
+                session=session,
+            )
+
+            account_name = client.account_name
+            account_url = client.url
+            account_key = getattr(client.credential, "account_key", None)
+            credential = client.credential
+        else:
+            if account_key is not None:
+                if account_url is not None:
+                    if account_name is None:
+                        raise AzureCredentialsError(
+                            "You must also provide your account name when "
+                            "using a custom account URL"
+                        )
+
+                    credential = {
+                        "account_name": account_name,
+                        "account_key": account_key,
+                    }
+                else:
+                    credential = account_key
+            elif tenant_id and client_id and client_secret:
+                credential = azi.ClientSecretCredential(
+                    tenant_id, client_id, client_secret
+                )
+            else:
+                credential = azi.DefaultAzureCredential()
+
+            if account_url is None:
+                if account_name is None:
+                    raise AzureCredentialsError(
+                        "You must provide an account name, account URL, or "
+                        "connection string"
+                    )
+
+                account_url = "https://%s.blob.core.windows.net" % account_name
+
+            client = azb.BlobServiceClient(
+                account_url=account_url,
+                credential=credential,
+                session=session,
+            )
+
+            account_name = client.account_name
+
+        # Load `account_key` from secret
+        # https://learn.microsoft.com/en-us/azure/key-vault/secrets/quick-create-python?tabs=azure-cli
+        if account_key is None and (
+            "AZURE_KEY_VAULT_URL" in os.environ
+            and "AZURE_ACOUNT_KEY_SECRET_NAME" in os.environ
+        ):
+            logger.debug(
+                "Loading vault URL and secret name from 'AZURE_KEY_VAULT_URL' "
+                "and 'AZURE_ACOUNT_KEY_SECRET_NAME' environment variables"
+            )
+            vault_url = os.environ["AZURE_KEY_VAULT_URL"]
+            secret_name = os.environ["AZURE_ACOUNT_KEY_SECRET_NAME"]
+            account_key = self.load_secret(vault_url, secret_name, credential)
+
+        prefixes = []
+        if alias is not None:
+            prefixes.append(alias + "://")
+
+        prefixes.append(account_url.rstrip("/") + "/")
+
+        self._client = client
+        self._account_name = account_name
+        self._account_url = account_url.rstrip("/")
+        self._account_key = account_key
+        self._alias = alias
+        self._prefixes = tuple(prefixes)
+
+        self._user_delegation_key = None
+        self._user_delegation_expiration = None
+
+        if self._account_key is None:
+            self._generate_user_delegation_key()
+
+        self._permissions = {
+            "GET": azb.BlobSasPermissions(read=True),
+            "PUT": azb.BlobSasPermissions(create=True),
+            "DELETE": azb.BlobSasPermissions(delete=True),
+        }
+
+    def upload(self, local_path, cloud_path, content_type=None, metadata=None):
+        """Uploads the file to Azure Storage.
+
+        Args:
+            local_path: the path to the file to upload
+            cloud_path: the path to the Azure object to create
+            content_type: the optional type of the content being uploaded. If
+                no value is provided, it is guessed from the filename
+            metadata: an optional dictionary of custom object metadata to store
+        """
+        with open(local_path, "rb") as f:
+            self._do_upload(
+                f, cloud_path, content_type=content_type, metadata=metadata
+            )
+
+    def upload_bytes(
+        self, bytes_str, cloud_path, content_type=None, metadata=None
+    ):
+        """Uploads the given bytes to Azure Storage.
+
+        Args:
+            bytes_str: the bytes string to upload
+            cloud_path: the path to the Azure object to create
+            content_type: the optional type of the content being uploaded. If
+                no value is provided, it is guessed from the filename
+            metadata: an optional dictionary of custom object metadata to store
+        """
+        with io.BytesIO(_to_bytes(bytes_str)) as f:
+            self._do_upload(
+                f, cloud_path, content_type=content_type, metadata=metadata
+            )
+
+    def upload_stream(
+        self, file_obj, cloud_path, content_type=None, metadata=None
+    ):
+        """Uploads the contents of the given file-like object to Azure Storage.
+
+        Args:
+            file_obj: the file-like object to upload, which must be open for
+                reading
+            cloud_path: the path to the Azure object to create
+            content_type: the optional type of the content being uploaded. If
+                no value is provided, it is guessed from the filename
+            metadata: an optional dictionary of custom object metadata to store
+        """
+        self._do_upload(
+            file_obj, cloud_path, content_type=content_type, metadata=metadata
+        )
+
+    def download(self, cloud_path, local_path):
+        """Downloads the file from Azure Storage to the given location.
+
+        Args:
+            cloud_path: the path to the Azure Storage object to download
+            local_path: the local disk path to store the downloaded file
+        """
+        self._do_download(cloud_path, local_path=local_path)
+
+    def download_bytes(self, cloud_path, start=None, end=None):
+        """Downloads the file from Azure Storage and returns the bytes string.
+
+        Args:
+            cloud_path: the path to the Azure Storage object to download
+            start: an optional first byte in a range to download
+            end: an optional last byte in a range to download
+
+        Returns:
+            the downloaded bytes string
+        """
+        with io.BytesIO() as f:
+            self._do_download(cloud_path, file_obj=f, start=start, end=end)
+            return f.getvalue()
+
+    def download_stream(self, cloud_path, file_obj):
+        """Downloads the file from Azure Storage to the given file-like object.
+
+        Args:
+            cloud_path: the path to the Azure Storage object to download
+            file_obj: the file-like object to which to write the download,
+                which must be open for writing
+        """
+        self._do_download(cloud_path, file_obj=file_obj)
+
+    def delete(self, cloud_path):
+        """Deletes the given file from Azure Storage.
+
+        Args:
+            cloud_path: the path to the Azure Storage object to delete
+        """
+        blob = self._get_blob_client(cloud_path)
+        blob.delete_blob()
+
+    def delete_folder(self, cloud_folder):
+        """Deletes all files in the given Azure Storage "folder".
+
+        Args:
+            cloud_folder: a string like
+                `https://<account-name>.blob.core.windows.net/<container-name>/<folder-path>`
+        """
+        container_name, folder_name = self._parse_path(cloud_folder)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        blobs = self._list_blobs(container_name, prefix=folder_name)
+
+        client = self._client.get_container_client(container_name)
+        for _blobs in etau.iter_batches(blobs, 256):
+            client.delete_blobs(*[b.name for b in _blobs])
+
+    def get_file_metadata(self, cloud_path):
+        """Returns metadata about the given file in Azure Storage.
+
+        Args:
+            cloud_path: the path to the Azure Storage object
+
+        Returns:
+            a dictionary containing metadata about the file, including its
+                `bucket`, `object_name`, `name`, `size`, `mime_type`,
+                `last_modified`, `etag`, and `metadata`
+        """
+        blob = self._get_blob_client(cloud_path)
+        blob_properties = blob.get_blob_properties()
+        return self._get_file_metadata(blob_properties)
+
+    def get_folder_metadata(self, cloud_folder):
+        """Returns metadata about the given "folder" in Azure Storage.
+
+        Note that this method is *expensive*; the only way to compute this
+        information is to call `list_files_in_folder(..., recursive=True)` and
+        compute stats from individual files!
+
+        Args:
+            cloud_folder: a string like
+                `https://<account-name>.blob.core.windows.net/<container-name>/<folder-path>`
+
+        Returns:
+            a dictionary containing metadata about the "folder", including its
+                `bucket`, `path`, `num_files`, `size`, and `last_modified`
+        """
+        files = self.list_files_in_folder(
+            cloud_folder, recursive=True, return_metadata=True
+        )
+
+        container_name, path = self._parse_path(cloud_folder)
+        path = path.rstrip("/")
+
+        if files:
+            num_files = len(files)
+            size = sum(f["size"] for f in files)
+            last_modified = max(f["last_modified"] for f in files)
+        else:
+            num_files = 0
+            size = 0
+            last_modified = "-"
+
+        return {
+            "bucket": container_name,
+            "path": path,
+            "num_files": num_files,
+            "size": size,
+            "last_modified": last_modified,
+        }
+
+    def is_file(self, cloud_path):
+        """Determines whether the given Azure Storage file exists.
+
+        Args:
+            cloud_path: the path to the Azure Storage object
+
+        Returns:
+            True/False
+        """
+        blob = self._get_blob_client(cloud_path)
+        return blob.exists()
+
+    def is_folder(self, cloud_folder):
+        """Determines whether the given Azure Storage "folder" contains at
+        least one object.
+
+        Args:
+            cloud_folder: a string like
+                `https://<account-name>.blob.core.windows.net/<container-name>/<folder-path>`
+
+        Returns:
+            True/False
+        """
+        container_name, folder_name = self._parse_path(cloud_folder)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        blobs = self._list_blobs(
+            container_name, prefix=folder_name, max_results=1
+        )
+
+        return bool(list(blobs))
+
+    def list_files_in_folder(
+        self, cloud_folder, recursive=True, return_metadata=False
+    ):
+        """Returns a list of the files in the given "folder" in Azure Storage.
+
+        Args:
+            cloud_folder: a string like
+                `https://<account-name>.blob.core.windows.net/<container-name>/<folder-path>`
+            recursive: whether to recursively traverse sub-"folders". By
+                default, this is True
+            return_metadata: whether to return a metadata dictionary for each
+                file, including its  `bucket`, `object_name`, `name`, `size`,
+                `mime_type`, `last_modified`, `etag`, and `metadata`. By
+                default, only the paths to the files are returned
+
+        Returns:
+            a list of full cloud paths (when `return_metadata == False`) or a
+                list of metadata dictionaries (when `return_metadata == True`)
+                for the files in the folder
+        """
+        container_name, folder_name = self._parse_path(cloud_folder)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        blobs = self._list_blobs(
+            container_name, prefix=folder_name, recursive=recursive
+        )
+
+        # Return metadata dictionaries for each file
+        if return_metadata:
+            metadata = []
+            for blob in blobs:
+                if not blob.name.endswith("/"):
+                    metadata.append(self._get_file_metadata(blob))
+
+            return metadata
+
+        # Return paths for each file
+        paths = []
+        prefix = self._get_prefix(cloud_folder) + container_name + "/"
+        for blob in blobs:
+            if not blob.name.endswith("/"):
+                paths.append(prefix + blob.name)
+
+        return paths
+
+    def generate_signed_url(
+        self, cloud_path, method="GET", hours=24, content_type=None
+    ):
+        """Generates a signed URL for accessing the given Azure Storage object.
+
+        Anyone with the URL can access the object with the permission until it
+        expires.
+
+        Note that you should use `PUT`, not `POST`, to upload objects!
+
+        Args:
+            cloud_path: the path to the Azure Storage object
+            method: the HTTP verb (GET, PUT, DELETE) to authorize
+            hours: the number of hours that the URL is valid
+            content_type: (PUT actions only) the optional type of the content
+                being uploaded
+
+        Returns:
+            a URL for accessing the object via HTTP request
+        """
+        container_name, blob_name = self._parse_path(cloud_path)
+
+        self._refresh_user_delegation_key_if_necessary()
+
+        permission = self._permissions[method.upper()]
+        expiry = datetime.datetime.utcnow() + datetime.timedelta(hours=hours)
+
+        signature = azb.generate_blob_sas(
+            account_name=self._account_name,
+            container_name=container_name,
+            blob_name=blob_name,
+            account_key=self._account_key,
+            user_delegation_key=self._user_delegation_key,
+            permission=permission,
+            expiry=expiry,
+            content_type=content_type,
+        )
+
+        root = self._account_url
+        return root + "/" + container_name + "/" + blob_name + "?" + signature
+
+    def add_metadata(self, cloud_path, metadata):
+        """Adds custom metadata key-value pairs to the given Azure Storage
+        object.
+
+        Args:
+            cloud_path: the path to the Azure Storage object
+            metadata: a dictionary of custom metadata
+        """
+        blob = self._get_blob_client(cloud_path)
+
+        blob_metadata = blob.get_blob_properties().metadata
+        blob_metadata.update(metadata)
+        blob.set_blob_metadata(metadata=blob_metadata)
+
+    def _refresh_user_delegation_key_if_necessary(self):
+        if self._user_delegation_key is None:
+            return
+
+        if datetime.datetime.utcnow() > self._user_delegation_expiration:
+            self._generate_user_delegation_key()
+
+    def _generate_user_delegation_key(self, hours=24):
+        # Requires `_client` to have been initialized with a token credential?
+        # https://azuresdkdocs.blob.core.windows.net/$web/python/azure-storage-blob/12.0.0b5/_modules/azure/storage/blob/_shared_access_signature.html
+        now = datetime.datetime.utcnow()
+        expiration = now + datetime.timedelta(hours=hours)
+        key = self._client.get_user_delegation_key(now, expiration)
+
+        self._user_delegation_key = key
+        self._user_delegation_expiration = expiration
+
+    def _get_container_client(self, cloud_path):
+        container_name, _ = self._parse_path(cloud_path)
+        return self._client.get_container_client(container_name)
+
+    def _get_blob_client(self, cloud_path):
+        container_name, blob_name = self._parse_path(cloud_path)
+        return self._client.get_blob_client(container_name, blob_name)
+
+    def _parse_path(self, cloud_path):
+        try:
+            client = azb.BlobClient.from_blob_url(cloud_path)
+            return client.container_name, client.blob_name
+        except ValueError as e:
+            try:
+                client = azb.ContainerClient.from_container_url(cloud_path)
+                return client.container_name, ""
+            except:
+                raise e
+
+    def _get_prefix(self, cloud_path):
+        return _get_prefix(cloud_path, self._prefixes)
+
+    def _strip_prefix(self, cloud_path):
+        _cloud_path = _strip_prefix(cloud_path, self._prefixes)
+
+        if _cloud_path is None:
+            if len(self._prefixes) == 1:
+                valid_prefixes = "'%s'" % self._prefixes[0]
+            else:
+                valid_prefixes = self._prefixes
+
+            raise ValueError(
+                "Invalid path '%s'; must start with %s"
+                % (cloud_path, valid_prefixes)
+            )
+
+        return _cloud_path
+
+    def _do_upload(
+        self, file_obj, cloud_path, content_type=None, metadata=None
+    ):
+        if content_type is None:
+            content_type = etau.guess_mime_type(cloud_path)
+
+        blob = self._get_blob_client(cloud_path)
+        content_settings = azb.ContentSettings(content_type=content_type)
+
+        blob.upload_blob(
+            file_obj,
+            metadata=metadata,
+            overwrite=True,
+            content_settings=content_settings,
+        )
+
+    def _do_download(
+        self,
+        cloud_path,
+        local_path=None,
+        file_obj=None,
+        start=None,
+        end=None,
+    ):
+        blob = self._get_blob_client(cloud_path)
+
+        offset = None
+        length = None
+        if start is not None:
+            offset = start
+            if end is not None:
+                length = end - start
+        elif end is not None:
+            length = end
+
+        if local_path is not None:
+            etau.ensure_basedir(local_path)
+            with open(local_path, "wb") as f:
+                blob.download_blob(offset=offset, length=length).readinto(f)
+
+        if file_obj is not None:
+            blob.download_blob(offset=offset, length=length).readinto(file_obj)
+
+    def _list_blobs(
+        self, container_name, prefix=None, recursive=True, max_results=None
+    ):
+        container = self._client.get_container_client(container_name)
+
+        try:
+            if recursive:
+                r = container.list_blobs(name_starts_with=prefix)
+            else:
+                r = container.walk_blobs(
+                    name_starts_with=prefix, delimiter="/"
+                )
+
+            if max_results is not None:
+                return itertools.islice(r, max_results)
+
+            return r
+        except aze.ResourceNotFoundError:
+            return []
+
+    @staticmethod
+    def _to_account_url(conn_str=None, account_name=None):
+        if conn_str is not None:
+            client = azb.BlobServiceClient.from_connection_string(
+                conn_str=conn_str
+            )
+            return client.url
+
+        if account_name is not None:
+            return "https://%s.blob.core.windows.net" % account_name
+
+    @staticmethod
+    def _get_file_metadata(blob_properties):
+        mime_type = blob_properties.content_settings.content_type
+        if not mime_type:
+            mime_type = etau.guess_mime_type(blob_properties.name)
+
+        return {
+            "bucket": blob_properties.container,
+            "object_name": blob_properties.name,
+            "name": os.path.basename(blob_properties.name),
+            "size": blob_properties.size,
+            "mime_type": mime_type,
+            "last_modified": blob_properties.creation_time,
+            "etag": blob_properties.etag,
+            "metadata": blob_properties.metadata,
+        }
 
 
 class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
@@ -2502,6 +3395,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             GoogleDriveStorageClientError: if the Team Drive was not found
         """
         try:
+            # pylint: disable=no-member
             response = (
                 self._service.teamdrives().get(teamDriveId=drive_id).execute()
             )

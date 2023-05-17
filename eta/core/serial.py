@@ -34,7 +34,7 @@ import pprint
 from uuid import uuid4
 import zlib
 
-import ndjson
+import jsonlines
 import numpy as np
 
 import eta.core.utils as etau
@@ -134,8 +134,8 @@ def read_ndjson(path):
     Returns:
         a list of JSON dicts
     """
-    with open(path, "rt") as f:
-        return ndjson.load(f)
+    with jsonlines.open(path) as r:
+        return list(r.iter(skip_empty=True))
 
 
 def load_ndjson(path_or_str):
@@ -143,7 +143,7 @@ def load_ndjson(path_or_str):
 
     The input argument can be any of the following:
         (a) the path to a NDJSON file on disk
-        (b) a string that can be directly parsed via `ndjson.loads`
+        (b) an NDJSON string or bytes
 
     Args:
         path_or_str: the NDJSON path or string
@@ -162,10 +162,13 @@ def load_ndjson(path_or_str):
 
 def _load_ndjson(str_or_bytes):
     try:
-        return ndjson.loads(str_or_bytes)
-    except TypeError:
-        # Must be a Python version for which ndjson.loads() cannot handle bytes
-        return ndjson.loads(str_or_bytes.decode("utf-8"))
+        ndjson_str = str_or_bytes.decode("utf-8")
+    except AttributeError:
+        ndjson_str = str_or_bytes
+
+    with io.StringIO(ndjson_str) as f:
+        with jsonlines.Reader(f) as r:
+            return list(r.iter(skip_empty=True))
 
 
 def write_ndjson(obj, path, append=False):
@@ -185,7 +188,11 @@ def write_ndjson(obj, path, append=False):
 
     mode = "at" if append else "wt"
     with open(path, mode) as f:
-        f.write(prefix + ndjson.dumps(obj))
+        if prefix:
+            f.write(prefix)
+
+        with jsonlines.Writer(f) as w:
+            w.write_all(obj)
 
 
 def json_to_str(obj, pretty_print=True):
@@ -1142,8 +1149,8 @@ class BigMixin(object):
     def add_iterable(self, elements):
         """Adds the elements in the given iterable to the Big iterable.
 
-         Args:
-            elements: an iterable of elements
+        Args:
+           elements: an iterable of elements
         """
         raise NotImplementedError("subclasses must implement add_iterable()")
 

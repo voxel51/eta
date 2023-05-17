@@ -5,14 +5,18 @@ Installs ETA.
 Copyright 2017-2023, Voxel51, Inc.
 voxel51.com
 """
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
+
 import os
-from pkg_resources import DistributionNotFound, get_distribution
 import re
 from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
 
-VERSION = "0.8.4"
+VERSION = "0.10.0"
 
 
 class BdistWheelCustom(bdist_wheel):
@@ -28,13 +32,14 @@ INSTALL_REQUIRES = [
     "future",
     "glob2",
     "importlib-metadata; python_version<'3.8'",
-    "ndjson",
+    "jsonlines",
     "numpy",
     "packaging",
-    "patool",
     "Pillow>=6.2",
+    "py7zr",
     "python-dateutil",
     "pytz",
+    "rarfile",
     "requests",
     "retrying",
     "six",
@@ -63,10 +68,10 @@ def choose_requirement(mains, secondary):
     for main in mains:
         try:
             name = re.split(r"[!<>=]", main)[0]
-            get_distribution(name)
+            metadata.version(name)
             chosen = main
             break
-        except DistributionNotFound:
+        except metadata.PackageNotFoundError:
             pass
 
     return str(chosen)
@@ -114,6 +119,8 @@ setup(
     extras_require={
         "pipeline": ["blockdiag", "Sphinx", "sphinxcontrib-napoleon"],
         "storage": [
+            "azure-identity",
+            "azure-storage-blob>=12.4.0",
             "boto3>=1.15",
             "google-api-python-client",
             "google-cloud-storage>=1.36",
@@ -134,7 +141,6 @@ setup(
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
@@ -143,6 +149,6 @@ setup(
         "Programming Language :: Python :: 3.10",
     ],
     entry_points={"console_scripts": ["eta=eta.core.cli:main"]},
-    python_requires=">=2.7",
+    python_requires=">=3.6",
     cmdclass={"bdist_wheel": BdistWheelCustom},
 )
