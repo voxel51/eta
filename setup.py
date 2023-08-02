@@ -16,7 +16,7 @@ from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
 
-VERSION = "0.10.0"
+VERSION = "0.11.0"
 
 
 class BdistWheelCustom(bdist_wheel):

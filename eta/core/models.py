@@ -25,6 +25,7 @@ from collections import defaultdict
 from distutils.version import LooseVersion
 import logging
 import os
+from packaging.requirements import Requirement
 import sys
 
 import eta
@@ -113,7 +114,7 @@ def find_model(name):
 
     Returns:
         the full path to the model file (which might not exist if it hasn't
-            been downloaded yet)
+            been downloaded yet), or None if the model has no manager
 
     Raises:
         ModelError: if the model could not be found
@@ -148,7 +149,8 @@ def is_model_downloaded(name):
             latest version of the model is assumed
 
     Returns:
-        True/False whether the model is downloaded
+        True/False whether the model is downloaded, or None if the model has
+        no manager
 
     Raises:
         ModelError: if the model could not be found
@@ -163,6 +165,8 @@ def download_model(name, force=False):
     If the download is forced, the local copy of the model will be overwitten
     if it exists.
 
+    If the model has no manager, nothing is downloaded.
+
     Args:
         name: the name of the model, which can have "@<ver>" appended to refer
             to a specific version of the model. If no version is specified, the
@@ -172,14 +176,14 @@ def download_model(name, force=False):
             necessary. The default is False
 
     Returns:
-        the path to the downloaded model
+        the path to the downloaded model, or None if the model has no manager
 
     Raises:
         ModelError: if the model could not be found
     """
     model, models_dir, _ = _find_model(name)
     model_path = model.get_path_in_dir(models_dir)
-    model.manager.download_model(model_path, force=force)
+    model.download_model(model_path, force=force)
     return model_path
 
 
@@ -295,10 +299,10 @@ def init_models_dir(new_models_dir):
 
 def publish_public_model(
     name,
-    google_drive_id,
-    description=None,
-    base_filename=None,
     models_dir=None,
+    google_drive_id=None,
+    base_filename=None,
+    **kwargs,
 ):
     """Publishes a new model to the public ETA model registry.
 
@@ -328,32 +332,34 @@ def publish_public_model(
     Args:
         name: a name for the model, which can optionally have "@<ver>" appended
             to assign a version to the model
-        google_drive_id: the ID of the model file in Google Drive
-        description: an optional description for the model
-        base_filename: an optional base filename to use when writing the model
-            to disk. By default, a value is inferred as explained above
         models_dir: an optional directory in which to register the model. By
             default, a value is inferred as explained above
+        google_drive_id: the ID of the model file in Google Drive, if
+            applicable
+        base_filename: an optional base filename to use when writing the model
+            to disk. By default, a value is inferred as explained above
+        **kwargs: additional keyword arguments for ``Model(**kwargs)``
 
     Raises:
         ModelError: if the publishing failed for any reason
     """
     # Recommend paths if necessary
     base_filename, models_dir = recommend_paths_for_model(
-        name, base_filename=base_filename, models_dir=models_dir
+        name,
+        base_filename=base_filename,
+        models_dir=models_dir,
     )
 
     # Perform a dry run of the model registration
-    register_model_dry_run(name, base_filename, models_dir)
+    register_model_dry_run(name, models_dir, base_filename=base_filename)
 
     # Construct model manager instance for model
-    config = ETAModelManagerConfig({"google_drive_id": google_drive_id})
-    manager = ETAModelManager(config)
+    if google_drive_id is not None:
+        config = ETAModelManagerConfig({"google_drive_id": google_drive_id})
+        kwargs["manager"] = ETAModelManager(config)
 
     # Register model
-    register_model(
-        name, base_filename, models_dir, manager, description=description
-    )
+    register_model(name, models_dir, base_filename=base_filename, **kwargs)
 
 
 def recommend_paths_for_model(
@@ -451,7 +457,7 @@ def recommend_paths_for_model(
     return base_filename, models_dir
 
 
-def register_model_dry_run(name, base_filename, models_dir):
+def register_model_dry_run(name, models_dir, base_filename=None):
     """Performs a dry-run of the model registration process to ensure that no
     errors will happen when a real model registration is performed.
 
@@ -466,9 +472,9 @@ def register_model_dry_run(name, base_filename, models_dir):
     Args:
         name: the proposed name for the model, which can optionally have
             "@<ver>" appended to assign a version to the model
-        base_filename: the proposed base filename (e.g. "model.npz") to use
-            when storing this model locally on disk
         models_dir: the proposed directory in which to register the model
+        base_filename: the proposed base filename (e.g. "model.npz") to use
+            when storing this model locally on disk, if applicable
 
     Returns:
         the path to the proposed model as it will appear when downloaded
@@ -479,7 +485,7 @@ def register_model_dry_run(name, base_filename, models_dir):
     # Verify name
     logger.info("Verifying that model name '%s' is valid", name)
     base_name, version = Model.parse_name(name)
-    model = Model(base_name, base_filename, None, version=version)
+    model = Model(base_name, base_filename=base_filename, version=version)
 
     # Verify novelty
     logger.info("Verifying that model '%s' does not yet exist", name)
@@ -517,7 +523,7 @@ def register_model_dry_run(name, base_filename, models_dir):
     return model.get_path_in_dir(models_dir)
 
 
-def register_model(name, base_filename, models_dir, manager, description=None):
+def register_model(name, models_dir, **kwargs):
     """Registers a new model in the given models directory.
 
     If the directory does not have a models manifest file, one is created.
@@ -532,11 +538,8 @@ def register_model(name, base_filename, models_dir, manager, description=None):
     Args:
         name: a name for the model, which can optionally have "@<ver>" appended
             to assign a version to the model
-        base_filename: the base filename (e.g. "model.npz") to use when storing
-            this model locally on disk
         models_dir: the directory in which to register the model
-        manager: the ModelManager instance for the model
-        description: an optional description for the model
+        **kwargs: additional keyword arguments for ``Model(**kwargs)``
 
     Raises:
         ModelError: if the registration failed for any reason
@@ -547,14 +550,7 @@ def register_model(name, base_filename, models_dir, manager, description=None):
     logger.info("Creating a new model '%s'", name)
     base_name, version = Model.parse_name(name)
     date_added = etau.get_localtime()
-    model = Model(
-        base_name,
-        base_filename,
-        manager,
-        version=version,
-        description=description,
-        date_added=date_added,
-    )
+    model = Model(base_name, version=version, date_added=date_added, **kwargs)
 
     # Initialize models directory, if necessary
     if not ModelsManifest.dir_has_manifest(models_dir):
@@ -592,9 +588,10 @@ def delete_model(name, force=False):
         "remote storage? This cannot be undone!",
         default="no",
     ):
-        # Flush model remotely
-        logger.info("Deleting model '%s' from remote storage", name)
-        model.manager.delete_model()
+        if model.has_manager:
+            # Flush model remotely
+            logger.info("Deleting model '%s' from remote storage", name)
+            model.manager.delete_model()
 
         # Delete model from manifest
         manifest_path = manifest.make_manifest_path(models_dir)
@@ -692,29 +689,54 @@ class ModelRequirements(Serializable):
 
     Example requirements::
 
-        {
-            "packages": [
-                "numpy==1.14.0"
-            ],
-            "cpu": {
-                "support": true,
+        import eta.core.models as etam
+
+        requirements = etam.ModelRequirements.from_dict(
+            {
                 "packages": [
-                    "tensorflow>=1.14,<2"
-                ]
-            },
-            "gpu": {
-                "support": false,
-                "cuda_version": ">=9",
-                "cudnn_version": ">=7.5",
-                "packages": [
-                    "tensorflow-gpu>=1.14,<2"
-                ]
+                    "numpy==1.14.0"
+                ],
+                "cpu": {
+                    "support": True,
+                    "packages": [
+                        "tensorflow>=1.14,<2"
+                    ]
+                },
+                "gpu": {
+                    "support": False,
+                    "cuda_version": ">=9",
+                    "cudnn_version": ">=7.5",
+                    "packages": [
+                        "tensorflow-gpu>=1.14,<2"
+                    ]
+                }
             }
-        }
+        )
 
     Attributes:
-        packages: (optional) a list of `setuptools`-style package requirements
-            in order to use the model
+        packages: (optional) package requirements to use the model. Can be any
+            of the following:
+
+            -   a list of `setuptools`-style package requirements::
+
+                    packages = ["torch", "numpy==1.14.0"]
+
+            -   a comma-separated string of requirements
+
+                    packages = "torch,numpy==1.14.0"
+
+            -   a dict specifying a function that returns requirements in
+                either of the above formats::
+
+                    packages = {
+                        "entrypoint_fcn": "path.to.fcn",
+                        "entrypoint_args": {"key": value},
+                    }
+
+                The function is invoked as follows::
+
+                    packages = entrypoint_fcn(**entrypoint_args)
+
         cpu: (optional) a CPU requirements dict
         gpu: (optional) a GPU requirements dict
     """
@@ -776,15 +798,11 @@ class ModelRequirements(Serializable):
             error_suffix: an optional message to append to the error if the
                 installation fails and ``error_level == 0``
         """
-        if self.packages is None:
-            return
-
-        for requirement_str in self.packages:
-            etau.install_package(
-                requirement_str,
-                error_level=error_level,
-                error_suffix=error_suffix,
-            )
+        _install_requirements(
+            self.packages,
+            error_level=error_level,
+            error_suffix=error_suffix,
+        )
 
     def install_cpu_requirements(self, error_level=0, error_suffix=None):
         """Installs any CPU package requirements for the model.
@@ -798,15 +816,11 @@ class ModelRequirements(Serializable):
             error_suffix: an optional message to append to the error if the
                 installation fails and ``error_level == 0``
         """
-        if self.cpu_packages is None:
-            return
-
-        for requirement_str in self.cpu_packages:
-            etau.install_package(
-                requirement_str,
-                error_level=error_level,
-                error_suffix=error_suffix,
-            )
+        _install_requirements(
+            self.cpu_packages,
+            error_level=error_level,
+            error_suffix=error_suffix,
+        )
 
     def install_gpu_requirements(self, error_level=0, error_suffix=None):
         """Installs any GPU package requirements for the model.
@@ -820,15 +834,11 @@ class ModelRequirements(Serializable):
             error_suffix: an optional message to append to the error if the
                 installation fails and ``error_level == 0``
         """
-        if self.gpu_packages is None:
-            return
-
-        for requirement_str in self.gpu_packages:
-            etau.install_package(
-                requirement_str,
-                error_level=error_level,
-                error_suffix=error_suffix,
-            )
+        _install_requirements(
+            self.gpu_packages,
+            error_level=error_level,
+            error_suffix=error_suffix,
+        )
 
     def ensure_base_requirements(
         self, error_level=0, error_suffix=None, log_success=False
@@ -847,16 +857,12 @@ class ModelRequirements(Serializable):
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
-        if self.packages is None or error_level >= 2:
-            return
-
-        for requirement_str in self.packages:
-            etau.ensure_package(
-                requirement_str,
-                error_level=error_level,
-                error_suffix=error_suffix,
-                log_success=log_success,
-            )
+        _ensure_requirements(
+            self.packages,
+            error_level=error_level,
+            error_suffix=error_suffix,
+            log_success=log_success,
+        )
 
     def ensure_cpu_requirements(
         self, error_level=0, error_suffix=None, log_success=False
@@ -875,16 +881,12 @@ class ModelRequirements(Serializable):
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
-        if self.cpu_packages is None or error_level >= 2:
-            return
-
-        for requirement_str in self.cpu_packages:
-            etau.ensure_package(
-                requirement_str,
-                error_level=error_level,
-                error_suffix=error_suffix,
-                log_success=log_success,
-            )
+        _ensure_requirements(
+            self.cpu_packages,
+            error_level=error_level,
+            error_suffix=error_suffix,
+            log_success=log_success,
+        )
 
     def ensure_gpu_requirements(
         self, error_level=0, error_suffix=None, log_success=False
@@ -903,18 +905,13 @@ class ModelRequirements(Serializable):
             log_success: whether to generate a log message when a requirement
                 is satisifed
         """
-        if self.gpu_packages is None or error_level >= 2:
-            return
-
         self._ensure_cuda(error_level, error_suffix)
-
-        for requirement_str in self.gpu_packages:
-            etau.ensure_package(
-                requirement_str,
-                error_level=error_level,
-                error_suffix=error_suffix,
-                log_success=log_success,
-            )
+        _ensure_requirements(
+            self.gpu_packages,
+            error_level=error_level,
+            error_suffix=error_suffix,
+            log_success=log_success,
+        )
 
     def _ensure_cuda(self, error_level, error_suffix):
         if self.gpu is None or error_level >= 2:
@@ -967,14 +964,83 @@ class ModelRequirements(Serializable):
         return cls(packages=packages, cpu=cpu, gpu=gpu)
 
 
+def _install_requirements(packages, error_level=0, error_suffix=None):
+    packages = _parse_packages(packages)
+
+    if packages is None:
+        return
+
+    for requirement_str in packages:
+        etau.install_package(
+            requirement_str,
+            error_level=error_level,
+            error_suffix=error_suffix,
+        )
+
+
+def _ensure_requirements(
+    packages, error_level=0, error_suffix=None, log_success=False
+):
+    if error_level >= 2:
+        return
+
+    packages = _parse_packages(packages)
+
+    if packages is None:
+        return
+
+    for requirement_str in packages:
+        etau.ensure_package(
+            requirement_str,
+            error_level=error_level,
+            error_suffix=error_suffix,
+            log_success=log_success,
+        )
+
+
+def _parse_packages(packages):
+    if packages is None:
+        return
+
+    if isinstance(packages, dict):
+        entrypoint = etau.get_function(packages["entrypoint_fcn"])
+        kwargs = packages.get("entrypoint_args", {})
+        packages = entrypoint(**kwargs)
+
+    if etau.is_str(packages):
+        if os.path.isfile(packages):
+            packages = _load_requirements(packages)
+        else:
+            packages = packages.split(",")
+
+    return packages
+
+
+def _load_requirements(requirements_path):
+    packages = []
+    with open(requirements_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+
+            try:
+                _ = Requirement(line)
+                packages.append(line)
+            except:
+                logger.info("Ignoring unsupported requirement '%s'", line)
+
+    return packages
+
+
 class Model(Serializable):
     """Class that describes a model.
 
     Attributes:
         base_name: the base name of the model (no version info)
-        base_filename: the base filename of the model (no version info)
+        base_filename: the base filename of the model (if any, no version info)
         manager: the ModelManager instance that describes the remote storage
-            location of the models_dir
+            location of the models_dir (if any)
         version: the version of the model (if any)
         description: the description of the model (if any)
         source: the source of the model (if any)
@@ -994,8 +1060,8 @@ class Model(Serializable):
     def __init__(
         self,
         base_name,
-        base_filename,
-        manager,
+        base_filename=None,
+        manager=None,
         version=None,
         description=None,
         source=None,
@@ -1009,8 +1075,8 @@ class Model(Serializable):
 
         Args:
             base_name: the base name of the model
-            base_filename: the base filename for the model
-            manager: the ModelManager for the model
+            base_filename (optional): the base filename for the model
+            manager (optional): the ModelManager for the model
             version: (optional) the model version
             description: (optional) the description of the model
             source: (optional) the source of the model
@@ -1049,8 +1115,16 @@ class Model(Serializable):
         if not self.has_version:
             return self.base_filename
 
+        if self.base_filename is None:
+            return None
+
         base, ext = os.path.splitext(self.base_filename)
         return base + "-v" + self.version + ext
+
+    @property
+    def has_manager(self):
+        """Whether this model has a manager instance."""
+        return self.manager is not None
 
     @property
     def has_version(self):
@@ -1215,8 +1289,11 @@ class Model(Serializable):
             models_dir: the models directory
 
         Returns:
-            the model path
+            the model path, or None if the model has no manager
         """
+        if not self.has_manager or self.base_filename is None:
+            return None
+
         return os.path.join(models_dir, self.filename)
 
     def is_in_dir(self, models_dir):
@@ -1227,7 +1304,7 @@ class Model(Serializable):
             models_dir: the models directory
 
         Returns:
-            True/False
+            True/False, or None if the model has no manager
         """
         model_path = self.get_path_in_dir(models_dir)
         return self.is_model_downloaded(model_path)
@@ -1242,9 +1319,35 @@ class Model(Serializable):
             model_path: the path on disk for the model
 
         Returns:
-            True/False
+            True/False, or None if the model has no manager
         """
+        if not self.has_manager:
+            return None
+
         return self.manager.is_model_downloaded(model_path)
+
+    def download_model(self, model_path, force=False):
+        """Downloads the model to the given local path.
+
+        If the download is forced, any existing model is overwritten. If the
+        download is not forced, the model will only be downloaded if it does
+        not already exist locally.
+
+        If the model has no manager, nothing is downloaded.
+
+        Args:
+            model_path: the path to which to download the model
+            force: whether to force download the model. If True, the model is
+                always downloaded. If False, the model is only downloaded if
+                necessary. The default is False
+
+        Raises:
+            ModelError: if model downloading is not currently allowed
+        """
+        if not self.has_manager:
+            return
+
+        self.manager.download_model(model_path, force=force)
 
     def flush_model(self, model_path):
         """Flushes the copy of the model at the given local path, if necessary.
@@ -1252,6 +1355,9 @@ class Model(Serializable):
         Args:
             model_path: the path on disk for the model
         """
+        if not self.has_manager:
+            return
+
         self.manager.flush_model(model_path)
 
     def flush_model_from_dir(self, models_dir):
@@ -1262,7 +1368,8 @@ class Model(Serializable):
             models_dir: the models directory
         """
         model_path = self.get_path_in_dir(models_dir)
-        self.flush_model(model_path)
+        if model_path is not None:
+            self.flush_model(model_path)
 
     @staticmethod
     def parse_name(name):
@@ -1331,7 +1438,9 @@ class Model(Serializable):
         Returns:
             a Model instance
         """
-        model_manager = ModelManager.from_dict(d["manager"])
+        manager = d.get("manager", None)
+        if manager is not None:
+            manager = ModelManager.from_dict(manager)
 
         requirements = d.get("requirements", None)
         if requirements is not None:
@@ -1343,8 +1452,8 @@ class Model(Serializable):
 
         return cls(
             d["base_name"],
-            d["base_filename"],
-            model_manager,
+            base_filename=d.get("base_filename", None),
+            manager=manager,
             version=d.get("version", None),
             description=d.get("description", None),
             source=d.get("source", None),
@@ -1389,7 +1498,9 @@ class ModelsManifest(Serializable):
                 "Manifest already contains model called '%s'" % model.name
             )
 
-        if self.has_model_with_filename(model.filename):
+        if model.filename is not None and self.has_model_with_filename(
+            model.filename
+        ):
             raise ModelError(
                 "Manifest already contains model with filename '%s'"
                 % (model.filename)
@@ -1766,15 +1877,12 @@ class ETAModelManager(ModelManager):
                 client = etas.GoogleDriveStorageClient()
                 client.download(gid, model_path)
                 logger.warning("Bandage applied")
-
         elif self.config.url:
             url = self.config.url
             logger.info("Downloading model from '%s' to '%s'", url, model_path)
             etaw.download_file(url, path=model_path)
         else:
-            raise ModelError(
-                "Invalid ETAModelManagerConfig '%s'" % str(self.config)
-            )
+            logger.info("Model downloading is not managed by ETA")
 
     def delete_model(self):
         raise NotImplementedError(
