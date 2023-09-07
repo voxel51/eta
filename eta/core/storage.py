@@ -3097,15 +3097,14 @@ class AzureStorageClient(
         return self._client.get_blob_client(container_name, blob_name)
 
     def _parse_path(self, cloud_path):
-        try:
-            client = azb.BlobClient.from_blob_url(cloud_path)
-            return client.container_name, client.blob_name
-        except ValueError as e:
-            try:
-                client = azb.ContainerClient.from_container_url(cloud_path)
-                return client.container_name, ""
-            except:
-                raise e
+        _cloud_path = self._strip_prefix(cloud_path)
+
+        chunks = _cloud_path.split("/", 1)
+
+        if len(chunks) != 2:
+            return chunks[0], ""
+
+        return chunks[0], chunks[1]
 
     def _get_prefix(self, cloud_path):
         return _get_prefix(cloud_path, self._prefixes)
