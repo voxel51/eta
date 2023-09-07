@@ -274,6 +274,17 @@ class CanSyncDirectories(object):
             "subclass must implement list_files_in_folder()"
         )
 
+    def list_subfolders(self, remote_dir):
+        """Returns a list of the subfolders in the given remote directory.
+
+        Args:
+            remote_dir: the remote directory
+
+        Returns:
+            a list of full paths to the subfolders in the folder
+        """
+        raise NotImplementedError("subclass must implement list_subfolders()")
+
     def upload_dir(
         self, local_dir, remote_dir, recursive=True, skip_failures=False
     ):
@@ -639,6 +650,17 @@ class LocalStorageClient(StorageClient, CanSyncDirectories):
             storage_dir, abs_paths=True, recursive=recursive
         )
 
+    def list_subfolders(self, storage_dir):
+        """Returns a list of the subfolders in the given storage directory.
+
+        Args:
+            storage_dir: the storage directory
+
+        Returns:
+            a list of full paths to the subfolders in the folder
+        """
+        return etau.list_subdirs(storage_dir, abs_paths=True)
+
 
 class _BotoCredentialsError(Exception):
     def __init__(self, message):
@@ -989,6 +1011,32 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
                 break
 
         return paths_or_metadata
+
+    def list_subfolders(self, cloud_folder):
+        """Returns a list of sub "folders" in the given cloud "folder".
+
+        Args:
+            cloud_folder: a cloud "folder" path
+
+        Returns:
+            a list of full cloud paths for the subfolders in the folder
+        """
+        bucket, folder_name = self._parse_path(cloud_folder)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        prefix = self._get_prefix(cloud_folder) + bucket + "/"
+        paginator = self._client.get_paginator("list_objects_v2")
+
+        # https://stackoverflow.com/q/14653694
+        paths = set()
+        for page in paginator.paginate(
+            Bucket=bucket, Prefix=folder_name, Delimiter="/"
+        ).search("CommonPrefixes"):
+            if page is not None:
+                paths.add(page["Prefix"])
+
+        return [prefix + p for p in paths]
 
     def generate_signed_url(
         self, cloud_path, method="GET", hours=24, content_type=None
@@ -2130,12 +2178,40 @@ class GoogleCloudStorageClient(
 
         # Return paths for each file
         paths = []
-        prefix = "gs://" + bucket_name
+        prefix = "gs://" + bucket_name + "/"
         for blob in blobs:
             if not blob.name.endswith("/"):
-                paths.append(prefix + "/" + blob.name)
+                paths.append(prefix + blob.name)
 
         return paths
+
+    def list_subfolders(self, cloud_folder):
+        """Returns a list of sub "folders" in the given "folder" in GCS.
+
+        Args:
+            cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
+
+        Returns:
+            a list of full cloud paths for the subfolders in the folder
+        """
+        bucket_name, folder_name = self._parse_path(cloud_folder)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        prefix = "gs://" + bucket_name + "/"
+        blobs = self._client.list_blobs(
+            bucket_name,
+            prefix=folder_name,
+            delimiter="/",
+            retry=self._retry,
+        )
+
+        # https://github.com/googleapis/google-cloud-python/issues/920
+        paths = set()
+        for page in blobs.pages:
+            paths.update(page.prefixes)
+
+        return [prefix + p for p in paths]
 
     def generate_signed_url(
         self, cloud_path, method="GET", hours=24, content_type=None
@@ -2911,6 +2987,34 @@ class AzureStorageClient(
                 paths.append(prefix + blob.name)
 
         return paths
+
+    def list_subfolders(self, cloud_folder):
+        """Returns a list of sub "folders" in the given "folder" in Azure
+        Storage.
+
+        Args:
+            cloud_folder: a string like
+                `https://<account-name>.blob.core.windows.net/<container-name>/<folder-path>`
+
+        Returns:
+            a list of full cloud paths for the subfolders in the folder
+        """
+        container_name, folder_name = self._parse_path(cloud_folder)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        prefix = self._get_prefix(cloud_folder) + container_name + "/"
+        blobs = self._list_blobs(
+            container_name, prefix=folder_name, recursive=False
+        )
+
+        # https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-list-python#use-a-hierarchical-listing
+        paths = set()
+        for blob in blobs:
+            if blob.name.endswith("/"):
+                paths.add(blob.name)
+
+        return [prefix + p for p in paths]
 
     def generate_signed_url(
         self, cloud_path, method="GET", hours=24, content_type=None
