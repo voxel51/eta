@@ -3844,7 +3844,7 @@ def get_glob_matches(glob_patt):
     Returns:
         a list of file paths that match `glob_patt`
     """
-    return sorted(glob.glob(glob_patt))
+    return sorted(p for p in glob.glob(glob_patt) if not os.path.isdir(p))
 
 
 def parse_glob_pattern(glob_patt):
