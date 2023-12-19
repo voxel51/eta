@@ -554,6 +554,9 @@ def get_function_name(fcn):
         the fully-qualified function name string, such as
             "eta.core.utils.function_name"
     """
+    if inspect.ismethod(fcn):
+        return fcn.__module__ + "." + fcn.__qualname__
+
     return fcn.__module__ + "." + fcn.__name__
 
 
@@ -605,7 +608,16 @@ def get_function(function_name, module_name=None):
     Raises:
         ImportError: if the function could not be imported
     """
-    return get_class(function_name, module_name=module_name)
+    try:
+        return get_class(function_name, module_name=module_name)
+    except Exception as e:
+        try:
+            # try treating as a class method
+            class_name, function_name = function_name.rsplit(".", 1)
+            cls = get_class(class_name, module_name=module_name)
+            return getattr(cls, function_name)
+        except:
+            raise e
 
 
 def install_package(
