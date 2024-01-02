@@ -1912,11 +1912,11 @@ def _parse_hex_color(h):
     return rgb
 
 
-def _get_text_size(font, string):
+def _get_text_size(font, text_str):
     try:
-        _, _, w, h = font.getbbox(string)
+        _, _, w, h = font.getbbox(text_str)
     except AttributeError:
-        w, h = font.getsize(string)  # Pillow<8
+        w, h = font.getsize(text_str)  # Pillow<8
 
     return w, h
 
