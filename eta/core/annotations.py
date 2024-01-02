@@ -1663,7 +1663,7 @@ def _draw_bounding_box(
 
     # Title background
     if title_str:
-        textw, texth = font.getsize(title_str)
+        textw, texth = _get_text_size(font, title_str)
         bgtlx = boxtlx - linewidth + 1
         bgbry = boxtly - linewidth + 1
         bgbrx = bgtlx + textw + 2 * (label_text_pad_pixels + _DX)
@@ -1912,8 +1912,17 @@ def _parse_hex_color(h):
     return rgb
 
 
+def _get_text_size(font, string):
+    try:
+        _, _, w, h = font.getbbox(string)
+    except AttributeError:
+        w, h = font.getsize(string)  # Pillow<8
+
+    return w, h
+
+
 def _compute_max_text_size(font, text_strs):
-    sizes = [font.getsize(s) for s in text_strs]
+    sizes = [_get_text_size(font, s) for s in text_strs]
     width, height = np.max(sizes, axis=0)
     return width, height
 
