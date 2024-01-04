@@ -54,7 +54,7 @@ TF_SLIM_DIR = os.path.join(TF_RESEARCH_DIR, "slim")
 # Paths
 CONFIG_JSON_PATH = os.path.join(ETA_DIR, "config.json")
 ASCII_ART_PATH = os.path.join(RESOURCES_DIR, "eta-ascii.txt")
-DEFAULT_FONT_PATH = os.path.join(RESOURCES_DIR, "lato-regular.ttf")
+DEFAULT_FONT_PATH = os.path.join(RESOURCES_DIR, "Arial.ttf")
 DEFAULT_LOGO_CONFIG_PATH = os.path.join(
     RESOURCES_DIR, "default-logo-config.json"
 )
