@@ -11,10 +11,10 @@ numpy>=1.16.3
 opencv-python-headless<5,>=4.1.0.25
 packaging==19.2
 Pillow==9.3.0
-py7zr=0.20.4
+py7zr==0.20.4
 python-dateutil==2.7.0
 pytz==2019.3
-rarfile=4.0.0
+rarfile==4.0.0
 requests-toolbelt==0.8.0
 requests>=2.21.0
 retrying==1.3.3
