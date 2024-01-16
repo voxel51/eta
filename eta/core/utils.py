@@ -1582,6 +1582,7 @@ class ProgressBar(object):
         num_decimals=1,
         max_fps=10,
         quiet=None,
+        logger=None,
     ):
         """Creates a ProgressBar instance.
 
@@ -1622,9 +1623,13 @@ class ProgressBar(object):
             max_fps: the maximum allowed frames per second at which `draw()`
                 will be executed. The default is 15
             quiet: whether to suppress printing of the bar
+            logger: an optional logger to use
         """
         if quiet is None:
             quiet = not eta.config.show_progress_bars
+
+        if logger is None:
+            logger = logging.getLogger(__name__)
 
         num_pct_decimals = 0
 
@@ -1667,6 +1672,7 @@ class ProgressBar(object):
         self._time_remaining = None
         self._iter_rate = None
         self._quiet = quiet
+        self._logger = logger
 
         if self._has_dynamic_width:
             self._update_max_width()
@@ -1827,6 +1833,16 @@ class ProgressBar(object):
         """Whether the progress bar is in quiet mode (no printing to stdout)."""
         return self._quiet
 
+    @property
+    def start_msg(self):
+        """The message logged when the progress bar is started (if any)."""
+        return self._start_msg
+
+    @property
+    def complete_msg(self):
+        """The message logged when the progress bar completes (if any)."""
+        return self._complete_msg
+
     def start(self):
         """Starts the progress bar."""
         if self.is_running:
@@ -1840,7 +1856,7 @@ class ProgressBar(object):
             self._is_nested = self._cap_obj.__enter__()
 
             if self._start_msg:
-                logger.info(self._start_msg)
+                self._logger.info(self._start_msg)
 
             self._is_capturing_stdout = True
             self._start_capture()
@@ -1872,7 +1888,7 @@ class ProgressBar(object):
             and (not args or args[0] is None)  # no error
             and (self.complete == True)  # progress bar completed
         ):
-            logger.info(self._complete_msg)
+            self._logger.info(self._complete_msg)
 
         if self.has_dynamic_width and hasattr(signal, "SIGWINCH"):
             try:
@@ -1985,7 +2001,7 @@ class ProgressBar(object):
                 self.pause()
             else:
                 sys.stdout.write("\r")
-                logger.info(progress_str)
+                self._logger.info(progress_str)
         else:
             sys.stdout.write("\r" + progress_str)
             if self.is_capturing_stdout:
