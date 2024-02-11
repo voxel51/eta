@@ -1,7 +1,7 @@
 """
 Core tools and data structures for working with objects in images and videos.
 
-Copyright 2017-2023, Voxel51, Inc.
+Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
