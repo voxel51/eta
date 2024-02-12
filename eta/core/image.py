@@ -8,7 +8,7 @@ Notes::
         produced outside of this library must be converted to RGB. This
         conversion can be done via `eta.core.image.bgr_to_rgb()`
 
-Copyright 2017-2023, Voxel51, Inc.
+Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
