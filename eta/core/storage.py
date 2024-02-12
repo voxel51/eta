@@ -2625,7 +2625,7 @@ class AzureStorageClient(
     strategy used by this class.
     """
 
-    def __init__(self, credentials=None, max_pool_connections=None):
+    def __init__(self, credentials=None, max_pool_connections=None, **kwargs):
         """Creates an AzureStorageClient instance.
 
         Args:
@@ -2633,6 +2633,9 @@ class AzureStorageClient(
                 automatically loaded as described in `NeedsAzureCredentials`
             max_pool_connections: an optional maximum number of connections to
                 keep in the connection pool
+            **kwargs: optional configuration options for
+                `azure.identity.DefaultAzureCredential(**kwargs)` or
+                `azure.identity.ClientSecretCredential(**kwargs)`
         """
         if credentials is None:
             credentials, _ = self.load_credentials()
@@ -2685,10 +2688,10 @@ class AzureStorageClient(
                     credential = account_key
             elif tenant_id and client_id and client_secret:
                 credential = azi.ClientSecretCredential(
-                    tenant_id, client_id, client_secret
+                    tenant_id, client_id, client_secret, **kwargs
                 )
             else:
-                credential = azi.DefaultAzureCredential()
+                credential = azi.DefaultAzureCredential(**kwargs)
 
             if account_url is None:
                 if account_name is None:
