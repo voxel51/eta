@@ -1,7 +1,7 @@
 """
 A collection of classifiers that use voting to generate predictions.
 
-Copyright 2017-2023, Voxel51, Inc.
+Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin

@@ -1541,4 +1541,4 @@ optional arguments:
 
 ## Copyright
 
-Copyright 2017-2023, Voxel51, Inc.<br> voxel51.com
+Copyright 2017-2024, Voxel51, Inc.<br> voxel51.com

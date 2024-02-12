@@ -6,7 +6,7 @@ Example of embedding the frames of a video in the VGG-16 feature space using
 Also shows the use of the `frame_preprocessor` functionality to embed a
 cropped version of each frame.
 
-Copyright 2017-2023, Voxel51, Inc.
+Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
