@@ -7,7 +7,7 @@ on:
 
 jobs:
   publish:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Clone ETA
         uses: actions/checkout@v2
@@ -17,7 +17,7 @@ jobs:
           python-version: 3
       - name: Install dependencies
         run: |
-          pip install --upgrade pip==23.3.2 setuptools==v69.0.3 wheel twine
+          pip install --upgrade pip setuptools wheel twine
       - name: Install ETA
         run: |
           pip install --no-deps -e .
