@@ -18,6 +18,8 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+# pylint: disable=E1121
+
 import io
 import logging
 import re
@@ -150,6 +152,8 @@ class WebSession(object):
             self._do_download(r, f)
 
     def _get_streaming_response(self, url, headers=None, params=None):
+        headers = headers or {}
+
         r = self.sess.get(
             url,
             headers=headers,
@@ -165,13 +169,36 @@ class WebSession(object):
 
     def _do_download(self, r, f):
         size_bytes = _get_content_length(r)
+        total_downloaded_bytes = 0
         size_bits = 8 * size_bytes if size_bytes is not None else None
+
         with etau.ProgressBar(
             size_bits, use_bits=True, quiet=self.quiet
         ) as pb:
             for chunk in r.iter_content(chunk_size=self.chunk_size):
                 f.write(chunk)
+                total_downloaded_bytes += len(chunk)
                 pb.update(8 * len(chunk))
+
+            while True:
+                remaining_bytes = size_bytes - total_downloaded_bytes
+                if remaining_bytes > 0:
+                    logger.debug(
+                        "Continuing download...Total downloaded bytes: %d, Remaining bytes: %d"
+                        % (total_downloaded_bytes, remaining_bytes)
+                    )
+                    r = self._get_streaming_response(
+                        r.url,
+                        headers={
+                            "Range": "bytes=%d-" % total_downloaded_bytes
+                        },
+                    )
+                    for chunk in r.iter_content(chunk_size=self.chunk_size):
+                        f.write(chunk)
+                        total_downloaded_bytes += len(chunk)
+                        pb.update(8 * len(chunk))
+                else:
+                    break
 
 
 class WebSessionError(Exception):
