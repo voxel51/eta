@@ -152,7 +152,6 @@ class WebSession(object):
             self._do_download(r, f)
 
     def _get_streaming_response(self, url, headers=None, params=None):
-        headers = headers or {}
 
         r = self.sess.get(
             url,
@@ -180,7 +179,10 @@ class WebSession(object):
                 total_downloaded_bytes += len(chunk)
                 pb.update(8 * len(chunk))
 
-            while True:
+            while size_bytes is not None and (
+                "Accept-Ranges" in r.headers
+                and r.headers["Accept-Ranges"] is not None
+            ):
                 remaining_bytes = size_bytes - total_downloaded_bytes
                 if remaining_bytes > 0:
                     logger.debug(
