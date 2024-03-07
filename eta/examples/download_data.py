@@ -5,7 +5,7 @@ Downloads example data from Google Drive.
 Usage:
     python download_data.py
 
-Copyright 2017-2023, Voxel51, Inc.
+Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin

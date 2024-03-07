@@ -2,7 +2,7 @@
 """
 Installs ETA.
 
-Copyright 2017-2023, Voxel51, Inc.
+Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
 try:
@@ -16,7 +16,7 @@ from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
 
-VERSION = "0.12.4"
+VERSION = "0.12.6"
 
 
 class BdistWheelCustom(bdist_wheel):

@@ -1,7 +1,7 @@
 """
 Tools for downloading files from the web.
 
-Copyright 2017-2023, Voxel51, Inc.
+Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
@@ -166,12 +166,37 @@ class WebSession(object):
     def _do_download(self, r, f):
         size_bytes = _get_content_length(r)
         size_bits = 8 * size_bytes if size_bytes is not None else None
+        total_downloaded_bytes = 0
+
         with etau.ProgressBar(
             size_bits, use_bits=True, quiet=self.quiet
         ) as pb:
             for chunk in r.iter_content(chunk_size=self.chunk_size):
                 f.write(chunk)
+                total_downloaded_bytes += len(chunk)
                 pb.update(8 * len(chunk))
+
+            if size_bytes is None or total_downloaded_bytes >= size_bytes:
+                return
+
+            while r.headers.get("Accept-Ranges") is not None:
+                remaining_bytes = size_bytes - total_downloaded_bytes
+                if remaining_bytes <= 0:
+                    return
+
+                logger.debug(
+                    "Continuing download... Total downloaded bytes: %d, Remaining bytes: %d",
+                    total_downloaded_bytes,
+                    remaining_bytes,
+                )
+                r = self._get_streaming_response(
+                    r.url,
+                    headers={"Range": "bytes=%d-" % total_downloaded_bytes},
+                )
+                for chunk in r.iter_content(chunk_size=self.chunk_size):
+                    f.write(chunk)
+                    total_downloaded_bytes += len(chunk)
+                    pb.update(8 * len(chunk))
 
 
 class WebSessionError(Exception):
