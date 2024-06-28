@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 URL_REGEX = re.compile(r"http://|https://|ftp://|file://|file:\\")
+LARGE_FILE_SIZE = 128*1024**2  # 128 MB
 
 
 def is_url(filename):
@@ -168,8 +169,13 @@ class WebSession(object):
         size_bits = 8 * size_bytes if size_bytes is not None else None
         total_downloaded_bytes = 0
 
+        quiet = self.quiet
+        # Show progress bar for large files since they take a while to download
+        if size_bytes >= LARGE_FILE_SIZE:
+            quiet = False
+
         with etau.ProgressBar(
-            size_bits, use_bits=True, quiet=self.quiet
+            size_bits, use_bits=True, quiet=quiet
         ) as pb:
             for chunk in r.iter_content(chunk_size=self.chunk_size):
                 f.write(chunk)
