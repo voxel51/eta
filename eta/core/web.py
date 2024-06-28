@@ -22,6 +22,7 @@ import io
 import logging
 import re
 import requests
+from typing import Union
 
 import eta.constants as etac
 import eta.core.utils as etau
@@ -95,14 +96,19 @@ class WebSession(object):
     # Chunk size, in bytes
     DEFAULT_CHUNK_SIZE = 64 * 1024
 
-    def __init__(self, chunk_size=None, verify=True, quiet=False):
+    def __init__(self, chunk_size=None, verify=True,
+                 quiet: Union[bool, str, int] = "best"):
         """Creates a WebSession instance.
 
         chunk_size: an optional chunk size (in bytes) to use for downloads.
             By default, `DEFAULT_CHUNK_SIZE` is used
         verify: whether to verify SSL certificates before downloading. Set this
             parameter to `False` to bypasses certificate validation
-        quiet: whether to NOT show progress bars tracking downloads
+        quiet (best): control the verbosity of the download process. If `True`,
+            no progress bar will be shown. If `False`, a progress bar will be
+            shown for large files. If "best", a progress bar will be shown for
+            large files, but not for small files. If an integer, a progress bar
+            will be shown for files larger than the given size, in bytes.
         """
         self.sess = requests.Session()
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
@@ -164,18 +170,21 @@ class WebSession(object):
 
         return r
 
+    def _get_quiet_value(self, file_size: int) -> bool:
+        if isinstance(self.quiet, bool):
+            return self.quiet
+        elif self.quiet == "best":
+            return file_size <= LARGE_FILE_SIZE
+        else:
+            return file_size <= self.quiet
+
     def _do_download(self, r, f):
         size_bytes = _get_content_length(r)
         size_bits = 8 * size_bytes if size_bytes is not None else None
         total_downloaded_bytes = 0
 
-        quiet = self.quiet
-        # Show progress bar for large files since they take a while to download
-        if size_bytes >= LARGE_FILE_SIZE:
-            quiet = False
-
         with etau.ProgressBar(
-            size_bits, use_bits=True, quiet=quiet
+            size_bits, use_bits=True, quiet=self._get_quiet_value(size_bytes)
         ) as pb:
             for chunk in r.iter_content(chunk_size=self.chunk_size):
                 f.write(chunk)
