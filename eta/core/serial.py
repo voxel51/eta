@@ -4,20 +4,6 @@ Core data structures for working with data that can be read/written to disk.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from base64 import b64encode, b64decode
 from collections import OrderedDict
 import copy
@@ -41,6 +27,16 @@ import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
+
+
+def itervalues(d):
+    """Replace future.utils.itervalues for python3"""
+    return iter(d.values())
 
 
 def load_json(path_or_str):
@@ -103,7 +99,7 @@ def read_json(path):
         ValueError: if the JSON file was invalid
     """
     try:
-        with open(path, "rt") as f:
+        with open(path) as f:
             return json.load(f)
     except ValueError:
         raise ValueError("Unable to parse JSON file '%s'" % path)
@@ -121,7 +117,7 @@ def write_json(obj, path, pretty_print=False):
     """
     s = json_to_str(obj, pretty_print=pretty_print)
     etau.ensure_basedir(path)
-    with open(path, "wt") as f:
+    with open(path, "w") as f:
         f.write(s)
 
 
@@ -298,7 +294,7 @@ def deserialize_numpy_array(numpy_str, allow_pickle=False):
         return np.load(f, allow_pickle=allow_pickle)
 
 
-class Serializable(object):
+class Serializable:
     """Base class for objects that can be serialized in JSON format.
 
     Subclasses must implement `from_dict()`, which defines how to construct a
@@ -538,7 +534,7 @@ class ExcludeNoneAttributes(Serializable):
         Returns:
             the list of attributes
         """
-        attrs = super(ExcludeNoneAttributes, self).attributes()
+        attrs = super().attributes()
         return [a for a in attrs if getattr(self, a) is not None]
 
 
@@ -754,7 +750,7 @@ class Set(Serializable):
         Args:
             set_: a Set of `_ELE_CLS` objects
         """
-        for key in set_.keys():
+        for key in list(set_.keys()):
             self[key] = set_[key]
 
     def add_iterable(self, elements):
@@ -927,7 +923,7 @@ class Set(Serializable):
             d["_CLS"] = self.get_class_name()
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
 
-        d.update(super(Set, self).serialize(reflective=False))
+        d.update(super().serialize(reflective=False))
 
         #
         # Note that we serialize the elements as a list; the keys are
@@ -1096,7 +1092,7 @@ class Set(Serializable):
         return etau.get_class(d["_CLS"])
 
 
-class BigMixin(object):
+class BigMixin:
     """Mixin class for "big" Serializable classes, which store their elements
     on disk rather than in-memory.
 
@@ -1156,7 +1152,7 @@ class BigMixin(object):
 
     def clear(self):
         """Deletes all elements from the Big iterable."""
-        super(BigMixin, self).clear()
+        super().clear()
         etau.delete_dir(self.backing_dir)
         etau.ensure_dir(self.backing_dir)
 
@@ -1381,7 +1377,7 @@ class BigSet(BigMixin, Set):
             SetError: if there was an error while creating the set
         """
         self._validate()
-        super(BigSet, self).__init__(backing_dir)
+        super().__init__(backing_dir)
 
         elements = kwargs.get(self._ELE_ATTR, None) or []
         if elements:
@@ -1402,7 +1398,7 @@ class BigSet(BigMixin, Set):
 
     def __delitem__(self, key):
         etau.delete_file(self._ele_path(key))
-        super(BigSet, self).__delitem__(key)
+        super().__delitem__(key)
 
     def __iter__(self):
         return iter(self._load_ele(path) for path in self._ele_paths)
@@ -1463,7 +1459,7 @@ class BigSet(BigMixin, Set):
         """
         if isinstance(set_, BigSet):
             # Copy BigSet elements via disk to avoid loading into memory
-            for key in set_.keys():
+            for key in list(set_.keys()):
                 path = set_._ele_path(key)
                 self.add_by_path(path, key=key)
         else:
@@ -1490,7 +1486,7 @@ class BigSet(BigMixin, Set):
                 `any`
         """
         elements = self._filter_elements(filters, match)
-        self.keep_keys(elements.keys())
+        self.keep_keys(list(elements.keys()))
 
     def pop_elements(self, filters, match=any, big=True, backing_dir=None):
         """Pops elements that match the given filters from the set.
@@ -1512,7 +1508,9 @@ class BigSet(BigMixin, Set):
             a BigSet or Set of elements matching the given filters
         """
         elements = self._filter_elements(filters, match)
-        return self.pop_keys(elements.keys(), big=big, backing_dir=backing_dir)
+        return self.pop_keys(
+            list(elements.keys()), big=big, backing_dir=backing_dir
+        )
 
     def keep_keys(self, keys):
         """Keeps only the elements in the set with the given keys.
@@ -1591,7 +1589,7 @@ class BigSet(BigMixin, Set):
         """
         elements = self._filter_elements(filters, match)
         return self.extract_keys(
-            elements.keys(), big=big, backing_dir=backing_dir
+            list(elements.keys()), big=big, backing_dir=backing_dir
         )
 
     def sort_by(self, attr, reverse=False):
@@ -1623,7 +1621,7 @@ class BigSet(BigMixin, Set):
         Returns:
             the list of attributes
         """
-        return ["backing_dir"] + super(BigSet, self).attributes()
+        return ["backing_dir"] + super().attributes()
 
     def serialize(self, reflective=False):
         """Serializes the set into a dictionary.
@@ -1640,7 +1638,7 @@ class BigSet(BigMixin, Set):
             d["_CLS"] = self.get_class_name()
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
 
-        d.update(super(BigSet, self).serialize(reflective=False))
+        d.update(super().serialize(reflective=False))
 
         #
         # Note that we serialize the dictionary into a list of (key, value)
@@ -2188,7 +2186,7 @@ class Container(Serializable):
             d["_CLS"] = self.get_class_name()
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
 
-        d.update(super(Container, self).serialize(reflective=False))
+        d.update(super().serialize(reflective=False))
         return d
 
     @classmethod
@@ -2292,7 +2290,7 @@ class Container(Serializable):
 
     def _filter_elements(self, filters, match):
         return list(
-            filter(lambda e: match(f(e) for f in filters), self.__elements__)
+            [e for e in self.__elements__ if match(f(e) for f in filters)]
         )
 
     def _pop_elements(self, filters, match):
@@ -2317,7 +2315,7 @@ class Container(Serializable):
         ]
 
     def _slice_to_inds(self, sli):
-        return range(len(self))[sli]
+        return list(range(len(self)))[sli]
 
     def _validate(self):
         """Validates that a Container instance is valid."""
@@ -2425,7 +2423,7 @@ class BigContainer(BigMixin, Container):
             ContainerError: if there was an error while creating the container
         """
         self._validate()
-        super(BigContainer, self).__init__(backing_dir)
+        super().__init__(backing_dir)
 
         elements = kwargs.get(self._ELE_ATTR, None) or []
         if elements:
@@ -2468,7 +2466,7 @@ class BigContainer(BigMixin, Container):
             idx += len(self)
 
         etau.delete_file(self._ele_path(idx))
-        super(BigContainer, self).__delitem__(idx)
+        super().__delitem__(idx)
 
     def __iter__(self):
         return iter(self._load_ele(path) for path in self._ele_paths)
@@ -2687,7 +2685,7 @@ class BigContainer(BigMixin, Container):
         Returns:
             the list of attributes
         """
-        return ["backing_dir"] + super(BigContainer, self).attributes()
+        return ["backing_dir"] + super().attributes()
 
     def to_container(self):
         """Loads a BigContainer into an in-memory Container of the associated
@@ -2792,7 +2790,7 @@ class BigContainer(BigMixin, Container):
             ele = self[idx]
             return match(f(ele) for f in filters)
 
-        return list(filter(run_filters, range(len(self))))
+        return list(filter(run_filters, list(range(len(self)))))
 
     def _get_matching_inds(self, filters, match):
         # For BigContainers, `_filter_elements` already does the job here
@@ -2830,7 +2828,7 @@ class ContainerError(Exception):
     pass
 
 
-class Picklable(object):
+class Picklable:
     """Mixin class for objects that can be pickled."""
 
     def pickle(self, path):
@@ -2859,7 +2857,7 @@ class Picklable(object):
         return path.endswith(".pkl")
 
 
-class NpzWriteable(object):
+class NpzWriteable:
     """Base class for dictionary-like objects that contain numpy.array values
     that can be written to disk as .npz files.
     """
@@ -2915,4 +2913,4 @@ class ETAJSONEncoder(json.JSONEncoder):
             return obj.isoformat()
         if isinstance(obj, bytes):
             return obj.decode("ascii")
-        return super(ETAJSONEncoder, self).default(obj)
+        return super().default(obj)

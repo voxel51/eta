@@ -4,20 +4,6 @@ Core utilities for working with TensorFlow models.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from copy import copy
 import logging
 import os
@@ -46,6 +32,11 @@ logger = logging.getLogger(__name__)
 
 
 TF_RECORD_EXTENSIONS = [".record", ".tfrecord"]
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
 
 
 def import_tf1():
@@ -227,7 +218,7 @@ def _launch_tensorboard(graph, log_dir=None, port=None):
     etau.call(args)
 
 
-class TFLoggingLevel(object):
+class TFLoggingLevel:
     """Context manager that enables temporarily changing the ``tf.logging``
     verbosity level.
     """
@@ -244,7 +235,7 @@ class TFLoggingLevel(object):
         tf.logging.set_verbosity(self._orig_level)
 
 
-class UsesTFSession(object):
+class UsesTFSession:
     """Mixin for classes that use one or more `tf.Session`s.
 
     It is highly recommended that all classes that use `tf.Session` use this
@@ -385,14 +376,14 @@ def is_sharded_tf_record_path(tf_record_path):
     "/path/to/data-?????-of-XXXXX.tfrecord"
     """
     ext_patt = "|".join(re.escape(e) for e in TF_RECORD_EXTENSIONS)
-    shard_patt = "-\?+-of-\d+"
+    shard_patt = r"-\?+-of-\d+"
 
     # /path/to/data.record-????-of-XXXXX
-    if re.search("(%s)%s$" % (ext_patt, shard_patt), tf_record_path):
+    if re.search("({}){}$".format(ext_patt, shard_patt), tf_record_path):
         return True
 
     # /path/to/data-????-of-XXXXX.tfrecord
-    if re.search("%s(%s)$" % (shard_patt, ext_patt), tf_record_path):
+    if re.search("{}({})$".format(shard_patt, ext_patt), tf_record_path):
         return True
 
     return False

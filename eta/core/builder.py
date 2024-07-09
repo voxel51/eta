@@ -4,20 +4,6 @@ Core pipeline building system.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 import copy
 import logging
@@ -42,6 +28,16 @@ PIPELINE_CONFIG_FILE = "pipeline.json"
 PIPELINE_LOGFILE_FILE = "pipeline.log"
 PIPELINE_STATUS_FILE = "status.json"
 MODULE_CONFIG_EXT = ".json"
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
+
+
+def itervalues(d):
+    """Replace future.utils.itervalues for python3"""
+    return iter(d.values())
 
 
 def find_last_built_pipeline():
@@ -141,7 +137,7 @@ class ModuleConfig(etam.BaseModuleConfig):
     """
 
     def __init__(self, d):
-        super(ModuleConfig, self).__init__(d)
+        super().__init__(d)
         self.data = self.parse_array(d, "data", default=[])
         self.parameters = self.parse_dict(d, "parameters", default={})
 
@@ -218,7 +214,9 @@ class PipelineBuildRequest(Configurable):
         for iname, ipath in iteritems(self.inputs):
             if not self.metadata.has_input(iname):
                 raise PipelineBuildRequestError(
-                    "Pipeline '%s' has no input '%s'" % (self.pipeline, iname)
+                    "Pipeline '{}' has no input '{}'".format(
+                        self.pipeline, iname
+                    )
                 )
             if not self.metadata.is_valid_input(iname, ipath):
                 raise PipelineBuildRequestError(
@@ -241,7 +239,9 @@ class PipelineBuildRequest(Configurable):
         for oname, opath in iteritems(self.outputs):
             if not self.metadata.has_output(oname):
                 raise PipelineBuildRequestError(
-                    "Pipeline '%s' has no output '%s'" % (self.pipeline, oname)
+                    "Pipeline '{}' has no output '{}'".format(
+                        self.pipeline, oname
+                    )
                 )
             if not opath:
                 continue
@@ -285,7 +285,7 @@ class PipelineBuildRequestError(Exception):
     pass
 
 
-class PipelineBuilder(object):
+class PipelineBuilder:
     """Class for building a pipeline based on a PipelineBuildRequest.
 
     Attributes:
@@ -661,8 +661,7 @@ class PipelineBuilder(object):
 
 
 class PipelineBuilderError(Exception):
-    """Exception raised when an invalid action is taken with a PipelineBuilder.
-    """
+    """Exception raised when an invalid action is taken with a PipelineBuilder."""
 
     pass
 

@@ -11,19 +11,6 @@ Hou Xin, 2016
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import numpy as np
 
 from eta.core.config import Config, Configurable
@@ -263,7 +250,7 @@ class C3DFeaturizerConfig(C3DConfig):
     """
 
     def __init__(self, d):
-        super(C3DFeaturizerConfig, self).__init__(d)
+        super().__init__(d)
         self.sample_method = self.parse_string(
             d, "sample_method", default="sliding_window"
         )
@@ -286,7 +273,7 @@ class C3DFeaturizer(VideoFramesFeaturizer, VideoFeaturizer):
         self.config = config
         self.validate(self.config)
 
-        super(C3DFeaturizer, self).__init__()
+        super().__init__()
         self._c3d = C3D(self.config)
 
     def dim(self):

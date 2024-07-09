@@ -12,19 +12,6 @@ Info:
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 import os
 import sys
@@ -51,7 +38,7 @@ class ModuleConfig(etam.BaseModuleConfig):
     """
 
     def __init__(self, d):
-        super(ModuleConfig, self).__init__(d)
+        super().__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
@@ -249,7 +236,7 @@ def _process_video(input_path, output_frames_dir, parameters):
     # Determine frames to sample
     total_frame_count = video_metadata.total_frame_count
     sample_pts = np.arange(1, total_frame_count + 1, accel)
-    sample_frames = set(int(round(x)) for x in sample_pts)
+    sample_frames = {int(round(x)) for x in sample_pts}
     if parameters.always_sample_last:
         sample_frames.add(total_frame_count)
     frames = sorted(sample_frames)

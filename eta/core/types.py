@@ -7,20 +7,6 @@ base type `eta.core.types.Type` defined here.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-import six
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 import os
 
@@ -87,7 +73,7 @@ def is_abstract_data(type_):
     return issubclass(type_, AbstractData) and not is_concrete_data(type_)
 
 
-class ConcreteDataParams(object):
+class ConcreteDataParams:
     """Class encapsulating the string formatting parameters for generating
     paths for ConcreteData types.
     """
@@ -133,7 +119,7 @@ class ConcreteDataParams(object):
 ###### Base type ##############################################################
 
 
-class Type(object):
+class Type:
     """The base type for all types."""
 
 

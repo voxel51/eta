@@ -5,19 +5,6 @@ https://github.com/voxel51/models/tree/master/research/slim.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 import sys
 
@@ -447,7 +434,7 @@ class TFSlimFeaturizerConfig(TFSlimClassifierConfig):
         # Featurizers always need to generate features!
         d["generate_features"] = True
 
-        super(TFSlimFeaturizerConfig, self).__init__(d)
+        super().__init__(d)
 
 
 class TFSlimFeaturizer(ImageFeaturizer):
@@ -461,7 +448,7 @@ class TFSlimFeaturizer(ImageFeaturizer):
         Args:
             config: a TFSlimFeaturizer instance
         """
-        super(TFSlimFeaturizer, self).__init__()
+        super().__init__()
         self.config = config
         self.validate(self.config)
         self._classifier = None

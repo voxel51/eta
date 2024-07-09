@@ -4,19 +4,6 @@ Core interfaces, data structures, and methods for feature extraction.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 import os
 import tempfile
@@ -214,7 +201,7 @@ class ImageFeaturizerConfig(FeaturizerConfig):
     """
 
     def __init__(self, d):
-        super(ImageFeaturizerConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(ImageFeaturizer)
 
 
@@ -246,7 +233,7 @@ class VideoFramesFeaturizerConfig(FeaturizerConfig):
     """
 
     def __init__(self, d):
-        super(VideoFramesFeaturizerConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(VideoFramesFeaturizer)
 
 
@@ -279,7 +266,7 @@ class VideoFeaturizerConfig(FeaturizerConfig):
     """
 
     def __init__(self, d):
-        super(VideoFeaturizerConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(VideoFeaturizer)
 
 
@@ -322,7 +309,7 @@ class ORBFeaturizer(ImageFeaturizer):
         if config is None:
             config = ORBFeaturizerConfig.default()
         self.num_keypoints = config.num_keypoints
-        super(ORBFeaturizer, self).__init__()
+        super().__init__()
 
         try:
             # OpenCV 3
@@ -362,7 +349,7 @@ class RandFeaturizer(ImageFeaturizer, VideoFramesFeaturizer, VideoFeaturizer):
         if config is None:
             config = RandFeaturizerConfig.default()
         self._dim = config.dim
-        super(RandFeaturizer, self).__init__()
+        super().__init__()
 
     def dim(self):
         """Returns the dimension of the features."""
@@ -439,7 +426,7 @@ class CachingVideoFeaturizer(Featurizer):
         """
         self.validate(config)
         self.config = config
-        super(CachingVideoFeaturizer, self).__init__()
+        super().__init__()
 
         self._frame_featurizer = self.config.frame_featurizer.build()
         logger.info("Loaded featurizer %s", type(self._frame_featurizer))
@@ -708,7 +695,7 @@ class CachingVideoObjectsFeaturizer(Featurizer):
         """
         self.validate(config)
         self.config = config
-        super(CachingVideoObjectsFeaturizer, self).__init__()
+        super().__init__()
 
         self._object_featurizer = self.config.object_featurizer.build()
         logger.info("Loaded featurizer %s", type(self._object_featurizer))
@@ -929,7 +916,7 @@ class CachingVideoObjectsFeaturizerError(Exception):
     pass
 
 
-class FeaturesHandler(object):
+class FeaturesHandler:
     """Base class for handling the reading and writing features to disk.
 
     The features are stored on disk in `features_dir` in .npy format with the
@@ -1006,7 +993,7 @@ class FeaturesHandler(object):
     def _load_feature_from_path(path):
         try:
             return np.load(path)
-        except IOError:
+        except OSError:
             raise FeatureNotFoundError(path)
 
     @staticmethod
@@ -1018,9 +1005,7 @@ class FeatureNotFoundError(IOError):
     """Exception raised when a feature is not found on disk."""
 
     def __init__(self, path):
-        super(FeatureNotFoundError, self).__init__(
-            "Feature not found at '%s'" % path
-        )
+        super().__init__("Feature not found at '%s'" % path)
 
 
 class ImageFeaturesHandler(FeaturesHandler):
@@ -1087,9 +1072,7 @@ class ImageObjectsFeaturesHandler(FeaturesHandler):
         Args:
             features_dir: the backing directory in which to read/write features
         """
-        super(ImageObjectsFeaturesHandler, self).__init__(
-            features_dir, self.FEATURES_PATT
-        )
+        super().__init__(features_dir, self.FEATURES_PATT)
 
     def get_feature_path(self, object_number):
         """Gets the feature path for the given object.
@@ -1193,9 +1176,7 @@ class ImageSetFeaturesHandler(FeaturesHandler):
         Args:
             features_dir: the backing directory in which to read/write features
         """
-        super(ImageSetFeaturesHandler, self).__init__(
-            features_dir, self.FEATURES_PATT
-        )
+        super().__init__(features_dir, self.FEATURES_PATT)
 
     def get_feature_path(self, image_name):
         """Gets the feature path for the given image.
@@ -1263,9 +1244,7 @@ class ImageSetObjectsFeaturesHandler(FeaturesHandler):
         Args:
             features_dir: the backing directory in which to read/write features
         """
-        super(ImageSetObjectsFeaturesHandler, self).__init__(
-            features_dir, self.FEATURES_PATT
-        )
+        super().__init__(features_dir, self.FEATURES_PATT)
 
     def get_feature_path(self, image_name, object_number):
         """Gets the feature path for the given object.
@@ -1378,9 +1357,7 @@ class VideoFramesFeaturesHandler(FeaturesHandler):
         Args:
             features_dir: the backing directory in which to read/write features
         """
-        super(VideoFramesFeaturesHandler, self).__init__(
-            features_dir, self.FEATURES_PATT
-        )
+        super().__init__(features_dir, self.FEATURES_PATT)
 
     def get_feature_path(self, frame_number):
         """Gets the feature path for the given frame.
@@ -1474,9 +1451,7 @@ class VideoObjectsFeaturesHandler(FeaturesHandler):
         Args:
             features_dir: the backing directory in which to read/write features
         """
-        super(VideoObjectsFeaturesHandler, self).__init__(
-            features_dir, self.FEATURES_PATT
-        )
+        super().__init__(features_dir, self.FEATURES_PATT)
 
     def get_feature_path(self, frame_number, object_number):
         """Gets the feature path for the given object in the given frame.

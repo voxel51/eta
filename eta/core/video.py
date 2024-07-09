@@ -13,20 +13,6 @@ Notes::
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from copy import deepcopy
 import errno
 import logging
@@ -104,6 +90,16 @@ SUPPORTED_VIDEO_FILE_FORMATS = {
     ".wmv",
     ".yuv",
 }
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
+
+
+def itervalues(d):
+    """Replace future.utils.itervalues for python3"""
+    return iter(d.values())
 
 
 def is_video_mime_type(filepath):
@@ -1408,7 +1404,7 @@ class VideoLabels(
             self.frames[frame_number].merge_labels(frame_labels)
 
     def _compute_support(self):
-        frame_ranges = etaf.FrameRanges.from_iterable(self.frames.keys())
+        frame_ranges = etaf.FrameRanges.from_iterable(list(self.frames.keys()))
         frame_ranges.merge(*[obj.support for obj in self.objects])
         frame_ranges.merge(*[event.support for event in self.events])
         return frame_ranges
@@ -2006,7 +2002,7 @@ class VideoSetLabels(etal.LabelsSet):
         Returns:
             the set of filenames
         """
-        return set(vl.filename for vl in self if vl.filename)
+        return {vl.filename for vl in self if vl.filename}
 
     def remove_objects_without_attrs(self, labels=None):
         """Removes objects from the VideoLabels in the set that do not have
@@ -2086,7 +2082,7 @@ class BigVideoSetLabels(VideoSetLabels, etas.BigSet):
         Args:
             schema: a VideoLabelsSchema
         """
-        for key in self.keys():
+        for key in list(self.keys()):
             video_labels = self[key]
             video_labels.filter_by_schema(schema)
             self[key] = video_labels
@@ -2107,7 +2103,7 @@ class BigVideoSetLabels(VideoSetLabels, etas.BigSet):
                 labels that are not compliant with the schema
         """
         self.schema = schema
-        for key in self.keys():
+        for key in list(self.keys()):
             video_labels = self[key]
             video_labels.set_schema(
                 schema, filter_by_schema=filter_by_schema, validate=validate
@@ -2123,7 +2119,7 @@ class BigVideoSetLabels(VideoSetLabels, etas.BigSet):
                 restrict attention when filtering. By default, all objects are
                 processed
         """
-        for key in self.keys():
+        for key in list(self.keys()):
             video_labels = self[key]
             video_labels.remove_objects_without_attrs(labels=labels)
             self[key] = video_labels
@@ -3077,7 +3073,7 @@ def split_video(
     ffmpeg.run(video_path, output_patt)
 
 
-class VideoProcessor(object):
+class VideoProcessor:
     """Class for reading a video and writing a new video frame-by-frame.
 
     The typical usage is::
@@ -3291,7 +3287,7 @@ class VideoProcessorError(Exception):
     pass
 
 
-class VideoReader(object):
+class VideoReader:
     """Base class for reading videos.
 
     This class declares the following conventions:
@@ -3472,7 +3468,7 @@ class FFmpegVideoReader(VideoReader):
         self._raw_frame = None
 
         self._open_stream(inpath)
-        super(FFmpegVideoReader, self).__init__(inpath, frames)
+        super().__init__(inpath, frames)
 
     def close(self):
         """Closes the FFmpegVideoReader."""
@@ -3599,7 +3595,7 @@ class SampledFramesVideoReader(VideoReader):
         if frames is None or frames == "*":
             frames = all_frames
 
-        super(SampledFramesVideoReader, self).__init__(frames_dir, frames)
+        super().__init__(frames_dir, frames)
 
     def reset(self):
         """Resets the SampledFramesVideoReader."""
@@ -3701,7 +3697,7 @@ class OpenCVVideoReader(VideoReader):
         self._cap = None
 
         self._open_stream(inpath)
-        super(OpenCVVideoReader, self).__init__(inpath, frames)
+        super().__init__(inpath, frames)
 
     def close(self):
         """Closes the OpenCVVideoReader."""
@@ -3821,7 +3817,7 @@ class OpenCVVideoReaderError(VideoReaderError):
     pass
 
 
-class VideoWriter(object):
+class VideoWriter:
     """Base class for writing videos.
 
     This class declares the following conventions:
@@ -3954,7 +3950,7 @@ class OpenCVVideoWriterError(VideoWriterError):
     pass
 
 
-class FFprobe(object):
+class FFprobe:
     """Interface for the ffprobe binary."""
 
     DEFAULT_GLOBAL_OPTS = ["-loglevel", "error"]
@@ -4009,7 +4005,7 @@ class FFprobe(object):
 
         try:
             self._p = Popen(self._args, stdout=PIPE, stderr=PIPE)
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 raise etau.ExecutableNotFoundError(exe="ffprobe")
 
@@ -4022,7 +4018,7 @@ class FFprobe(object):
         return out.decode("utf-8") if decode else out
 
 
-class FFmpeg(object):
+class FFmpeg:
     """Interface for the ffmpeg binary.
 
     Example usages:
@@ -4193,7 +4189,7 @@ class FFmpeg(object):
 
         try:
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 raise etau.ExecutableNotFoundError(exe="ffmpeg")
 
@@ -4249,9 +4245,9 @@ class FFmpeg(object):
     def _gen_filter_opts(fps, size, scale):
         filters = []
         if fps is not None and fps > 0:
-            filters.append("fps={0}".format(fps))
+            filters.append("fps={}".format(fps))
         if size:
-            filters.append("scale={0}:{1}".format(*size))
+            filters.append("scale={}:{}".format(*size))
 
             #
             # If the aspect ratio is changing, we must manually set SAR/DAR
@@ -4262,7 +4258,7 @@ class FFmpeg(object):
                 filters.append("setsar=sar=1:1")
 
                 # Force correct display aspect ratio when playing video
-                filters.append("setdar=dar={0}/{1}".format(*size))
+                filters.append("setdar=dar={}/{}".format(*size))
 
         elif scale:
             filters.append("scale=iw*{0}:ih*{0}".format(scale))
@@ -4277,7 +4273,7 @@ class FFmpegStreamingError(Exception):
     pass
 
 
-class FOURCC(object):
+class FOURCC:
     """Class reprsesenting a FOURCC code."""
 
     def __init__(self, _i=None, _s=None):

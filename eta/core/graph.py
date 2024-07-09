@@ -4,23 +4,10 @@ Core infrastructure for graph manipulation.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import copy
 
 
-class DirectedGraph(object):
+class DirectedGraph:
     """A simple, lightweight implementation of a directed graph.
 
     The graph nodes can be any hashable objects (they are stored internally as

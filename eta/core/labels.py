@@ -4,20 +4,6 @@ Core data structures for working with labels.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 import logging
 
@@ -26,6 +12,11 @@ import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
 
 
 class Labels(etas.Serializable):
@@ -212,7 +203,7 @@ class LabelsSchemaError(Exception):
     pass
 
 
-class HasLabelsSchema(object):
+class HasLabelsSchema:
     """Mixin for Label classes that can optionally store and enforce
     `LabelsSchema`s on their labels.
 
@@ -291,7 +282,7 @@ class HasLabelsSchema(object):
         self.set_schema(None)
 
 
-class HasLabelsSupport(object):
+class HasLabelsSupport:
     """Mixin for Label classes that describe videos and can keep track of
     their own support, i.e., the frames for which they contain labels.
 
@@ -377,7 +368,7 @@ class HasLabelsSupport(object):
         )
 
 
-class HasFramewiseView(object):
+class HasFramewiseView:
     """Mixin for Label classes that describe videos and can be rendered in
     a framewise view by a LabelsFrameRenderer.
     """
@@ -403,7 +394,7 @@ class HasFramewiseView(object):
         return renderer.render(in_place=in_place)
 
 
-class HasSpatiotemporalView(object):
+class HasSpatiotemporalView:
     """Mixin for Label classes that describe videos and can be rendered in a
     spatiotemporal view by a LabelsSpatiotemporalRenderer.
     """
@@ -485,7 +476,7 @@ class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
         if self.has_schema:
             _attrs.append("schema")
 
-        _attrs += super(LabelsContainer, self).attributes()
+        _attrs += super().attributes()
         return _attrs
 
     @classmethod
@@ -503,7 +494,7 @@ class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
             schema_cls = cls.get_schema_cls()
             schema = schema_cls.from_dict(schema)
 
-        return super(LabelsContainer, cls).from_dict(d, schema=schema)
+        return super().from_dict(d, schema=schema)
 
     def validate_schema(self):
         """Validates that the labels are compliant with the current schema.
@@ -616,7 +607,7 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
             labels = self._ELE_CLS(**{self._ELE_KEY_ATTR: key})
             self.add(labels)
 
-        return super(LabelsSet, self).__getitem__(key)
+        return super().__getitem__(key)
 
     def __bool__(self):
         return etas.Set.__bool__(self)
@@ -715,7 +706,7 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
         if self.has_schema:
             _attrs.append("schema")
 
-        _attrs += super(LabelsSet, self).attributes()
+        _attrs += super().attributes()
         return _attrs
 
     @classmethod
@@ -733,7 +724,7 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
             schema_cls = cls.get_schema_cls()
             schema = schema_cls.from_dict(schema)
 
-        return super(LabelsSet, cls).from_dict(d, schema=schema)
+        return super().from_dict(d, schema=schema)
 
     @classmethod
     def from_labels_patt(cls, labels_patt):
@@ -769,7 +760,7 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
             self.schema.validate(labels)
 
 
-class LabelsRenderer(object):
+class LabelsRenderer:
     """Interface for classes that render Labels instances in a specified
     format.
 
@@ -829,8 +820,7 @@ class LabelsContainerRenderer(LabelsRenderer):
 
     @property
     def element_renderer_cls(self):
-        """The LabelsRenderer class to use to render elements of the container.
-        """
+        """The LabelsRenderer class to use to render elements of the container."""
         return self._ELEMENT_RENDERER_CLS
 
     def render(self, in_place=False):

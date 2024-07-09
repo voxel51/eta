@@ -4,20 +4,6 @@ Core tools and data structures for working with data.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 import logging
 import os
@@ -32,6 +18,16 @@ import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
+
+
+def itervalues(d):
+    """Replace future.utils.itervalues for python3"""
+    return iter(d.values())
 
 
 def majority_vote_categorical_attrs(attrs, confidence_weighted=False):
@@ -218,7 +214,7 @@ class CategoricalAttribute(Attribute):
                 this is False
             tags (None): a list of tag strings
         """
-        super(CategoricalAttribute, self).__init__(
+        super().__init__(
             name, value, confidence=confidence, constant=constant, tags=tags
         )
         self.top_k_probs = top_k_probs
@@ -241,7 +237,7 @@ class CategoricalAttribute(Attribute):
         Returns:
             the list of attribute names
         """
-        _attrs = super(CategoricalAttribute, self).attributes()
+        _attrs = super().attributes()
         if self.top_k_probs is not None:
             _attrs.append("top_k_probs")
 
@@ -249,7 +245,7 @@ class CategoricalAttribute(Attribute):
 
     @classmethod
     def _from_dict(cls, d):
-        attr = super(CategoricalAttribute, cls)._from_dict(d)
+        attr = super()._from_dict(d)
         attr.top_k_probs = d.get("top_k_probs", None)
         return attr
 
@@ -391,7 +387,7 @@ class AttributeSchema(etal.LabelsSchema):
         Raises:
             LabelsSchemaError: if the schema does not match this schema
         """
-        if type(schema) is not type(self):
+        if not isinstance(schema, type(self)):
             raise AttributeSchemaError(
                 "Expected schema to have type '%s'; found '%s'"
                 % (type(self), type(schema))
@@ -440,7 +436,7 @@ class AttributeSchema(etal.LabelsSchema):
         """
         if attr.name != self.name:
             raise AttributeSchemaError(
-                "Expected name '%s'; found '%s'" % (self.name, attr.name)
+                "Expected name '{}'; found '{}'".format(self.name, attr.name)
             )
 
         self.validate_type(attr)
@@ -465,7 +461,7 @@ class AttributeSchema(etal.LabelsSchema):
 
         if self.name != schema.name:
             raise AttributeSchemaError(
-                "Expected name '%s'; found '%s'" % (schema.name, self.name)
+                "Expected name '{}'; found '{}'".format(schema.name, self.name)
             )
 
         if self.exclusive != schema.exclusive:
@@ -592,9 +588,7 @@ class CategoricalAttributeSchema(AttributeSchema):
             default: an optional default value for the attribute. By default,
                 no default is stored
         """
-        super(CategoricalAttributeSchema, self).__init__(
-            name, exclusive=exclusive, default=default
-        )
+        super().__init__(name, exclusive=exclusive, default=default)
         self.categories = set(categories or [])
         self.validate_default_value()
 
@@ -633,9 +627,7 @@ class CategoricalAttributeSchema(AttributeSchema):
             LabelsSchemaError: if this schema is not a subset of the given
                 schema
         """
-        super(CategoricalAttributeSchema, self).validate_subset_of_schema(
-            schema
-        )
+        super().validate_subset_of_schema(schema)
 
         if not self.categories.issubset(schema.categories):
             raise AttributeSchemaError(
@@ -662,7 +654,7 @@ class CategoricalAttributeSchema(AttributeSchema):
         Args:
             schema: a CategoricalAttributeSchema
         """
-        super(CategoricalAttributeSchema, self).merge_schema(schema)
+        super().merge_schema(schema)
         self.categories.update(schema.categories)
 
     def attributes(self):
@@ -671,12 +663,12 @@ class CategoricalAttributeSchema(AttributeSchema):
         Returns:
             the list of attributes
         """
-        attrs_ = super(CategoricalAttributeSchema, self).attributes()
+        attrs_ = super().attributes()
         attrs_.append("categories")
         return attrs_
 
     def serialize(self, *args, **kwargs):
-        d = super(CategoricalAttributeSchema, self).serialize(*args, **kwargs)
+        d = super().serialize(*args, **kwargs)
 
         # Always serialize categories in alphabetical order
         if "categories" in d:
@@ -721,9 +713,7 @@ class NumericAttributeSchema(AttributeSchema):
             default: an optional default value for the attribute. By default,
                 no default is stored
         """
-        super(NumericAttributeSchema, self).__init__(
-            name, exclusive=exclusive, default=default
-        )
+        super().__init__(name, exclusive=exclusive, default=default)
         self.range = tuple(range or [])
         self.validate_default_value()
 
@@ -769,7 +759,7 @@ class NumericAttributeSchema(AttributeSchema):
             LabelsSchemaError: if this schema is not a subset of the given
                 schema
         """
-        super(NumericAttributeSchema, self).validate_subset_of_schema(schema)
+        super().validate_subset_of_schema(schema)
 
         if self.range and (
             not schema.range
@@ -777,7 +767,9 @@ class NumericAttributeSchema(AttributeSchema):
             or self.range[1] > schema.range[1]
         ):
             raise AttributeSchemaError(
-                "Range %s is not a subset of %s" % (self.range, schema.range)
+                "Range {} is not a subset of {}".format(
+                    self.range, schema.range
+                )
             )
 
     @classmethod
@@ -799,7 +791,7 @@ class NumericAttributeSchema(AttributeSchema):
         Args:
             schema: a NumericAttributeSchema
         """
-        super(NumericAttributeSchema, self).merge_schema(schema)
+        super().merge_schema(schema)
 
         if not self.range:
             self.range = schema.range
@@ -815,7 +807,7 @@ class NumericAttributeSchema(AttributeSchema):
         Returns:
             the list of attributes
         """
-        attrs_ = super(NumericAttributeSchema, self).attributes()
+        attrs_ = super().attributes()
         attrs_.append("range")
         return attrs_
 
@@ -858,9 +850,7 @@ class BooleanAttributeSchema(AttributeSchema):
             default: an optional default value for the attribute. By default,
                 no default is stored
         """
-        super(BooleanAttributeSchema, self).__init__(
-            name, exclusive=exclusive, default=default
-        )
+        super().__init__(name, exclusive=exclusive, default=default)
         self.values = set(values or [])
         self.validate_default_value()
 
@@ -899,7 +889,7 @@ class BooleanAttributeSchema(AttributeSchema):
             LabelsSchemaError: if this schema is not a subset of the given
                 schema
         """
-        super(BooleanAttributeSchema, self).validate_subset_of_schema(schema)
+        super().validate_subset_of_schema(schema)
 
         if not self.values.issubset(schema.values):
             raise AttributeSchemaError(
@@ -926,7 +916,7 @@ class BooleanAttributeSchema(AttributeSchema):
         Args:
             schema: a BooleanAttributeSchema
         """
-        super(BooleanAttributeSchema, self).merge_schema(schema)
+        super().merge_schema(schema)
         self.values.update(schema.values)
 
     def attributes(self):
@@ -935,7 +925,7 @@ class BooleanAttributeSchema(AttributeSchema):
         Returns:
             the list of attributes
         """
-        attrs_ = super(BooleanAttributeSchema, self).attributes()
+        attrs_ = super().attributes()
         attrs_.append("values")
         return attrs_
 
@@ -1697,7 +1687,7 @@ class DataRecords(etas.Container):
             records: an optional list of records to add to the container
         """
         self._ELE_CLS = record_cls
-        super(DataRecords, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     @property
     def record_cls(self):
@@ -1816,8 +1806,7 @@ class DataRecords(etas.Container):
         return len(self)
 
     def slice(self, field):
-        """Returns a list of `field` values for the records in the container.
-        """
+        """Returns a list of `field` values for the records in the container."""
         return [getattr(r, field) for r in self.__elements__]
 
     def subset_from_indices(self, indices):
@@ -1896,7 +1885,7 @@ class BaseDataRecord(etas.Serializable):
         Returns:
             the list of attributes to be serialized
         """
-        attr = super(BaseDataRecord, self).attributes()
+        attr = super().attributes()
         return [a for a in attr if a not in self.excluded()]
 
     def clean_optional(self):
@@ -1970,7 +1959,7 @@ class LabeledFileRecord(BaseDataRecord):
         """
         self.file_path = file_path
         self.label = label
-        super(LabeledFileRecord, self).__init__()
+        super().__init__()
 
     @property
     def filename(self):
@@ -2004,7 +1993,7 @@ class LabeledVideoRecord(LabeledFileRecord):
             label: the label of the video
             group: an optional group attribute for the video
         """
-        super(LabeledVideoRecord, self).__init__(video_path, label)
+        super().__init__(video_path, label)
         self.group = group
 
     @property

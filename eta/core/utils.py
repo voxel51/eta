@@ -4,21 +4,6 @@ Core system and file I/O utilities.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-import six
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict, deque
 from datetime import datetime
 import dateutil.parser
@@ -28,25 +13,9 @@ import glob2
 import hashlib
 import importlib
 import inspect
-
-try:
-    # Although StringIO.StringIO's handling of unicode vs bytes is imperfect,
-    # we import it here for use when a text-buffer replacement for `print` in
-    # Python 2.X is required
-    from StringIO import StringIO as _StringIO  # Python 2
-except ImportError:
-    from io import StringIO as _StringIO  # Python 3
-
-try:
-    import urllib.parse as urlparse  # Python 3
-except ImportError:
-    import urlparse  # Python 2
-
-try:
-    from importlib import metadata
-except ImportError:
-    import importlib_metadata as metadata
-
+from io import StringIO as _StringIO
+import urllib.parse
+from importlib import metadata
 import itertools as it
 import logging
 import math
@@ -67,7 +36,7 @@ import sys
 import tarfile
 import tempfile
 import timeit
-import types
+from . import types
 import zipfile as zf
 
 import eta
@@ -77,9 +46,19 @@ import eta.constants as etac
 logger = logging.getLogger(__name__)
 
 
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
+
+
+def itervalues(d):
+    """Replace future.utils.itervalues for python3"""
+    return iter(d.values())
+
+
 def is_str(val):
     """Returns True/False whether the given value is a string."""
-    return isinstance(val, six.string_types)
+    return isinstance(val, str)
 
 
 def is_numeric(val):
@@ -404,15 +383,15 @@ def parse_categorical_string(value, choices, ignore_case=True):
         ValueError: if the value was not an allowed choice
     """
     if inspect.isclass(choices):
-        choices = set(
+        choices = {
             v for k, v in iteritems(vars(choices)) if not k.startswith("_")
-        )
+        }
 
     orig_value = value
     orig_choices = choices
     if ignore_case:
         value = value.lower()
-        choices = set(c.lower() for c in choices)
+        choices = {c.lower() for c in choices}
 
     if value not in choices:
         raise ValueError(
@@ -469,7 +448,7 @@ def parse_bool(val):
     raise ValueError("Failed to parse boolean from '%s'" % val)
 
 
-class FunctionEnum(object):
+class FunctionEnum:
     """Base class for enums that support string-based lookup into a set of
     functions.
 
@@ -663,7 +642,7 @@ def install_package(
 
     if not success:
         if error_msg is None:
-            error_msg = "Failed to install package '%s'\n\n%s" % (
+            error_msg = "Failed to install package '{}'\n\n{}".format(
                 requirement_str,
                 err.decode(),
             )
@@ -902,7 +881,7 @@ def _ensure_all_requirements(
             found_strs.append("%s==???" % req.name)
 
         if version is not None:
-            found_strs.append("%s==%s" % (req.name, version))
+            found_strs.append("{}=={}".format(req.name, version))
 
         if error is not None:
             last_error = error
@@ -914,12 +893,12 @@ def _ensure_all_requirements(
         if num_req == 1:
             reqs = "'%s' is" % req_strs[0]
         else:
-            reqs = "%s are" % (req_strs,)
+            reqs = "{} are".format(req_strs)
 
         if num_found == 1:
             founds = ", but found '%s'." % found_strs[0]
         elif num_found > 1:
-            founds = ", but found %s." % (found_strs,)
+            founds = ", but found {}.".format(found_strs)
         else:
             founds = "."
 
@@ -975,7 +954,7 @@ def _ensure_any_requirement(
             found_strs.append("%s==???" % req.name)
 
         if version is not None:
-            found_strs.append("%s==%s" % (req.name, version))
+            found_strs.append("{}=={}".format(req.name, version))
 
         if error is not None:
             last_error = error
@@ -1011,7 +990,7 @@ def handle_error(error, error_level, base_error=None):
     """
     if error_level <= 0:
         if base_error is not None:
-            six.raise_from(error, base_error)
+            raise error from base_error
         else:
             raise error
 
@@ -1152,7 +1131,7 @@ def get_cudnn_version():
     major = None
     minor = None
     patch = None
-    with open(cudnn_header_path, "rt") as f:
+    with open(cudnn_header_path) as f:
         for line in f.readlines():
             if line.startswith("#define CUDNN_MAJOR"):
                 major = line[len("#define CUDNN_MAJOR") :].strip()
@@ -1239,7 +1218,7 @@ class LazyModule(types.ModuleType):
     """
 
     def __init__(self, module_name, callback=None, error_msg=None):
-        super(LazyModule, self).__init__(module_name)
+        super().__init__(module_name)
         self._module = None
         self._callback = callback
         self._error_msg = error_msg
@@ -1267,7 +1246,7 @@ class LazyModule(types.ModuleType):
             self._module = module
         except ImportError as e:
             if self._error_msg is not None:
-                six.raise_from(ImportError(self._error_msg), e)
+                raise ImportError(self._error_msg) from e
 
             raise
 
@@ -1276,7 +1255,7 @@ class LazyModule(types.ModuleType):
         self.__dict__.update(module.__dict__)
 
 
-class LazyObject(object):
+class LazyObject:
     """Proxy object that lazily constructs the object the first time it is
     actually used.
 
@@ -1338,7 +1317,7 @@ def query_yes_no(question, default=None):
 
     while True:
         sys.stdout.write(question + prompt)
-        choice = six.moves.input().lower()
+        choice = input().lower()
         if default and not choice:
             return valid[default]
         if choice in valid:
@@ -1352,7 +1331,7 @@ class _ETAStringIO(_StringIO):
         self._parent = parent
 
 
-class CaptureStdout(object):
+class CaptureStdout:
     """Class for temporarily capturing stdout.
 
     This class works by temporarily redirecting `sys.stdout` (and any stream
@@ -1472,7 +1451,8 @@ class CaptureStdout(object):
 
     def _get_stdout_handlers(self):
         loggers = it.chain(
-            [logging.getLogger()], logging.Logger.manager.loggerDict.values()
+            [logging.getLogger()],
+            list(logging.Logger.manager.loggerDict.values()),
         )
 
         handlers = set()
@@ -1487,7 +1467,7 @@ class CaptureStdout(object):
         return handlers
 
 
-class ProgressBar(object):
+class ProgressBar:
     """Class for printing a self-updating progress bar to stdout that tracks
     the progress of an iterative process towards completion.
 
@@ -2061,7 +2041,7 @@ class ProgressBar(object):
                     else:
                         _ir_str = "?"
 
-                    _msg = "%s %s/s" % (_ir_str, self._iters_str)
+                    _msg = "{} {}/s".format(_ir_str, self._iters_str)
 
                 _stats.append(_msg)
                 dw += _max_len
@@ -2110,7 +2090,7 @@ class ProgressBar(object):
             bar_len = self._max_width - 3 - dw
             if bar_len >= 0:
                 progress_len = int(bar_len * self.progress)
-                bstr = "\u2588" * progress_len
+                bstr = "\\u2588" * progress_len
                 if progress_len < bar_len:
                     istr = next(self._spinner)
                     bstr += istr + "-" * max(0, bar_len - 1 - progress_len)
@@ -2261,7 +2241,7 @@ def communicate_or_die(args, decode=False):
             raise ExecutableRuntimeError(" ".join(args), err)
 
         return out
-    except EnvironmentError as e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             raise ExecutableNotFoundError(exe=args[0])
 
@@ -2275,7 +2255,7 @@ def _run_system_os_cmd(args):
         raise OSError(e)
 
 
-class Timer(object):
+class Timer:
     """Class for timing things that supports the context manager interface.
 
     Example::
@@ -2387,7 +2367,7 @@ def guess_mime_type(filepath):
         the MIME type string
     """
     if filepath.startswith("http"):
-        filepath = urlparse.urlparse(filepath).path
+        filepath = urllib.parse.urlparse(filepath).path
 
     mime_type, _ = mimetypes.guess_type(filepath)
 
@@ -2836,7 +2816,7 @@ def ensure_empty_file(path):
         path: the filepath
     """
     ensure_path(path)
-    with open(path, "wt") as f:
+    with open(path, "w") as f:
         pass
 
 
@@ -3192,7 +3172,7 @@ def from_human_time_str(time_str):
         the number of seconds
     """
     # Handle unit == "" outside loop
-    for idx in reversed(range(len(_TIME_UNITS))):
+    for idx in reversed(list(range(len(_TIME_UNITS)))):
         unit = _TIME_UNITS[idx].strip()
         if time_str.endswith(unit):
             return float(time_str[: -len(unit)]) * _TIME_IN_SECS[idx]
@@ -3281,7 +3261,7 @@ def from_human_decimal_str(num_str):
         the decimal number
     """
     # Handle unit == "" outside loop
-    for idx in reversed(range(len(_DECIMAL_UNITS))[1:]):
+    for idx in reversed(list(range(len(_DECIMAL_UNITS)))[1:]):
         unit = _DECIMAL_UNITS[idx]
         if num_str.endswith(unit):
             return float(num_str[: -len(unit)]) * (1000**idx)
@@ -3355,7 +3335,7 @@ def from_human_bytes_str(bytes_str):
     Returns:
         the number of bytes
     """
-    for idx in reversed(range(len(_BYTES_UNITS))):
+    for idx in reversed(list(range(len(_BYTES_UNITS)))):
         unit = _BYTES_UNITS[idx]
         if bytes_str.endswith(unit):
             return int(float(bytes_str[: -len(unit)]) * 1024**idx)
@@ -3429,7 +3409,7 @@ def from_human_bits_str(bits_str):
     Returns:
         the number of bits
     """
-    for idx in reversed(range(len(_BITS_UNITS))):
+    for idx in reversed(list(range(len(_BITS_UNITS)))):
         unit = _BITS_UNITS[idx]
         if bits_str.endswith(unit):
             return int(float(bits_str[: -len(unit)]) * 1024**idx)
@@ -3472,10 +3452,6 @@ def make_archive(dir_path, archive_path, cleanup=False):
             this is False
     """
     outpath, format = _get_archive_format(archive_path)
-    if format == "zip" and eta.is_python2():
-        make_zip64(dir_path, archive_path)
-        return
-
     rootdir, basedir = os.path.split(os.path.realpath(dir_path))
     shutil.make_archive(outpath, format, rootdir, basedir)
     if cleanup:
@@ -3500,10 +3476,6 @@ def make_tar(dir_path, tar_path, cleanup=False):
 
 def make_zip(dir_path, zip_path, cleanup=False):
     """Makes a zipfile containing the given directory.
-
-    Python 2 users must use `make_zip64` when making large zip files.
-    `shutil.make_archive` does not offer Zip64 in Python 2, and is therefore
-    limited to 4GiB archives with less than 65,536 entries.
 
     Args:
         dir_path: the directory to zip
@@ -3697,7 +3669,7 @@ def extract_rar(rar_path, outdir=None, delete_rar=False):
             "which you may need to install. Check the error message above for "
             "more information."
         ) % rar_path
-        six.raise_from(IOError(message), e)
+        raise OSError(message) from e
 
     if delete_rar:
         delete_file(rar_path)
@@ -4353,7 +4325,7 @@ def _diff_paths(path1, path2, content1=None, content2=None):
     return content1 != content2
 
 
-class FileHasher(object):
+class FileHasher:
     """Base class for file hashers."""
 
     EXT = ""
@@ -4385,10 +4357,10 @@ class FileHasher(object):
     def read(self):
         """Returns the current hash record, or None if there is no record."""
         try:
-            with open(self.record_path, "rt") as f:
+            with open(self.record_path) as f:
                 logger.debug("Found hash record '%s'", self.record_path)
                 return f.read()
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 logger.debug("No hash record '%s'", self.record_path)
                 return None
@@ -4397,7 +4369,7 @@ class FileHasher(object):
 
     def write(self):
         """Writes the current hash record."""
-        with open(self.record_path, "wt") as f:
+        with open(self.record_path, "w") as f:
             f.write(self._new_hash)
 
     @staticmethod
@@ -4433,7 +4405,7 @@ def make_temp_dir(basedir=None):
     return tempfile.mkdtemp(dir=basedir)
 
 
-class TempDir(object):
+class TempDir:
     """Context manager that creates and destroys a temporary directory."""
 
     def __init__(self, basedir=None):
@@ -4453,7 +4425,7 @@ class TempDir(object):
         delete_dir(self._name)
 
 
-class WorkingDir(object):
+class WorkingDir:
     """Context manager that temporarily changes working directories."""
 
     def __init__(self, working_dir):
@@ -4482,15 +4454,15 @@ class ExecutableNotFoundError(Exception):
                 "machine."
             ) % exe
 
-        super(ExecutableNotFoundError, self).__init__(message)
+        super().__init__(message)
 
 
 class ExecutableRuntimeError(Exception):
     """Exception raised when an executable call throws a runtime error."""
 
     def __init__(self, cmd, err):
-        message = "Command '%s' failed with error:\n%s" % (cmd, err)
-        super(ExecutableRuntimeError, self).__init__(message)
+        message = "Command '{}' failed with error:\n{}".format(cmd, err)
+        super().__init__(message)
 
 
 def validate_type(obj, expected_type):

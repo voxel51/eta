@@ -8,19 +8,6 @@ Jason Corso, jason@voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 import os
 import re
@@ -73,7 +60,9 @@ def append_index_if_necessary(dataset, data_path, labels_path):
     data_basename, data_ext = os.path.splitext(data_filename)
     labels_basename, labels_ext = os.path.splitext(labels_filename)
 
-    filename_regex = re.compile("%s-([0-9]+)%s" % (data_basename, data_ext))
+    filename_regex = re.compile(
+        "{}-([0-9]+){}".format(data_basename, data_ext)
+    )
     existing_indices = []
     for existing_data_path in dataset.iter_data_paths():
         existing_data_filename = os.path.basename(existing_data_path)

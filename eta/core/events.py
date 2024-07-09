@@ -6,20 +6,6 @@ Core tools and data structures for working with events in images and videos.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 from copy import deepcopy
 import logging
@@ -34,6 +20,16 @@ import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
+
+
+def itervalues(d):
+    """Replace future.utils.itervalues for python3"""
+    return iter(d.values())
 
 
 class DetectedEvent(etal.Labels, etag.HasBoundingBox):
@@ -424,7 +420,7 @@ class DetectedEventContainer(etal.LabelsContainer):
         Returns:
             a set of labels
         """
-        return set(devent.label for devent in self)
+        return {devent.label for devent in self}
 
     def get_indexes(self):
         """Returns the set of `index`es of all events in the container.
@@ -434,7 +430,7 @@ class DetectedEventContainer(etal.LabelsContainer):
         Returns:
             a set of indexes
         """
-        return set(devent.index for devent in self if devent.has_index)
+        return {devent.index for devent in self if devent.has_index}
 
     def offset_indexes(self, offset):
         """Adds the given offset to all events with `index`es.
@@ -1211,7 +1207,7 @@ class VideoEvent(
             self._add_detected_event(devent, None)
 
     def _compute_support(self):
-        frame_ranges = etaf.FrameRanges.from_iterable(self.frames.keys())
+        frame_ranges = etaf.FrameRanges.from_iterable(list(self.frames.keys()))
         frame_ranges.merge(*[obj.support for obj in self.objects])
         return frame_ranges
 
@@ -1241,7 +1237,7 @@ class VideoEventContainer(
         Returns:
             a set of labels
         """
-        return set(event.label for event in self)
+        return {event.label for event in self}
 
     def get_indexes(self):
         """Returns the set of `index`es of all events in the container.
@@ -1251,7 +1247,7 @@ class VideoEventContainer(
         Returns:
             a set of indexes
         """
-        return set(event.index for event in self if event.has_index)
+        return {event.index for event in self if event.has_index}
 
     def offset_indexes(self, offset):
         """Adds the given offset to all events with `index`es.

@@ -7,19 +7,6 @@ and rendered.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from copy import deepcopy
 import logging
 import random
@@ -703,7 +690,7 @@ class ShuffledHLSColormap(Colormap):
         return colors
 
 
-class Draw(object):
+class Draw:
     """Context manager that allows for convenient, temporary conversion of a
     numpy image into a `ImageDraw.Draw` instance when inside the context.
 
@@ -1906,9 +1893,6 @@ _DX = 2  # extra horizontal space needed for text width to be more "correct"
 
 def _parse_hex_color(h):
     rgb = etai.hex_to_rgb(h)
-    if eta.is_python2():
-        # OpenCV hates `future` types, so we do this funny cast
-        rgb = np.array(rgb)
     return rgb
 
 
@@ -2005,7 +1989,7 @@ def _render_attr_name_value(attr, show_name=True, show_confidence=True):
         value = _clean_str(attr.value)
 
     if show_name and name:
-        attr_str = "%s: %s" % (name, value)
+        attr_str = "{}: {}".format(name, value)
     else:
         attr_str = value
 
@@ -2065,7 +2049,7 @@ def _render_title(
         _label = None
 
     if _name and _label:
-        title_str = "%s: %s" % (_name, _label)
+        title_str = "{}: {}".format(_name, _label)
     elif _name:
         title_str = _name
     elif _label:

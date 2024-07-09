@@ -4,24 +4,15 @@ Core numeric and computational utilities.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 import operator
 
 import numpy as np
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
 
 
 def is_close(a, b, rel_tol=1e-09, abs_tol=0):
@@ -68,7 +59,7 @@ def safe_divide(num, denom):
         return 0
 
 
-class Accumulator(object):
+class Accumulator:
     """A histogram-like class that supports counting arbitrary hashable
     objects.
 
@@ -153,7 +144,7 @@ class Accumulator(object):
         return max(iteritems(vals), key=operator.itemgetter(1))
 
 
-class GrowableArray(object):
+class GrowableArray:
     """A class for building a numpy array from streaming data."""
 
     def __init__(self, rowlen):
@@ -179,7 +170,8 @@ class GrowableArray(object):
     def finalize(self):
         """Return numpy array."""
         return np.reshape(
-            self._data, newshape=(len(self._data) // self.rowlen, self.rowlen),
+            self._data,
+            newshape=(len(self._data) // self.rowlen, self.rowlen),
         )
 
 

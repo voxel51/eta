@@ -14,19 +14,6 @@ https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import os
 
 import numpy as np
@@ -561,7 +548,7 @@ class VGG16Featurizer(ImageFeaturizer):
             config: an optional VGG16FeaturizerConfig instance. If omitted,
                 the default VGG16FeaturizerConfig is used
         """
-        super(VGG16Featurizer, self).__init__()
+        super().__init__()
         self.config = config or VGG16FeaturizerConfig.default()
         self.validate(self.config)
         self.vgg16 = None

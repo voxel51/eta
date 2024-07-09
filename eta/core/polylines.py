@@ -4,23 +4,19 @@ Core data structures for working with polylines and polygons.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import eta.core.data as etad
 import eta.core.labels as etal
 import eta.core.utils as etau
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
+
+
+def itervalues(d):
+    """Replace future.utils.itervalues for python3"""
+    return iter(d.values())
 
 
 class Polyline(etal.Labels):
@@ -371,7 +367,7 @@ class PolylineContainer(etal.LabelsContainer):
         Returns:
             a set of labels
         """
-        return set(polyline.label for polyline in self)
+        return {polyline.label for polyline in self}
 
     def get_indexes(self):
         """Returns the set of ``index`` values of all polylines in the
@@ -382,7 +378,7 @@ class PolylineContainer(etal.LabelsContainer):
         Returns:
             a set of indexes
         """
-        return set(poly.index for poly in self if poly.has_index)
+        return {poly.index for poly in self if poly.has_index}
 
     def offset_indexes(self, offset):
         """Adds the given offset to all polylines with ``index`` values.
@@ -394,8 +390,7 @@ class PolylineContainer(etal.LabelsContainer):
             poly.offset_index(offset)
 
     def clear_indexes(self):
-        """Clears the ``index`` of all polylines in the container.
-        """
+        """Clears the ``index`` of all polylines in the container."""
         for poly in self:
             poly.clear_index()
 

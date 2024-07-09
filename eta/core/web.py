@@ -4,20 +4,6 @@ Tools for downloading files from the web.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import io
 import logging
 import re
@@ -31,6 +17,11 @@ logger = logging.getLogger(__name__)
 
 
 URL_REGEX = re.compile(r"http://|https://|ftp://|file://|file:\\")
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
 
 
 def is_url(filename):
@@ -88,7 +79,7 @@ def download_google_drive_file(fid, path=None, chunk_size=None, quiet=False):
     return sess.write(path, fid) if path else sess.get(fid)
 
 
-class WebSession(object):
+class WebSession:
     """Class for downloading files from the web."""
 
     # Chunk size, in bytes
@@ -109,7 +100,7 @@ class WebSession(object):
         self.quiet = quiet
 
         # Tell the website who is downloading
-        header = "%s v%s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
+        header = "{} v{}, {}".format(etac.NAME, etac.VERSION, etac.AUTHOR)
         self.sess.headers.update({"User-Agent": header})
 
     def get(self, url, params=None):
@@ -211,12 +202,10 @@ class GoogleDriveSession(WebSession):
     BASE_URL = "https://drive.usercontent.google.com/download?export=download"
 
     def get(self, fid):
-        return super(GoogleDriveSession, self).get(
-            self.BASE_URL, params={"id": fid, "confirm": "t"}
-        )
+        return super().get(self.BASE_URL, params={"id": fid, "confirm": "t"})
 
     def write(self, path, fid):
-        return super(GoogleDriveSession, self).write(
+        return super().write(
             path, self.BASE_URL, params={"id": fid, "confirm": "t"}
         )
 
@@ -224,7 +213,7 @@ class GoogleDriveSession(WebSession):
         # Include `Range` in request so that returned header will contain
         # `Content-Range`
         # https://stackoverflow.com/a/52044629
-        r = super(GoogleDriveSession, self)._get_streaming_response(
+        r = super()._get_streaming_response(
             url, headers={"Range": "bytes=0-"}, params=params
         )
 

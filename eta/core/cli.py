@@ -4,21 +4,6 @@ Definition of the `eta` command-line interface (CLI).
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-import six
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import argparse
 from collections import defaultdict
 import logging
@@ -52,7 +37,17 @@ _MAX_NAME_COLUMN_WIDTH = None
 _TABLE_FORMAT = "simple"
 
 
-class Command(object):
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
+
+
+def itervalues(d):
+    """Replace future.utils.itervalues for python3"""
+    return iter(d.values())
+
+
+class Command:
     """Interface for defining commands.
 
     Command instances must implement the `setup()` method, and they should
@@ -1512,7 +1507,9 @@ class S3UploadCommand(Command):
     def execute(parser, args):
         client = etast.S3StorageClient()
 
-        print("Uploading '%s' to '%s'" % (args.local_path, args.cloud_path))
+        print(
+            "Uploading '{}' to '{}'".format(args.local_path, args.cloud_path)
+        )
         client.upload(
             args.local_path, args.cloud_path, content_type=args.content_type
         )
@@ -1631,7 +1628,9 @@ class S3DownloadCommand(Command):
             if local_path is None:
                 local_path = client.get_file_metadata(args.cloud_path)["name"]
 
-            print("Downloading '%s' to '%s'" % (args.cloud_path, local_path))
+            print(
+                "Downloading '{}' to '{}'".format(args.cloud_path, local_path)
+            )
             client.download(args.cloud_path, local_path)
 
 
@@ -2009,7 +2008,9 @@ class GCSUploadCommand(Command):
     def execute(parser, args):
         client = etast.GoogleCloudStorageClient(chunk_size=args.chunk_size)
 
-        print("Uploading '%s' to '%s'" % (args.local_path, args.cloud_path))
+        print(
+            "Uploading '{}' to '{}'".format(args.local_path, args.cloud_path)
+        )
         client.upload(
             args.local_path, args.cloud_path, content_type=args.content_type
         )
@@ -2142,7 +2143,9 @@ class GCSDownloadCommand(Command):
             if local_path is None:
                 local_path = client.get_file_metadata(args.cloud_path)["name"]
 
-            print("Downloading '%s' to '%s'" % (args.cloud_path, local_path))
+            print(
+                "Downloading '{}' to '{}'".format(args.cloud_path, local_path)
+            )
             client.download(args.cloud_path, local_path)
 
 
@@ -2524,7 +2527,9 @@ class MinIOUploadCommand(Command):
     def execute(parser, args):
         client = etast.MinIOStorageClient()
 
-        print("Uploading '%s' to '%s'" % (args.local_path, args.cloud_path))
+        print(
+            "Uploading '{}' to '{}'".format(args.local_path, args.cloud_path)
+        )
         client.upload(
             args.local_path, args.cloud_path, content_type=args.content_type
         )
@@ -2643,7 +2648,9 @@ class MinIODownloadCommand(Command):
             if local_path is None:
                 local_path = client.get_file_metadata(args.cloud_path)["name"]
 
-            print("Downloading '%s' to '%s'" % (args.cloud_path, local_path))
+            print(
+                "Downloading '{}' to '{}'".format(args.cloud_path, local_path)
+            )
             client.download(args.cloud_path, local_path)
 
 
@@ -3035,7 +3042,7 @@ class GoogleDriveUploadCommand(Command):
     def execute(parser, args):
         client = etast.GoogleDriveStorageClient(chunk_size=args.chunk_size)
 
-        print("Uploading '%s' to '%s'" % (args.path, args.folder_id))
+        print("Uploading '{}' to '{}'".format(args.path, args.folder_id))
         client.upload(
             args.path,
             args.folder_id,
@@ -3175,7 +3182,9 @@ class GoogleDriveDownloadCommand(Command):
                     "Must provide `path` when `--public` flag is set"
                 )
             else:
-                print("Downloading '%s' to '%s'" % (args.file_id, args.path))
+                print(
+                    "Downloading '{}' to '{}'".format(args.file_id, args.path)
+                )
                 etaw.download_google_drive_file(
                     args.file_id, path=args.path, chunk_size=args.chunk_size
                 )
@@ -3195,7 +3204,7 @@ class GoogleDriveDownloadCommand(Command):
             if local_path is None:
                 local_path = client.get_file_metadata(args.file_id)["name"]
 
-            print("Downloading '%s' to '%s'" % (args.file_id, local_path))
+            print("Downloading '{}' to '{}'".format(args.file_id, local_path))
             client.download(args.file_id, local_path)
 
 
@@ -3383,7 +3392,7 @@ class HTTPUploadCommand(Command):
         set_content_type = bool(args.content_type)
         client = etast.HTTPStorageClient(set_content_type=set_content_type)
 
-        print("Uploading '%s' to '%s'" % (args.path, args.url))
+        print("Uploading '{}' to '{}'".format(args.path, args.url))
         client.upload(
             args.path,
             args.url,
@@ -3441,7 +3450,7 @@ class HTTPDownloadCommand(Command):
             print(client.download_bytes(args.url))
         else:
             local_path = args.path or client.get_filename(args.url)
-            print("Downloading '%s' to '%s'" % (args.url, local_path))
+            print("Downloading '{}' to '{}'".format(args.url, local_path))
             client.download(args.url, local_path)
 
 
@@ -3517,7 +3526,7 @@ class SFTPUploadCommand(Command):
 
         client = etast.SFTPStorageClient(hostname, username, port=args.port)
 
-        print("Uploading '%s' to '%s'" % (args.local_path, remote_path))
+        print("Uploading '{}' to '{}'".format(args.local_path, remote_path))
         client.upload(args.local_path, remote_path)
 
 
@@ -3556,7 +3565,7 @@ class SFTPUploadDirCommand(Command):
 
         client = etast.SFTPStorageClient(hostname, username, port=args.port)
 
-        print("Uploading '%s' to '%s'" % (args.local_dir, remote_dir))
+        print("Uploading '{}' to '{}'".format(args.local_dir, remote_dir))
         client.upload_dir(args.local_dir, remote_dir)
 
 
@@ -3614,7 +3623,7 @@ class SFTPDownloadCommand(Command):
             print(client.download_bytes(remote_path))
         else:
             local_path = args.local_path or os.path.basename(remote_path)
-            print("Downloading '%s' to '%s'" % (remote_path, local_path))
+            print("Downloading '{}' to '{}'".format(remote_path, local_path))
             client.download(remote_path, local_path)
 
 
@@ -3653,7 +3662,7 @@ class SFTPDownloadDirCommand(Command):
 
         client = etast.SFTPStorageClient(hostname, username, port=args.port)
 
-        print("Downloading '%s' to '%s'" % (remote_dir, args.local_dir))
+        print("Downloading '{}' to '{}'".format(remote_dir, args.local_dir))
         client.download_dir(remote_dir, args.local_dir)
 
 
@@ -3733,7 +3742,7 @@ def _parse_remote_path(remote_path, hostname, username):
     return hostname, username, remote_path
 
 
-class Searcher(object):
+class Searcher:
     """Base class for search classes."""
 
     def __init__(self, name):
@@ -4156,7 +4165,7 @@ def _parse_google_drive_mime_type(mime_type):
 
 
 def _parse_datetime(datetime_or_str):
-    if isinstance(datetime_or_str, six.string_types):
+    if isinstance(datetime_or_str, str):
         dt = dateutil.parser.isoparse(datetime_or_str)
     else:
         dt = datetime_or_str
@@ -4213,8 +4222,7 @@ def _has_subparsers(parser):
 def _iter_subparsers(parser):
     for action in parser._actions:
         if isinstance(action, argparse._SubParsersAction):
-            for subparser in itervalues(action.choices):
-                yield subparser
+            yield from itervalues(action.choices)
 
 
 class _RecursiveHelpAction(argparse._HelpAction):
@@ -4224,7 +4232,7 @@ class _RecursiveHelpAction(argparse._HelpAction):
 
     @staticmethod
     def _recurse(parser):
-        print("\n%s\n%s" % ("*" * 79, parser.format_help()))
+        print("\n{}\n{}".format("*" * 79, parser.format_help()))
         for subparser in _iter_subparsers(parser):
             _RecursiveHelpAction._recurse(subparser)
 

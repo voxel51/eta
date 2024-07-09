@@ -11,19 +11,6 @@ Notes::
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import colorsys
 import errno
 import itertools
@@ -161,7 +148,7 @@ class ImageLabels(FrameLabels):
         kwargs.pop(
             "frame_number", None
         )  # ImageLabels don't use `frame_number`
-        super(ImageLabels, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     @property
     def has_filename(self):
@@ -182,7 +169,7 @@ class ImageLabels(FrameLabels):
                 in `frame_labels` before merging so that all indices are
                 unique. The default is False
         """
-        super(ImageLabels, self).merge_labels(frame_labels, reindex=reindex)
+        super().merge_labels(frame_labels, reindex=reindex)
 
         if isinstance(frame_labels, ImageLabels):
             if frame_labels.has_filename and not self.has_filename:
@@ -225,7 +212,7 @@ class ImageLabels(FrameLabels):
             _attrs.append("filename")
         if self.metadata:
             _attrs.append("metadata")
-        _attrs.extend(super(ImageLabels, self).attributes())
+        _attrs.extend(super().attributes())
         return _attrs
 
     @classmethod
@@ -244,9 +231,7 @@ class ImageLabels(FrameLabels):
         if metadata is not None:
             metadata = ImageMetadata.from_dict(metadata)
 
-        return super(ImageLabels, cls).from_dict(
-            d, filename=filename, metadata=metadata
-        )
+        return super().from_dict(d, filename=filename, metadata=metadata)
 
 
 class ImageLabelsSchema(FrameLabelsSchema):
@@ -318,7 +303,7 @@ class ImageSetLabels(etal.LabelsSet):
         Returns:
             the set of filenames
         """
-        return set(il.filename for il in self if il.filename)
+        return {il.filename for il in self if il.filename}
 
     def remove_objects_without_attrs(self, labels=None):
         """Removes `DetectedObject`s from the ImageLabels in the set that do
@@ -397,7 +382,7 @@ class BigImageSetLabels(ImageSetLabels, etas.BigSet):
         Args:
             schema: an ImageLabelsSchema
         """
-        for key in self.keys():
+        for key in list(self.keys()):
             image_labels = self[key]
             image_labels.filter_by_schema(schema)
             self[key] = image_labels
@@ -411,7 +396,7 @@ class BigImageSetLabels(ImageSetLabels, etas.BigSet):
                 to restrict attention when filtering. By default, all objects
                 are processed
         """
-        for key in self.keys():
+        for key in list(self.keys()):
             image_labels = self[key]
             image_labels.remove_objects_without_attrs(labels=labels)
             self[key] = image_labels
@@ -1122,7 +1107,7 @@ def render_bounding_box(polyline):
     Returns:
         a BoundingBox
     """
-    xx, yy = zip(*list(itertools.chain(*polyline.points)))
+    xx, yy = list(zip(*list(itertools.chain(*polyline.points))))
     xtl = min(xx)
     ytl = min(yy)
     xbr = max(xx)
@@ -1202,7 +1187,7 @@ def to_float(img):
     return img.astype(np.float32) / np.iinfo(img.dtype).max
 
 
-class Convert(object):
+class Convert:
     """Interface for the ImageMagick convert binary."""
 
     def __init__(
@@ -1257,7 +1242,7 @@ class Convert(object):
 
         try:
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 raise etau.ExecutableNotFoundError(exe=self._executable)
             raise
@@ -1449,7 +1434,7 @@ def clip_frame_size(frame_size, min_size=None, max_size=None):
     return scale_frame_size(frame_size, alpha)
 
 
-class Length(object):
+class Length:
     """Represents a length along a specified dimension of an image as a
     relative percentage or an absolute pixel count.
     """
@@ -1520,7 +1505,7 @@ class Width(Length):
             width_str: a string of the form '<float>%' or '<int>px' describing
                 a relative or absolute width, respectively
         """
-        super(Width, self).__init__(width_str, 1)
+        super().__init__(width_str, 1)
 
 
 class Height(Length):
@@ -1535,10 +1520,10 @@ class Height(Length):
             height_str: a string of the form '<float>%' or '<int>px' describing
                 a relative or absolute height, respectively
         """
-        super(Height, self).__init__(height_str, 0)
+        super().__init__(height_str, 0)
 
 
-class Location(object):
+class Location:
     """Represents a location in an image."""
 
     # Valid loc strings
@@ -1695,7 +1680,7 @@ def rgb_to_hex(r, g, b):
     Returns:
         a hex string
     """
-    return "#%02x%02x%02x" % (r, g, b)
+    return "#{:02x}{:02x}{:02x}".format(r, g, b)
 
 
 def bgr_to_hsv(b, g, r):

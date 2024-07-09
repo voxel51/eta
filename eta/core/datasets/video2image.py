@@ -9,19 +9,6 @@ Jason Corso, jason@voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 import os
 
@@ -96,7 +83,7 @@ def sample_videos_to_images(
     for img_number, (frame_img, frame_labels, base_filename) in enumerate(
         frame_iterator, 1
     ):
-        image_filename = "%s%s" % (base_filename, image_extension)
+        image_filename = "{}{}".format(base_filename, image_extension)
         labels_filename = "%s.json" % base_filename
 
         image_labels = etai.ImageLabels(
@@ -167,7 +154,7 @@ def _compute_stride_from_total_frames(total_frames, num_desired):
         np.abs(actual - num_desired) for actual in actual_num_images
     ]
     return int(
-        min(zip(stride_int_guesses, differences), key=lambda t: t[1])[0]
+        min(list(zip(stride_int_guesses, differences)), key=lambda t: t[1])[0]
     )
 
 

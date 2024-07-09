@@ -8,19 +8,6 @@ voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import copy
 import logging
 import os
@@ -38,7 +25,7 @@ from .utils import FileMethods, append_index_if_necessary
 logger = logging.getLogger(__name__)
 
 
-class LabeledDatasetBuilder(object):
+class LabeledDatasetBuilder:
     """Class that enables the construction and application of a series of
     `DatasetTransformer`s to a `LabeledDataset`.
 
@@ -200,7 +187,7 @@ class BuilderDataRecord(BaseDataRecord):
             data_path: path to data file
             labels_path: path to labels JSON
         """
-        super(BuilderDataRecord, self).__init__()
+        super().__init__()
         self._data_path = data_path
         self._labels_path = labels_path
         self._new_data_path = None
@@ -306,7 +293,7 @@ class BuilderDataRecord(BaseDataRecord):
         Returns:
             a list of class attributes to be serialized
         """
-        attrs_ = super(BuilderDataRecord, self).attributes()
+        attrs_ = super().attributes()
         return attrs_ + ["data_path", "labels_path"]
 
     @classmethod
@@ -314,7 +301,7 @@ class BuilderDataRecord(BaseDataRecord):
         """Returns a list of attributes that are required by all instances of
         the data record.
         """
-        _required = super(BuilderDataRecord, cls).required()
+        _required = super().required()
         return _required + ["data_path", "labels_path"]
 
     def _build_data(self, data_path, data_method):
@@ -349,7 +336,7 @@ class BuilderImageRecord(BuilderDataRecord):
             data_path: path to image
             labels_path: path to labels
         """
-        super(BuilderImageRecord, self).__init__(data_path, labels_path)
+        super().__init__(data_path, labels_path)
         self._labels_cls = etai.ImageLabels
 
     def _build_labels(self):
@@ -385,7 +372,7 @@ class BuilderVideoRecord(BuilderDataRecord):
             total_frame_count: number of frames in full video. By default, this
                 value is loaded dynamically via `VideoMetadata`
         """
-        super(BuilderVideoRecord, self).__init__(data_path, labels_path)
+        super().__init__(data_path, labels_path)
         self.clip_start_frame = clip_start_frame
         self.clip_end_frame = clip_end_frame
         self.duration = duration
@@ -399,7 +386,7 @@ class BuilderVideoRecord(BuilderDataRecord):
         """Returns a list of attributes that are optionally included in the
         data record if they are present in the data dictionary.
         """
-        return super(BuilderVideoRecord, cls).required() + [
+        return super().required() + [
             "clip_start_frame",
             "clip_end_frame",
             "duration",
@@ -470,11 +457,11 @@ class BuilderImageDataset(BuilderDataset):
     """A BuilderDataset for images."""
 
     def __init__(self, record_cls=BuilderImageRecord):
-        super(BuilderImageDataset, self).__init__(record_cls)
+        super().__init__(record_cls)
 
 
 class BuilderVideoDataset(BuilderDataset):
     """A BuilderDataset for videos."""
 
     def __init__(self, record_cls=BuilderVideoRecord):
-        super(BuilderVideoDataset, self).__init__(record_cls)
+        super().__init__(record_cls)

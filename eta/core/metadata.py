@@ -5,20 +5,6 @@ source.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 import logging
 import os
@@ -42,6 +28,16 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
+
+
+def itervalues(d):
+    """Replace future.utils.itervalues for python3"""
+    return iter(d.values())
 
 
 def generate(module_py_path):
@@ -96,7 +92,7 @@ def generate(module_py_path):
     mmc.write_json(outpath, pretty_print=True)
 
 
-class ModuleDocstring(object):
+class ModuleDocstring:
     """Class encapsulating docstrings in ETA modules.
 
     This class supports a modified Google-style docstring syntax with
@@ -279,10 +275,10 @@ def _parse_parameters_section(self, section):
 def _parse_section(self, var, section):
     lines = []
     for _name, _type, _desc in self._consume_fields():
-        field = ":%s %s: " % (var, _name)
+        field = ":{} {}: ".format(var, _name)
         lines.extend(self._format_block(field, _desc))
         if _type:
-            lines.append(":type %s: %s" % (_name, _type))
+            lines.append(":type {}: {}".format(_name, _type))
     lines.append("")
     return lines
 

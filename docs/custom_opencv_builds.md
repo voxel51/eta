@@ -4,7 +4,6 @@ The ETA codebase supports both OpenCV 2.4+ and OpenCV 3.0+. By default, ETA
 installs a pre-built OpenCV package via `pip install opencv-python-headless`.
 However, one can build a custom OpenCV installation if desired.
 
-
 ## Installing OpenCV
 
 Configure the following environment variables:
@@ -66,7 +65,6 @@ else
     # Setup build
     if [ ! -z "${VIRTUAL_ENV}" ]; then
         # Install in a virtual environment
-        # This function is needed because Python 2/3 have slightly different
         # naming conventions for these folders...
         pydir() { ls -d "${1}/python"* | head -1; }
         PYTHON_EXECUTABLE="${VIRTUAL_ENV}/bin/python"
@@ -100,7 +98,6 @@ else
 fi
 ```
 
-
 ## Symlinking an OpenCV installation
 
 You can symlink an existing globally-installed OpenCV distribution on your
@@ -113,25 +110,22 @@ ln -s "${GLOBAL}/cv.py" "${VIRTUAL}/cv.py"
 ln -s "${GLOBAL}/cv2.so" "${VIRTUAL}/cv2.so"
 ```
 
-
 ## Uninstalling OpenCV
 
 Follow these instructions to uninstall OpenCV.
 
-* Navigate to the directory from which `cmake` was run to install OpenCV:
+-   Navigate to the directory from which `cmake` was run to install OpenCV:
 
 ```shell
 cd "${VIRTUAL_ENV}/opencv-${OPENCV_VERSION}/release"
 ```
 
-* Run the uninstaller:
+-   Run the uninstaller:
 
 ```shell
 sudo make uninstall
 ```
 
-
 ## Copyright
 
-Copyright 2017-2024, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2024, Voxel51, Inc.<br> voxel51.com

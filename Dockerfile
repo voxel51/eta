@@ -29,7 +29,7 @@ FROM $BASE_IMAGE
 # Install ETA
 #
 # Notes:
-#   ETA supports Python 2.7.X or Python 3.6.X
+#   ETA supports Python 3.8 to Python 3.11
 #
 # `ppa:deadsnakes/ppa` is used in order to install Python 3.6 on Ubuntu 16.04
 # https://askubuntu.com/questions/865554/how-do-i-install-python-3-6-using-apt-get

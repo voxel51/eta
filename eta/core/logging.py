@@ -6,19 +6,6 @@ Note that calling this module's methods will modify your **root logger**.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 import os
 import sys
@@ -104,7 +91,9 @@ def custom_setup(lc, rotate=False, verbose=True):
         )
         file_handler.setLevel(getattr(logging, lc.file_level))
         root_logger.addHandler(file_handler)
-        msgs.append("Logging to %s at level %s" % (lc.filename, lc.file_level))
+        msgs.append(
+            "Logging to {} at level {}".format(lc.filename, lc.file_level)
+        )
 
     msgs.append("Logging initialized")
 

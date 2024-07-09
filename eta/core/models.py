@@ -7,20 +7,6 @@ the ETA model management system.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 from distutils.version import LooseVersion
 import logging
@@ -42,6 +28,16 @@ logger = logging.getLogger(__name__)
 
 
 MODELS_MANIFEST_JSON = "manifest.json"
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
+
+
+def itervalues(d):
+    """Replace future.utils.itervalues for python3"""
+    return iter(d.values())
 
 
 def list_models(downloaded_only=False):
@@ -1018,7 +1014,7 @@ def _parse_packages(packages):
 
 def _load_requirements(requirements_path):
     packages = []
-    with open(requirements_path, "r") as f:
+    with open(requirements_path) as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -1837,7 +1833,7 @@ class ETAModelManagerConfig(ModelManagerConfig):
     """
 
     def __init__(self, d):
-        super(ETAModelManagerConfig, self).__init__(d)
+        super().__init__(d)
 
         self.url = self.parse_string(d, "url", default=None)
         self.google_drive_id = self.parse_string(

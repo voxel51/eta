@@ -4,26 +4,9 @@ ETA package-wide constants.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import os
 
-try:
-    import importlib.metadata as metadata  # Python 3.8
-except ImportError:
-    import importlib_metadata as metadata  # Python < 3.8
-
+import importlib.metadata as metadata
 
 try:
     _META = metadata.metadata("voxel51-eta")
@@ -68,4 +51,4 @@ AUTHOR = _META["author"]
 AUTHOR_EMAIL = _META["author-email"]
 URL = _META["home-page"]
 LICENSE = _META["license"]
-VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
+VERSION_LONG = "{} v{}, {}".format(NAME, VERSION, AUTHOR)

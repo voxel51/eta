@@ -4,21 +4,6 @@ Core tools for defining, reading and writing configuration files.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-import six
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import inspect
 import numbers
 import os
@@ -28,7 +13,12 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 
-class NoDefault(object):
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
+
+
+class NoDefault:
     """A placeholder class that is typically used to distinguish between an
     argument that has _no default value_ and an argument that has the default
     value `None`.
@@ -44,7 +34,7 @@ class NoDefault(object):
 no_default = NoDefault()
 
 
-class Configurable(object):
+class Configurable:
     """Base class for classes that can be initialized with a Config instance.
 
     Configurable subclasses must obey the following rules:
@@ -119,7 +109,7 @@ class Configurable(object):
         expected = cls.__name__ + "Config"
         if expected != actual:
             raise ConfigurableError(
-                "Found Config '%s'; expected '%s'" % (actual, expected)
+                "Found Config '{}'; expected '{}'".format(actual, expected)
             )
 
     @staticmethod
@@ -239,7 +229,7 @@ class ConfigBuilder(etas.Serializable):
         return self._serialize(reflective=reflective)
 
     def _serialize(self, reflective=False):
-        return super(ConfigBuilder, self).serialize(reflective=reflective)
+        return super().serialize(reflective=reflective)
 
     @classmethod
     def from_json(cls, *args, **kwargs):
@@ -445,7 +435,7 @@ class Config(etas.Serializable):
             ConfigError: if the field value was the wrong type or no default
                 value was provided and the key was not found in the dictionary
         """
-        val = _parse_key(d, key, six.string_types, default)[0]
+        val = _parse_key(d, key, str, default)[0]
         return str(val) if val is not None else val
 
     @staticmethod
@@ -467,7 +457,7 @@ class Config(etas.Serializable):
             ConfigError: if the field value was the wrong type or no default
                 value was provided and the key was not found in the dictionary
         """
-        val = _parse_key(d, key, six.string_types, default)[0]
+        val = _parse_key(d, key, str, default)[0]
 
         if val is not None:
             val = os.path.abspath(os.path.expanduser(str(val)))
@@ -569,12 +559,12 @@ class Config(etas.Serializable):
         """
         val, found = _parse_key(d, key, None, default)
         if inspect.isclass(choices):
-            choices = set(
+            choices = {
                 v for k, v in iteritems(vars(choices)) if not k.startswith("_")
-            )
+            }
         if found and val not in choices:
             raise ConfigError(
-                "Unsupported value '%s'; choices are %s" % (val, choices)
+                "Unsupported value '{}'; choices are {}".format(val, choices)
             )
         return val
 
@@ -676,7 +666,7 @@ class ConfigContainer(etas.Container):
 
         ConfigContainers must only contain Config subclasses.
         """
-        super(ConfigContainer, self)._validate()
+        super()._validate()
         if not issubclass(self._ELE_CLS, Config):
             raise ConfigContainerError(
                 "%s is not a Config subclass" % self._ELE_CLS
@@ -722,9 +712,7 @@ class EnvConfig(etas.Serializable):
             EnvConfigError: if the environment variable, the dictionary key, or
                 a default value was not provided
         """
-        val = _parse_env_var_or_key(
-            d, key, six.string_types, env_var, str, False, default
-        )
+        val = _parse_env_var_or_key(d, key, str, env_var, str, False, default)
         return str(val) if val is not None else val
 
     @staticmethod
@@ -748,9 +736,7 @@ class EnvConfig(etas.Serializable):
             EnvConfigError: if the environment variable, the dictionary key, or
                 a default value was not provided
         """
-        val = _parse_env_var_or_key(
-            d, key, six.string_types, env_var, str, False, default
-        )
+        val = _parse_env_var_or_key(d, key, str, env_var, str, False, default)
 
         if val is not None:
             val = os.path.abspath(os.path.expanduser(str(val)))
@@ -937,14 +923,14 @@ def _parse_key(d, key, t, default):
 
         if val is not None:
             raise ConfigError(
-                "Expected key '%s' of %s; found %s" % (key, t, type(val))
+                "Expected key '{}' of {}; found {}".format(key, t, type(val))
             )
 
     if default is not no_default:
         # Return default value
         return default, False
 
-    raise ConfigError("Expected key '%s' of %s" % (key, t))
+    raise ConfigError("Expected key '{}' of {}".format(key, t))
 
 
 def _parse_env_var_or_key(d, key, t, env_var, env_t, sep, default):
@@ -967,7 +953,7 @@ def _parse_env_var_or_key(d, key, t, env_var, env_t, sep, default):
 
         if val is not None:
             raise EnvConfigError(
-                "Expected key '%s' of %s; found %s" % (key, t, type(val))
+                "Expected key '{}' of {}; found {}".format(key, t, type(val))
             )
 
     if default is not no_default:
@@ -975,5 +961,5 @@ def _parse_env_var_or_key(d, key, t, env_var, env_t, sep, default):
         return default
 
     raise EnvConfigError(
-        "Expected environment variable '%s' or key '%s'" % (env_var, key)
+        "Expected environment variable '{}' or key '{}'".format(env_var, key)
     )

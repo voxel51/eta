@@ -4,19 +4,6 @@ Implementations of computer vision primitive algorithms.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import cv2
 import numpy as np
 
@@ -25,7 +12,7 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 
-class DenseOpticalFlow(object):
+class DenseOpticalFlow:
     """Base class for dense optical flow methods."""
 
     def __enter__(self):
@@ -211,7 +198,7 @@ class FarnebackDenseOpticalFlow(DenseOpticalFlow):
         self._prev_frame = None
 
 
-class BackgroundSubtractor(object):
+class BackgroundSubtractor:
     """Base class for background subtraction methods."""
 
     def __enter__(self):
@@ -438,7 +425,7 @@ class KNNBackgroundSubtractor(BackgroundSubtractor):
             )
 
 
-class EdgeDetector(object):
+class EdgeDetector:
     """Base class for edge detection methods."""
 
     def __enter__(self):
@@ -528,7 +515,7 @@ class CannyEdgeDetector(EdgeDetector):
         )
 
 
-class FeaturePointDetector(object):
+class FeaturePointDetector:
     """Base class for feature point detection methods."""
 
     KEYPOINT_RGB_COLOR = (0, 255, 0)  # RGB

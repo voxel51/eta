@@ -2,9 +2,8 @@
 
 This document describes best practices for contributing modules to ETA. See
 `core_dev_guide.md` for instructions on contributing to the core ETA
-infrastructure, and see `pipelines_dev_guide.md` for more information about
-ETA pipelines and how to define, build, and run them.
-
+infrastructure, and see `pipelines_dev_guide.md` for more information about ETA
+pipelines and how to define, build, and run them.
 
 ## What are ETA Modules?
 
@@ -19,9 +18,9 @@ Concretely, ETA modules are simply _executables_ that take JSON files as input
 and write output data to disk. The input JSON configures a module for execution
 by telling it what parameter settings to use, what data to read as input, and
 where to write its output data. Modules must also provide a metadata JSON file
-that tells the ETA system what parameters they expect and the input/output
-data formats they use. We chose this generic modular architecture for ETA
-because we want to support as many third-party modules as possible!
+that tells the ETA system what parameters they expect and the input/output data
+formats they use. We chose this generic modular architecture for ETA because we
+want to support as many third-party modules as possible!
 
 This repository contains many modules implemented in Python using the core ETA
 libraries, and this is how most ETA modules will be contributed. However, in
@@ -29,7 +28,6 @@ principle modules can be implemented in any language as long as they provide a
 valid metadata JSON file. In fact, some modules may live outside this
 repository on your local machine, in the cloud, or behind a pay-wall on a
 vendor's cloud.
-
 
 ## Module Metadata JSON Files
 
@@ -97,45 +95,45 @@ entity, and we refer to the keys of a JSON object (e.g., "info") as **fields**.
 
 The module metadata file contains the following top-level fields:
 
-- `info`: a spec containing basic information about the module
-- `inputs`: a list of specs describing each input data-related field that
+-   `info`: a spec containing basic information about the module
+-   `inputs`: a list of specs describing each input data-related field that the
+    module expects in its configuration file
+-   `outputs`: a list of specs describing each output data-related field that
     the module expects in its configuration file
-- `outputs`: a list of specs describing each output data-related field that
-    the module expects in its configuration file
-- `parameters`: a list of specs describing additional parameters that the
+-   `parameters`: a list of specs describing additional parameters that the
     module expects in its configuration file
 
 The `info` spec contains the following fields:
 
-- `name`: the name of the module. By convention, this name should match the
+-   `name`: the name of the module. By convention, this name should match the
     name of the module metadata file without the extension
-- `type`: the type of the module, i.e., what computation it performs. Must be a
-    valid module type exposed by the ETA library, i.e. a subclass of
+-   `type`: the type of the module, i.e., what computation it performs. Must be
+    a valid module type exposed by the ETA library, i.e. a subclass of
     `eta.core.types.Module`
-- `version`: the current module version
-- `description`: a short free-text description of the module purpose and
+-   `version`: the current module version
+-   `description`: a short free-text description of the module purpose and
     implementation
-- `exe`: the name of the module executable file
+-   `exe`: the name of the module executable file
 
 The remaining specs describe the fields in the module's configuration files.
 Each spec has the fields:
 
-- `name`: the name of the field
-- `type`: the type of the field, which must be a valid type exposed by the ETA
-    library. Module inputs must have a type that is a subclass of
+-   `name`: the name of the field
+-   `type`: the type of the field, which must be a valid type exposed by the
+    ETA library. Module inputs must have a type that is a subclass of
     `eta.core.types.ConcreteData` or `eta.core.types.AbstractData`. Module
     outputs must have a type that is a subclass of
     `eta.core.types.ConcreteData`. Module parameters can have types that are
     subclasses of `eta.core.types.ConcreteData` or `eta.core.types.Builtin`
-- `description`: a short free-text description of the field
-- `required`: (optional) whether a value must be provided for the field in all
-    module configuration files. If omitted, the field is assumed to be required
-- `default`: (optional parameters only) the default value that is used
-    for the optional parameter when it is omitted from a module configuration
-    file. The default value must either be (a) a valid value for the declared
-    type of the parameter, or (b) set to `null`, which implies that the module
-    can function without this parameter being set to a valid typed value
-
+-   `description`: a short free-text description of the field
+-   `required`: (optional) whether a value must be provided for the field in
+    all module configuration files. If omitted, the field is assumed to be
+    required
+-   `default`: (optional parameters only) the default value that is used for
+    the optional parameter when it is omitted from a module configuration file.
+    The default value must either be (a) a valid value for the declared type of
+    the parameter, or (b) set to `null`, which implies that the module can
+    function without this parameter being set to a valid typed value
 
 #### Automatic generation of module metadata files
 
@@ -147,13 +145,12 @@ file for a module. The syntax for the command is:
 eta modules --metadata </path/to/eta_module.py>
 ```
 
-The command generates a module metadata JSON file in the same directory as
-the input module file.
+The command generates a module metadata JSON file in the same directory as the
+input module file.
 
 See [Building Modules Using ETA](#building-modules-using-eta) for more
 information about how to properly populate the docstrings of ETA modules for
 use with the automatic metadata generation tool.
-
 
 #### Exposing a new module
 
@@ -166,16 +163,15 @@ files contained in them are assumed to be module metadata files.
 > `module_dirs` list in the ETA-wide `config.json` file or add it to the
 > `ETA_MODULE_DIRS` environment variable during execution.
 
-
 ## Types in the ETA System
 
 Because the ETA module system is generic and supports third-party modules that
 may be written in languages other than Python or otherwise developed
 independently from the ETA codebase and exposed only through executable files
-(perhaps even remotely via a REST API), the ETA library exposes a
-**type system** in the `eta.core.types` module that defines a common framework
-that modules must use to define the semantics of their fields (inputs, outputs,
-and parameters).
+(perhaps even remotely via a REST API), the ETA library exposes a **type
+system** in the `eta.core.types` module that defines a common framework that
+modules must use to define the semantics of their fields (inputs, outputs, and
+parameters).
 
 The ETA types must be used by all module metadata files whether or not the
 module is built using the ETA library. In particular, if a third-party module
@@ -193,7 +189,6 @@ overview of these basic types and describe their use.
 > the base type `eta.core.types.Type` and from the relevant base module,
 > pipeline, builtin, or data types as appropriate.
 
-
 #### Pipelines
 
 All ETA pipelines must be declared with a `type` in their pipeline metadata
@@ -203,46 +198,44 @@ to classify and organize the available pipelines by purpose. See
 `piplines_dev_guide.md` for more information about pipeline types, which are
 beyond the scope of this guide.
 
-
 #### Modules
 
 All ETA modules must be declared with a `type` in their module metadata file
-that is a subclass of `eta.core.types.Module`. Module types allow developers
-to declare the purpose of their module and allows the ETA system to classify
-and organize the available modules in an informative fashion for end-users.
+that is a subclass of `eta.core.types.Module`. Module types allow developers to
+declare the purpose of their module and allows the ETA system to classify and
+organize the available modules in an informative fashion for end-users.
 
 > Currently only the base module type `eta.core.types.Module` is available, so
 > all modules must declare this as their type. As the ETA system grows, more
 > fine-grained module types will be added to make the module taxonomy more
 > descriptive and useful for building custom pipelines.
 
-
 #### Builtins
 
-Builtins are literal types that are extracted directly from JSON files.
-All builtin types must be subclasses of `eta.core.types.Builtin`. There is a
+Builtins are literal types that are extracted directly from JSON files. All
+builtin types must be subclasses of `eta.core.types.Builtin`. There is a
 builtin type corresponding to each of the main types of data that can be stored
 in JSON files:
 
-- `eta.core.types.Null`: A JSON null value. `None` in Python
-- `eta.core.types.Boolean`: A JSON boolean value. A `bool` in Python
-- `eta.core.types.String`: A JSON string. A `str` in Python
-- `eta.core.types.Number`: A numeric value
-- `eta.core.types.Array`: A JSON array. A `list` in Python
-- `eta.core.types.Object`: An object in JSON. A dict in Python
+-   `eta.core.types.Null`: A JSON null value. `None` in Python
+-   `eta.core.types.Boolean`: A JSON boolean value. A `bool` in Python
+-   `eta.core.types.String`: A JSON string. A `str` in Python
+-   `eta.core.types.Number`: A numeric value
+-   `eta.core.types.Array`: A JSON array. A `list` in Python
+-   `eta.core.types.Object`: An object in JSON. A dict in Python
 
 In addition, more specific types can be defined that are subclasses of the
 above base types. For example, the following class is a subclass of
 `eta.core.types.Array`:
 
-- `eta.core.types.StringArray`: An array of strings in JSON. A list of strings
-    in Python.
+-   `eta.core.types.StringArray`: An array of strings in JSON. A list of
+    strings in Python.
 
 There are also a number of subclasses of `eta.core.types.Object` that define
 custom object types, which are typically used to define module parameters that
 are more sophisticated than simple JSON primitives:
 
-- `eta.core.types.Point`: An (x, y) coordinate point defined by "x" and "y"
+-   `eta.core.types.Point`: An (x, y) coordinate point defined by "x" and "y"
     coordinates, which must be nonnegative. Typically, Points represent
     coordinates of pixels in images. For example:
     ```json
@@ -260,7 +253,6 @@ described below).
 All `Builtin` subclasses must implement a static `is_valid_value(val)` method
 that verifies that `val` is a valid value for that type.
 
-
 #### Data
 
 Data are types that are stored on disk and referenced by a filepath. All data
@@ -270,14 +262,14 @@ a valid filepath for that type.
 
 There are two primary classes of data:
 
-- `eta.core.types.ConcreteData`: the base type for concrete data types, which
+-   `eta.core.types.ConcreteData`: the base type for concrete data types, which
     represent well-defined data types that can be written to disk
-- `eta.core.types.AbstractData`: the base type for abstract data types, which
+-   `eta.core.types.AbstractData`: the base type for abstract data types, which
     define base data types that encapsulate one or more `ConcreteData` types
 
 Concrete data types must implement a static `gen_path(basedir, params)` method,
-which is used to automatically generate filepaths. In this method, `basedir`
-is the base output directory where the data will be written, and `params` is an
+which is used to automatically generate filepaths. In this method, `basedir` is
+the base output directory where the data will be written, and `params` is an
 instance of the `eta.core.types.ConcreteDataParams` class, which contains a
 dictionary of configuration settings that the `ConcreteData` subclass can use
 to properly generate output paths. This automatic path generation capability is
@@ -289,42 +281,41 @@ data types are interchangable instantiations of a single concept. Since
 abstract types do not refer to a unique concrete data type, they do not provide
 `gen_path` methods. An example of an abstract data type is:
 
-- `eta.core.types.Video`: the abstract data type representing a single video
+-   `eta.core.types.Video`: the abstract data type representing a single video
 
 The abstract video type currently has two concrete implementations in ETA:
 
-- `eta.core.types.VideoFile`: a video represented as a single encoded video
+-   `eta.core.types.VideoFile`: a video represented as a single encoded video
     file, e.g. `"/path/to/video.mp4"`
-- `eta.core.types.ImageSequence`: a video represented as a sequence of images
+-   `eta.core.types.ImageSequence`: a video represented as a sequence of images
     with one numeric parameter, e.g. `"/path/to/video/%05d.png"`
 
 In the context of module metadata files, module inputs can have types that are
 subclasses of `ConcreteData` or `AbstractData`. A module input declared with an
 abstract data type promises that it can understand any concrete subclass of
-that type.  Module inputs inherit data paths from their incoming connections,
-so they do not require the ability to generate paths automatically during
-pipeline building. Conversely, module outputs must be subclasses of
-`ConcreteData` because they must be able to generate their output paths during
-pipeline building. Module parameters may have types that are subclasses of
+that type. Module inputs inherit data paths from their incoming connections, so
+they do not require the ability to generate paths automatically during pipeline
+building. Conversely, module outputs must be subclasses of `ConcreteData`
+because they must be able to generate their output paths during pipeline
+building. Module parameters may have types that are subclasses of
 `ConcreteData` (e.g. a model weights file) or they may have `Builtin` types.
 
 An important class of concrete data types in ETA are JSON files:
 
-- `eta.core.types.JSONFile`: a JSON file on disk
+-   `eta.core.types.JSONFile`: a JSON file on disk
 
 JSON files are important because they are the primary way that modules write
-their analytic outputs to disk. As such, there are many subclasses of JSON
-that describe the various JSON formats used by modules. For example:
+their analytic outputs to disk. As such, there are many subclasses of JSON that
+describe the various JSON formats used by modules. For example:
 
-- `eta.core.types.Frame`: A type describing detected objects in a frame. This
+-   `eta.core.types.Frame`: A type describing detected objects in a frame. This
     type is implemented in ETA by the `eta.core.objects.Frame` class
-- `eta.core.types.EventDetection`: A per-frame binary event detection. This
+-   `eta.core.types.EventDetection`: A per-frame binary event detection. This
     type is implemented in ETA by the `eta.core.events.EventDetection` class
 
 Whenever a new JSON data type is used by an ETA module, a corresponding class
 must be added to the `eta.core.types` module to define this type so that other
 modules can declare their compatibility with this JSON format.
-
 
 ## Visualizing Modules
 
@@ -344,17 +335,14 @@ module = etam.load_metadata("simple_object_detector")
 module.render("module_block_diagram.svg")
 ```
 
-The above code generates the following image that depicts the module as a
-block diagram:
+The above code generates the following image that depicts the module as a block
+diagram:
 
-[![module\_block\_diagram.png](
-https://drive.google.com/uc?id=15ImaW5o20wttEfgf0vQkxeQDirBtcYOa)](
-https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv)
+[![module_block_diagram.png](https://drive.google.com/uc?id=15ImaW5o20wttEfgf0vQkxeQDirBtcYOa)](https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv)
 
 Behind the scenes, an intermediate `module_block_diagram.diag` file is
 generated that describes the module in a format understood by the `blockdiag`
 package.
-
 
 ## Module Configuration Files
 
@@ -383,32 +371,32 @@ The general format of a module configuration file is:
 ```
 
 The `data` field contains a list of specs, each of which contains a valid set
-of input and output fields specifying where to read input data and write
-output data when the module is executed. This field expects a list so that
-multiple datasets can be processed in a single module execution, if desired.
-The possible fields that can be listed in `<inputs>` and `<outputs>` in the
-above JSON are defined by the `inputs` and `outputs` fields of the module's
-metadata JSON file. In particular, each spec in the `data` field must contain
-all inputs and outputs that are marked as _required_ in the module metadata
-file and may also contain any inputs and outputs that are optional.
+of input and output fields specifying where to read input data and write output
+data when the module is executed. This field expects a list so that multiple
+datasets can be processed in a single module execution, if desired. The
+possible fields that can be listed in `<inputs>` and `<outputs>` in the above
+JSON are defined by the `inputs` and `outputs` fields of the module's metadata
+JSON file. In particular, each spec in the `data` field must contain all inputs
+and outputs that are marked as _required_ in the module metadata file and may
+also contain any inputs and outputs that are optional.
 
 The `parameters` field defines the parameter values to use when executing the
-module. The possible fields that can be listed in `<parameters>` in the
-above JSON are defined by the `parameters` field of the module's metadata JSON
-file. In particular, each spec in the `parameters` field must contain all
-parameters that are _required_ and may also contain any optional parameters.
-Again, the particular parameters supported by the module are defined by
-the module's metadata JSON file, and all required parameters and zero or more
-optional parameters must be specified.
+module. The possible fields that can be listed in `<parameters>` in the above
+JSON are defined by the `parameters` field of the module's metadata JSON file.
+In particular, each spec in the `parameters` field must contain all parameters
+that are _required_ and may also contain any optional parameters. Again, the
+particular parameters supported by the module are defined by the module's
+metadata JSON file, and all required parameters and zero or more optional
+parameters must be specified.
 
 Finally, the `base` field defines module configuration fields that all ETA
-modules must support. Note that the `base` field is not mentioned in the
-module metadata file because it contains generic fields that are the same for
-all modules. Indeed, the `base` field is an instance of the
+modules must support. Note that the `base` field is not mentioned in the module
+metadata file because it contains generic fields that are the same for all
+modules. Indeed, the `base` field is an instance of the
 `eta.core.module.BaseModuleConfigSettings` class, which defines the following
 fields:
 
-- `logging_config`: an `eta.core.log.LoggingConfig` instance that configures
+-   `logging_config`: an `eta.core.log.LoggingConfig` instance that configures
     the logging behavior of the module during execution
 
 Importantly, all ETA modules must obey the convention that the `base` field and
@@ -417,7 +405,6 @@ default values for these parameters and module configuration files need not
 specify these values. The ETA library automates these boilerplate constructs
 via the `BaseModuleConfig` and the `setup()` methods from the `eta.core.module`
 module.
-
 
 #### Example module configuration file
 
@@ -449,7 +436,6 @@ parameter is omitted, which is allowed because a default value was provided for
 that parameter in the metadata file. The top-level `base` field was omitted
 entirely, which is allowed since this field is always optional.
 
-
 ## Module Execution Syntax
 
 Recall that ETA modules are simply _executables_ that take JSON files as input
@@ -475,13 +461,11 @@ appropriately handle these fields.
 > Pipeline configuration JSON files also contain various pipeline-level fields
 > that are not relevant to modules and should be ignored.
 
-
 ## Building Standalone Modules
 
 Since ETA modules are simply executables, they can be implemented in any
 language as long as they provide a valid metadata file, follow the ETA module
-execution syntax, and
-module execution syntax.
+execution syntax, and module execution syntax.
 
 However, even if developers don't intend to use ETA libraries to build their
 modules, they must be familiar with the ETA supported data types in order to
@@ -490,13 +474,11 @@ the `eta.core.module.BaseModuleConfig` class in order to appropriately
 implement the generic module configuration settings that all modules must
 support.
 
-
 ## Building Modules Using ETA
 
 ETA provides a core library that can be leveraged to easily define new modules.
 This section provides numerous examples describing the key features of the
 module implementation utilities in ETA.
-
 
 #### Module template
 
@@ -540,21 +522,6 @@ voxel51.com
 # Inputs in ETA are separated into groups and sorted alphabetically within
 # each group. See `python_style_guide.md` for more information
 #
-# The first block of `__future__` imports allow for cross-version Python
-# support. See `python23_guide.md` for more information
-#
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 import sys
 
@@ -682,7 +649,6 @@ if __name__ == "__main__":
     run(*sys.argv[1:])
 ```
 
-
 #### Concrete module configuration example
 
 The following snippet shows a concrete example of a module configuration
@@ -752,8 +718,8 @@ instance of `ParametersConfig`. Note that `ModuleConfig` derives from
 optional `base` field containing any base module settings.
 
 The `eta.core.config.Config.parse_*` methods are used to parse the JSON fields
-according to their declared types. Fields defined with no `default` keyword
-are _required_, and fields with a `default` keyword are _optional_.
+according to their declared types. Fields defined with no `default` keyword are
+_required_, and fields with a `default` keyword are _optional_.
 
 The following is a valid JSON instance for the above `ModuleConfig`:
 
@@ -786,7 +752,6 @@ example_config = ModuleConfig.from_json(path)
 The `from_json` method, which is inherited from the super class
 `eta.core.serial.Serializable`, reads the JSON dictionary and passes it to the
 `ModuleConfig` constructor.
-
 
 #### Defining new data types
 
@@ -842,15 +807,14 @@ point = Point.from_json(path)
 The `eta.core.serial.Serializable` class provides the `from_json` method, which
 internally calls `Point.from_dict` to parse the JSON data.
 
-
 #### Building objects from configuration files
 
 Often in ETA, one may want to define a class that can be initialized from a
 configuration file. Furthermore, one may have multiple classes that all derive
 from a common base class (e.g., different types of filters to apply to an
 image), and one wants to select and configure a particular type of filter from
-a configuration file. The `eta.core.config.Configurable` class is provided
-to facilitate these use cases.
+a configuration file. The `eta.core.config.Configurable` class is provided to
+facilitate these use cases.
 
 Consider the following definitions:
 
@@ -898,9 +862,9 @@ class Circle(Shape):
         return math.pi * self.config.radius ** 2.0
 ```
 
-The above code define a `Shape` base class and a `Circle` class that
-derives from it. Note that the `Shape` class derives from `Configurable`, since
-we intend to instantiate shapes from configuration files.
+The above code define a `Shape` base class and a `Circle` class that derives
+from it. Note that the `Shape` class derives from `Configurable`, since we
+intend to instantiate shapes from configuration files.
 
 Along with these classes, a `ShapeConfig` class is defined that uses the
 `Configurable.parse` method to dynamically load the shape's type from the
@@ -930,8 +894,6 @@ circle = shape_config.build()
 area = circle.area()  # pi
 ```
 
-
 ## Copyright
 
-Copyright 2017-2024, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2024, Voxel51, Inc.<br> voxel51.com

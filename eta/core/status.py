@@ -4,19 +4,6 @@ Core status infrastructure for pipelines and jobs.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import datetime
 import logging
 
@@ -27,7 +14,7 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-class PipelineState(object):
+class PipelineState:
     """Enum describing the possible states of a pipeline."""
 
     READY = "READY"
@@ -214,7 +201,7 @@ class PipelineStatus(Serializable):
         )
 
 
-class JobState(object):
+class JobState:
     """Enum describing the possible states of a pipeline."""
 
     READY = "READY"

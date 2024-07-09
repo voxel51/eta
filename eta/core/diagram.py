@@ -6,20 +6,6 @@ Block diagrams are built using the `blockdiag` package.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import copy
 import logging
 import os
@@ -39,7 +25,17 @@ MODULE_HEIGHT = 60
 NODE_HEIGHT = 40
 
 
-class HasBlockDiagram(object):
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
+
+
+def itervalues(d):
+    """Replace future.utils.itervalues for python3"""
+    return iter(d.values())
+
+
+class HasBlockDiagram:
     """Mixin class for objects that can be rendered as block diagrams."""
 
     def to_blockdiag(self):
@@ -85,7 +81,7 @@ class HasBlockDiagram(object):
                 etau.delete_file(blockdiag_path)
 
 
-class BlockdiagFile(object):
+class BlockdiagFile:
     """Base class for representing a block diagram in the blockdiag syntax."""
 
     def __init__(self):
@@ -136,7 +132,7 @@ class BlockdiagPipeline(BlockdiagFile):
             name: the name of the pipeline
         """
         self.name = name
-        super(BlockdiagPipeline, self).__init__()
+        super().__init__()
 
         self._inputs = BlockdiagSection(comment="inputs")
         self._outputs = BlockdiagSection(comment="outputs")
@@ -219,7 +215,7 @@ class BlockdiagModule(BlockdiagFile):
             name: the name of the module
         """
         self.name = name
-        super(BlockdiagModule, self).__init__()
+        super().__init__()
 
         self._module = BlockdiagSection(comment="module")
         self._inputs = BlockdiagSection(comment="inputs")
@@ -302,7 +298,7 @@ class BlockdiagModule(BlockdiagFile):
         self._param_group.add_element(edge)
 
 
-class BlockdiagElement(object):
+class BlockdiagElement:
     """Base class for all elements of a block diagram file."""
 
     def render(self, indent=0):
@@ -366,7 +362,7 @@ class BlockdiagGroup(BlockdiagContainer):
                 nested group. By default, this is False
             **kwargs: optional attributes for the group
         """
-        super(BlockdiagGroup, self).__init__()
+        super().__init__()
         self.name = TOP_LEVEL_NAME if is_top_level else GROUP_NAME
         self.attributes = []
         self.add_attributes(**kwargs)
@@ -409,7 +405,7 @@ class BlockdiagSection(BlockdiagContainer):
         Args:
             comment: an optional comment string
         """
-        super(BlockdiagSection, self).__init__()
+        super().__init__()
         if comment:
             self.add_element(BlockdiagComment(comment))
 
@@ -475,7 +471,7 @@ class BlockdiagAttribute(BlockdiagElement):
         Returns:
             a string containing the rendered BlockdiagAttribute
         """
-        return _indent("%s = %s;" % (self.key, self.value), indent)
+        return _indent("{} = {};".format(self.key, self.value), indent)
 
 
 class BlockdiagNode(BlockdiagElement):
@@ -504,7 +500,7 @@ class BlockdiagNode(BlockdiagElement):
         """
         line = self.name
         attributes = self.args + [
-            "%s = %s" % (k, v) for k, v in iteritems(self.kwargs)
+            "{} = {}".format(k, v) for k, v in iteritems(self.kwargs)
         ]
         if attributes:
             line += " [" + ", ".join(attributes) + "];"

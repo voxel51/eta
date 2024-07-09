@@ -7,20 +7,6 @@ the ETA pipeline system.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 from glob import glob
 import logging
@@ -45,6 +31,11 @@ logger = logging.getLogger(__name__)
 
 PIPELINE_INPUT_NAME = "INPUT"
 PIPELINE_OUTPUT_NAME = "OUTPUT"
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
 
 
 def run(
@@ -405,7 +396,7 @@ class PipelineConnectionConfig(Config):
         self.sink = self.parse_string(d, "sink")
 
 
-class PipelineNodeType(object):
+class PipelineNodeType:
     """Class enumerating the types of pipeline nodes."""
 
     PIPELINE_INPUT = 1
@@ -442,7 +433,7 @@ class PipelineInfo(Configurable):
         return type_
 
 
-class PipelineInput(object):
+class PipelineInput:
     """Class describing a pipeline input.
 
     Attributes:
@@ -465,7 +456,7 @@ class PipelineInput(object):
         return all(inp.is_valid_path(path) for inp in self.inputs)
 
 
-class PipelineOutput(object):
+class PipelineOutput:
     """Class describing a pipeline output.
 
     Attributes:
@@ -483,7 +474,7 @@ class PipelineOutput(object):
         return self.output.is_valid_path(path)
 
 
-class PipelineParameter(object):
+class PipelineParameter:
     """Class describing a pipeline parameter.
 
     A pipeline parameter is *active* if it is tunable and/or its value is set
@@ -612,7 +603,7 @@ class PipelineModule(Configurable):
     def _parse_parameters(self, tunable_parameters, set_parameters):
         # Verify parameter settings
         self._verify_has_parameters(tunable_parameters)
-        self._verify_has_parameters(set_parameters.keys())
+        self._verify_has_parameters(list(set_parameters.keys()))
         self._verify_parameter_values(set_parameters)
 
         for pname, param in iteritems(self.metadata.parameters):
@@ -651,7 +642,7 @@ class PipelineModule(Configurable):
                 )
 
 
-class PipelineNode(object):
+class PipelineNode:
     """Class representing a node in a pipeline.
 
     Attributes:
@@ -665,7 +656,7 @@ class PipelineNode(object):
         self._type = _type
 
     def __str__(self):
-        return "%s.%s" % (self.module, self.node)
+        return "{}.{}".format(self.module, self.node)
 
     def is_same_node(self, node):
         """Returns True/False if the given node is equal to this node, i.e.,
@@ -710,22 +701,22 @@ class PipelineNode(object):
     @staticmethod
     def get_input_str(name):
         """Gets the node string for a pipeline input with the given name."""
-        return "%s.%s" % (PIPELINE_INPUT_NAME, name)
+        return "{}.{}".format(PIPELINE_INPUT_NAME, name)
 
     @staticmethod
     def get_output_str(name):
         """Gets the node string for a pipeline output with the given name."""
-        return "%s.%s" % (PIPELINE_OUTPUT_NAME, name)
+        return "{}.{}".format(PIPELINE_OUTPUT_NAME, name)
 
     @staticmethod
     def get_node_str(module, node):
         """Gets the node string for a pipeline node with the given module and
         node names.
         """
-        return "%s.%s" % (module, node)
+        return "{}.{}".format(module, node)
 
 
-class PipelineConnection(object):
+class PipelineConnection:
     """Class representing a connection between two nodes in a pipeline.
 
     Attributes:
@@ -738,7 +729,7 @@ class PipelineConnection(object):
         self.sink = sink
 
     def __str__(self):
-        return "%s -> %s" % (self.source, self.sink)
+        return "{} -> {}".format(self.source, self.sink)
 
 
 class PipelineMetadata(Configurable, HasBlockDiagram):

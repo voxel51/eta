@@ -74,17 +74,16 @@ indentation level) in a module, add the comment:
 To disable a Pylint message for the current line:
 
 ```py
-from builtins import *  # pylint disable=wildcard-import
+from some_module import *  # pylint disable=wildcard-import
 ```
 
 To disable Pylint errors temporarily in a module:
 
 ```py
-# pragma pylint: disable=redefined-builtin
 # pragma pylint: enable=wildcard-import
-from builtins import *
+from some_module import *
+from some_other_module import *
 
-# pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=wildcard-import
 ```
 

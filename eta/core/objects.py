@@ -4,20 +4,6 @@ Core tools and data structures for working with objects in images and videos.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 from copy import deepcopy
 import logging
@@ -31,6 +17,16 @@ import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
+
+
+def itervalues(d):
+    """Replace future.utils.itervalues for python3"""
+    return iter(d.values())
 
 
 class DetectedObject(etal.Labels, etag.HasBoundingBox):
@@ -377,7 +373,7 @@ class DetectedObjectContainer(etal.LabelsContainer):
         Returns:
             a set of labels
         """
-        return set(dobj.label for dobj in self)
+        return {dobj.label for dobj in self}
 
     def get_indexes(self):
         """Returns the set of ``index`` values of all objects in the container.
@@ -387,7 +383,7 @@ class DetectedObjectContainer(etal.LabelsContainer):
         Returns:
             a set of indexes
         """
-        return set(dobj.index for dobj in self if dobj.has_index)
+        return {dobj.index for dobj in self if dobj.has_index}
 
     def offset_indexes(self, offset):
         """Adds the given offset to all objects with ``index`` values.
@@ -954,7 +950,7 @@ class VideoObject(
             self._add_detected_object(dobj, None)
 
     def _compute_support(self):
-        return etaf.FrameRanges.from_iterable(self.frames.keys())
+        return etaf.FrameRanges.from_iterable(list(self.frames.keys()))
 
 
 class VideoObjectContainer(
@@ -986,7 +982,7 @@ class VideoObjectContainer(
         Returns:
             a set of labels
         """
-        return set(obj.label for obj in self)
+        return {obj.label for obj in self}
 
     def get_indexes(self):
         """Returns the set of ``index`` values of all objects in the container.
@@ -996,7 +992,7 @@ class VideoObjectContainer(
         Returns:
             a set of indexes
         """
-        return set(obj.index for obj in self if obj.has_index)
+        return {obj.index for obj in self if obj.has_index}
 
     def offset_indexes(self, offset):
         """Adds the given offset to all objects with ``index`` values.
@@ -2320,7 +2316,7 @@ class ObjectCounts(etas.Container):
     _ELE_ATTR = "counts"
 
 
-class EvaluationType(object):
+class EvaluationType:
     """Enumeration representing the type of evaluation an object label is
     intended for. This enables evaluation of false negatives on a subset of
     the labels used for evaluating false positives.

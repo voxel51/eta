@@ -15,21 +15,6 @@ This module currently provides clients for the following storage resources:
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-import six
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import configparser
 import datetime
 import dateutil.parser
@@ -39,12 +24,7 @@ import logging
 import os
 import re
 import requests
-
-try:
-    import urllib.parse as urlparse  # Python 3
-except ImportError:
-    import urlparse  # Python 2
-
+import urllib.parse
 import urllib3
 
 try:
@@ -67,13 +47,11 @@ try:
     import googleapiclient.http as gah
     import pysftp
 except ImportError as e:
-    six.raise_from(
-        ImportError(
-            "The requested operation requires extra dependencies; install "
-            '"voxel51-eta[storage]" to use it'
-        ),
-        e,
+    exc_value = ImportError(
+        "The requested operation requires extra dependencies; install "
+        '"voxel51-eta[storage]" to use it'
     )
+    raise exc_value from e
 
 import eta.constants as etac
 import eta.core.serial as etas
@@ -91,6 +69,11 @@ logger = logging.getLogger(__name__)
 # Suppress non-critical logging from third-party libraries
 logging.getLogger("googleapiclient").setLevel(logging.ERROR)
 logging.getLogger("paramiko").setLevel(logging.ERROR)
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
 
 
 def ensure_file(filepath, remote_path):
@@ -150,7 +133,7 @@ def _parse_remote_path(remote_path):
     return client, filename
 
 
-class StorageClient(object):
+class StorageClient:
     """Interface for storage clients that read/write files from remote storage
     locations.
 
@@ -239,7 +222,7 @@ class StorageClient(object):
         raise NotImplementedError("subclass must implement delete()")
 
 
-class CanSyncDirectories(object):
+class CanSyncDirectories:
     """Mixin class for `StorageClient`s that can sync directories to/from
     remote storage.
 
@@ -340,10 +323,10 @@ class CanSyncDirectories(object):
         """
         remote_dir = remote_dir.rstrip("/")
         local_files = set(etau.list_files(local_dir, recursive=recursive))
-        remote_files = set(
+        remote_files = {
             os.path.relpath(f, remote_dir)
             for f in self.list_files_in_folder(remote_dir, recursive=recursive)
-        )
+        }
 
         # Files to delete remotely
         delete_files = remote_files - local_files
@@ -430,10 +413,10 @@ class CanSyncDirectories(object):
             skip_failures: whether to skip failures. By default, this is False
         """
         remote_dir = remote_dir.rstrip("/")
-        remote_files = set(
+        remote_files = {
             os.path.relpath(f, remote_dir)
             for f in self.list_files_in_folder(remote_dir, recursive=recursive)
-        )
+        }
         local_files = set(etau.list_files(local_dir, recursive=recursive))
 
         # Files to delete locally
@@ -1136,7 +1119,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
             response = self._client.get_object(
                 Bucket=bucket,
                 Key=object_name,
-                Range="bytes=%s-%s" % (start or "", end or ""),
+                Range="bytes={}-{}".format(start or "", end or ""),
             )
             return response["Body"].read()
 
@@ -1211,7 +1194,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
         return chunks[0], chunks[1]
 
 
-class NeedsAWSCredentials(object):
+class NeedsAWSCredentials:
     """Mixin for classes that need AWS credentials to take authenticated
     actions.
 
@@ -1372,7 +1355,7 @@ class AWSCredentialsError(Exception):
         Args:
             message: the error message
         """
-        super(AWSCredentialsError, self).__init__(
+        super().__init__(
             "%s. Read the documentation for "
             "`eta.core.storage.NeedsAWSCredentials` for more information "
             "about authenticating with AWS services." % message
@@ -1414,7 +1397,7 @@ class S3StorageClient(_BotoStorageClient, NeedsAWSCredentials):
             credentials["region_name"] = credentials.pop("region", None)
 
         try:
-            super(S3StorageClient, self).__init__(
+            super().__init__(
                 credentials,
                 alias="s3",
                 max_pool_connections=max_pool_connections,
@@ -1424,7 +1407,7 @@ class S3StorageClient(_BotoStorageClient, NeedsAWSCredentials):
             raise AWSCredentialsError("No AWS credentials found")
 
 
-class NeedsMinIOCredentials(object):
+class NeedsMinIOCredentials:
     """Mixin for classes that need MinIO credentials to take authenticated
     actions.
 
@@ -1649,7 +1632,7 @@ class MinIOCredentialsError(Exception):
         Args:
             message: the error message
         """
-        super(MinIOCredentialsError, self).__init__(
+        super().__init__(
             "%s. Read the documentation for "
             "`eta.core.storage.NeedsMinIOCredentials` for more information "
             "about authenticating with MinIO services." % message
@@ -1694,7 +1677,7 @@ class MinIOStorageClient(_BotoStorageClient, NeedsMinIOCredentials):
         endpoint_url = credentials.pop("endpoint_url")
 
         try:
-            super(MinIOStorageClient, self).__init__(
+            super().__init__(
                 _credentials,
                 alias=alias,
                 endpoint_url=endpoint_url,
@@ -1705,7 +1688,7 @@ class MinIOStorageClient(_BotoStorageClient, NeedsMinIOCredentials):
             raise MinIOCredentialsError("No MinIO credentials found")
 
 
-class NeedsGoogleCredentials(object):
+class NeedsGoogleCredentials:
     """Mixin for classes that need a `google.auth.credentials.Credentials`
     instance to take authenticated actions.
 
@@ -1845,7 +1828,7 @@ class GoogleCredentialsError(Exception):
         Args:
             message: the error message
         """
-        super(GoogleCredentialsError, self).__init__(
+        super().__init__(
             "%s. Read the documentation for "
             "`eta.core.storage.NeedsGoogleCredentials` for more information "
             "about authenticating with Google services." % message
@@ -2235,7 +2218,9 @@ class GoogleCloudStorageClient(
         """
         credentials = self._get_signing_credentials(cloud_path)
         bucket, name = self._parse_path(cloud_path)
-        resource = "/%s/%s" % (bucket, urlparse.quote(name, safe=b"/~"))
+        resource = "/{}/{}".format(
+            bucket, urllib.parse.quote(name, safe=b"/~")
+        )
         return generate_signed_url_v4(
             credentials,
             resource=resource,
@@ -2264,15 +2249,13 @@ class GoogleCloudStorageClient(
                 r = gatr.Request()
                 self._signing_credentials = gace.IDTokenCredentials(r, "")
             except Exception as e:
-                six.raise_from(
-                    GoogleCredentialsError(
-                        "Failed to generate signing credentials for your "
-                        "Application Default Credentials. Note that your "
-                        "service account must have the "
-                        "'roles/iam.serviceAccountTokenCreator' permission"
-                    ),
-                    e,
+                exc_value = GoogleCredentialsError(
+                    "Failed to generate signing credentials for your "
+                    "Application Default Credentials. Note that your "
+                    "service account must have the "
+                    "'roles/iam.serviceAccountTokenCreator' permission"
                 )
+                raise exc_value from e
 
         if self._signing_credentials is not None:
             return self._signing_credentials
@@ -2327,7 +2310,9 @@ class GoogleCloudStorageClient(
 
         if not cloud_path.startswith(prefix):
             raise ValueError(
-                "Invalid path '%s'; must start with %s" % (cloud_path, prefix)
+                "Invalid path '{}'; must start with {}".format(
+                    cloud_path, prefix
+                )
             )
 
         return cloud_path[len(prefix) :]
@@ -2343,7 +2328,7 @@ class GoogleCloudStorageClient(
         return chunks[0], chunks[1]
 
 
-class NeedsAzureCredentials(object):
+class NeedsAzureCredentials:
     """Mixin for classes that need Azure credentials to take authenticated
     actions.
 
@@ -2606,7 +2591,7 @@ class AzureCredentialsError(Exception):
         Args:
             message: the error message
         """
-        super(AzureCredentialsError, self).__init__(
+        super().__init__(
             "%s. Read the documentation for "
             "`eta.core.storage.NeedsAzureCredentials` for more information "
             "about authenticating with Azure services." % message
@@ -3666,7 +3651,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         # Skip existing files, if requested
         if skip_existing_files:
-            _existing_files = set(f["name"] for f in existing_files)
+            _existing_files = {f["name"] for f in existing_files}
             _files = [f for f in files if f not in _existing_files]
             num_skipped = len(files) - len(_files)
             if num_skipped > 0:
@@ -4270,7 +4255,7 @@ class HTTPStorageClient(StorageClient):
             pass
 
         if not filename:
-            filename = os.path.basename(urlparse.urlparse(url).path)
+            filename = os.path.basename(urllib.parse.urlparse(url).path)
 
         return filename
 
@@ -4292,7 +4277,7 @@ class HTTPStorageClient(StorageClient):
 
     def _do_download(self, url, file_obj, start=None, end=None):
         if start is not None or end is not None:
-            headers = {"Range": "bytes=%s-%s" % (start or "", end or "")}
+            headers = {"Range": "bytes={}-{}".format(start or "", end or "")}
         else:
             headers = None
 
@@ -4302,7 +4287,7 @@ class HTTPStorageClient(StorageClient):
             res.raise_for_status()
 
 
-class NeedsSSHCredentials(object):
+class NeedsSSHCredentials:
     """Mixin for classes that need an SSH private key to take authenticated
     actions.
 
@@ -4410,7 +4395,7 @@ class SSHCredentialsError(Exception):
         Args:
             message: the error message
         """
-        super(SSHCredentialsError, self).__init__(
+        super().__init__(
             "%s. Read the documentation for "
             "`eta.core.storage.NeedsSSHCredentials` for more information "
             "about authenticating with SSH keys." % message
@@ -4615,7 +4600,7 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
             sftp.rmdir(remote_dir)
 
 
-class _SFTPConnection(object):
+class _SFTPConnection:
     """An internal class for managing a pysftp.Connection that can either be
     kept open manually controlled or automatically opened and closed on a
     per-context basis.
@@ -4728,8 +4713,8 @@ def _read_file_in_chunks(file_obj, chunk_size):
 
 
 def _to_bytes(val, encoding="utf-8"):
-    bytes_str = val.encode(encoding) if isinstance(val, six.text_type) else val
-    if not isinstance(bytes_str, six.binary_type):
+    bytes_str = val.encode(encoding) if isinstance(val, str) else val
+    if not isinstance(bytes_str, bytes):
         raise TypeError("Failed to convert %r to bytes" % bytes_str)
 
     return bytes_str

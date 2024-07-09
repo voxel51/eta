@@ -7,19 +7,6 @@ voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import copy
 import logging
 import os
@@ -285,14 +272,14 @@ class LabeledDataRecord(BaseDataRecord):
         """
         self.data = data
         self.labels = labels
-        super(LabeledDataRecord, self).__init__()
+        super().__init__()
 
     @classmethod
     def required(cls):
         return ["data", "labels"]
 
 
-class LabeledDataset(object):
+class LabeledDataset:
     """Base class for labeled datasets, which encapsulate raw data samples and
     their associated labels.
 
@@ -391,7 +378,7 @@ class LabeledDataset(object):
                 returned by `read_data()` and labels are objects returned by
                 `read_labels()`
         """
-        return zip(self.iter_data(), self.iter_labels())
+        return list(zip(self.iter_data(), self.iter_labels()))
 
     @property
     def dataset_dir(self):
@@ -1563,7 +1550,9 @@ class LabeledVideoDataset(LabeledDataset):
             path: the path to write the video
         """
         writer = etav.FFmpegVideoWriter(
-            path, video_reader.frame_rate, video_reader.frame_size,
+            path,
+            video_reader.frame_rate,
+            video_reader.frame_size,
         )
         with writer:
             for img in video_reader:

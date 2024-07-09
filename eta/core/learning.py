@@ -4,19 +4,6 @@ Core infrastructure for deploying ML models.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 
 import numpy as np
@@ -49,7 +36,7 @@ def load_labels_map(labels_map_path):
         a dictionary mapping indexes to label strings
     """
     labels_map = {}
-    with open(labels_map_path, "r") as f:
+    with open(labels_map_path) as f:
         for line in f:
             idx, label = line.split(":")
             labels_map[int(idx)] = label.strip()
@@ -77,7 +64,7 @@ def write_labels_map(labels_map, outpath):
     """
     with open(outpath, "w") as f:
         for idx in sorted(labels_map):
-            f.write("%s:%s\n" % (idx, labels_map[idx]))
+            f.write("{}:{}\n".format(idx, labels_map[idx]))
 
 
 def get_class_labels(labels_map):
@@ -187,7 +174,7 @@ def ensure_requirements(model_name, error_level=0):
     model.ensure_requirements(error_level=error_level)
 
 
-class HasPublishedModel(object):
+class HasPublishedModel:
     """Mixin class for `eta.core.learning.ModelConfig`s whose models are
     published via the `eta.core.models` infrastructure.
 
@@ -344,7 +331,7 @@ class ImageModelConfig(ModelConfig):
     """
 
     def __init__(self, d):
-        super(ImageModelConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(ImageModel)
 
 
@@ -382,7 +369,7 @@ class VideoModelConfig(ModelConfig):
     """
 
     def __init__(self, d):
-        super(VideoModelConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(VideoModel)
 
 
@@ -421,7 +408,7 @@ class ClassifierConfig(ModelConfig):
     """
 
     def __init__(self, d):
-        super(ClassifierConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(Classifier)
 
 
@@ -466,7 +453,7 @@ class ImageClassifierConfig(ClassifierConfig):
     """
 
     def __init__(self, d):
-        super(ImageClassifierConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(ImageClassifier)
 
 
@@ -550,7 +537,7 @@ class VideoFramesClassifierConfig(ClassifierConfig):
     """
 
     def __init__(self, d):
-        super(VideoFramesClassifierConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(VideoFramesClassifier)
 
 
@@ -594,7 +581,7 @@ class VideoClassifierConfig(ClassifierConfig):
     """
 
     def __init__(self, d):
-        super(VideoClassifierConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(VideoClassifier)
 
 
@@ -636,7 +623,7 @@ class DetectorConfig(ModelConfig):
     """
 
     def __init__(self, d):
-        super(DetectorConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(Detector)
 
 
@@ -674,7 +661,7 @@ class ObjectDetectorConfig(DetectorConfig):
     """
 
     def __init__(self, d):
-        super(ObjectDetectorConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(ObjectDetector)
 
 
@@ -758,7 +745,7 @@ class VideoFramesObjectDetectorConfig(DetectorConfig):
     """
 
     def __init__(self, d):
-        super(VideoFramesObjectDetectorConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(VideoFramesObjectDetector)
 
 
@@ -802,7 +789,7 @@ class VideoObjectDetectorConfig(DetectorConfig):
     """
 
     def __init__(self, d):
-        super(VideoObjectDetectorConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(VideoObjectDetector)
 
 
@@ -843,7 +830,7 @@ class VideoEventDetectorConfig(DetectorConfig):
     """
 
     def __init__(self, d):
-        super(VideoEventDetectorConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(VideoEventDetector)
 
 
@@ -881,7 +868,7 @@ class SemanticSegmenterConfig(ModelConfig):
     """
 
     def __init__(self, d):
-        super(SemanticSegmenterConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(SemanticSegmenter)
 
 
@@ -917,7 +904,7 @@ class ImageSemanticSegmenterConfig(SemanticSegmenterConfig):
     """
 
     def __init__(self, d):
-        super(ImageSemanticSegmenterConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(ImageSemanticSegmenter)
 
 
@@ -999,7 +986,7 @@ class VideoSemanticSegmenterConfig(SemanticSegmenterConfig):
     """
 
     def __init__(self, d):
-        super(VideoSemanticSegmenterConfig, self).__init__(d)
+        super().__init__(d)
         self._validate_type(VideoSemanticSegmenter)
 
 
@@ -1029,7 +1016,7 @@ class VideoSemanticSegmenter(SemanticSegmenter):
         raise NotImplementedError("subclasses must implement segment()")
 
 
-class ExposesMaskIndex(object):
+class ExposesMaskIndex:
     """Mixin for `SemanticSegmenter` subclasses that expose
     `eta.core.data.MaskIndex`s that assign semantic labels to their
     segmentations.
@@ -1078,7 +1065,7 @@ class ExposesMaskIndex(object):
             )
 
 
-class ExposesFeatures(object):
+class ExposesFeatures:
     """Mixin for `Model` subclasses that expose features for their predictions.
 
     By convention, features should be returned in an array whose shape follows
@@ -1143,7 +1130,7 @@ class ExposesFeatures(object):
             )
 
 
-class ExposesProbabilities(object):
+class ExposesProbabilities:
     """Mixin for `Model` subclasses that expose probabilities for their
     predictions.
 
@@ -1229,7 +1216,9 @@ class ExposesProbabilities(object):
             for j in range(num_preds):
                 probsij = probs[i, j, :]
                 indsij = inds[i, j, :][-top_k:]
-                top_k_probs[i, j] = dict(zip(labels[indsij], probsij[indsij]))
+                top_k_probs[i, j] = dict(
+                    list(zip(labels[indsij], probsij[indsij]))
+                )
 
         return top_k_probs
 

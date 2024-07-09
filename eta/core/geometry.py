@@ -5,19 +5,6 @@ bounding boxes.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import eta.core.numutils as etan
 from eta.core.serial import BigContainer, Container, Serializable, Set, BigSet
 
@@ -67,7 +54,7 @@ class BoundingBox(Serializable):
         self.bottom_right = bottom_right
 
     def __str__(self):
-        return "%s x %s" % (self.top_left, self.bottom_right)
+        return "{} x {}".format(self.top_left, self.bottom_right)
 
     def __eq__(self, bbox):
         return (
@@ -407,7 +394,7 @@ class BoundingBox(Serializable):
         )
 
 
-class HasBoundingBox(object):
+class HasBoundingBox:
     """Mixin to explicitly indicate that an instance has a bounding box."""
 
     def get_bounding_box(self):
@@ -437,7 +424,7 @@ class RelativePoint(Serializable):
         self.y = float(y)
 
     def __str__(self):
-        return "(%.3f, %.3f)" % (self.x, self.y)
+        return "({:.3f}, {:.3f})".format(self.x, self.y)
 
     def __eq__(self, rel_point):
         return etan.is_close(self.x, rel_point.x) and etan.is_close(
@@ -583,7 +570,7 @@ class LabeledPointContainer(Container):
 
     def get_labels(self):
         """Returns a set containing the labels of the LabeledPoints."""
-        return set(p.label for p in self)
+        return {p.label for p in self}
 
 
 class BigLabeledPointContainer(LabeledPointContainer, BigContainer):
@@ -604,7 +591,7 @@ class LabeledPointSet(Set):
 
     def get_labels(self):
         """Returns a set containing the labels of the LabeledPoints."""
-        return set(p.label for p in self)
+        return {p.label for p in self}
 
 
 class BigLabeledPointSet(LabeledPointSet, BigSet):

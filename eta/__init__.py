@@ -4,20 +4,6 @@ ETA package initialization.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 import os
 import sys
@@ -28,6 +14,11 @@ import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
+
+
+def iteritems(d):
+    """Replace future.utils.iteritems for python3"""
+    return iter(d.items())
 
 
 class ETAConfig(EnvConfig):
@@ -188,18 +179,8 @@ def startup_message():
 
 
 def _load_ascii_art():
-    with open(etac.ASCII_ART_PATH, "rt") as f:
+    with open(etac.ASCII_ART_PATH) as f:
         return f.read()
-
-
-def is_python2():
-    """Returns True/False whether the Python version running is 2.X."""
-    return sys.version_info[0] == 2
-
-
-def is_python3():
-    """Returns True/False whether the Python version running is 3.X."""
-    return sys.version_info[0] == 3
 
 
 # Load global ETA config
