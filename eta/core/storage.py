@@ -62,7 +62,6 @@ try:
     import google.auth.compute_engine as gace
     import google.cloud.storage as gcs
     from google.cloud.storage._signing import generate_signed_url_v4
-    import google.oauth2.service_account as gos
     import googleapiclient.discovery as gad
     import googleapiclient.http as gah
     import pysftp
@@ -1713,8 +1712,8 @@ class NeedsGoogleCredentials(object):
     credentials in the following ways (in order of precedence):
 
         (1) manually constructing an instance of the class via the
-            `cls.from_json()` method by providing a path to a valid service
-            account JSON file
+            `cls.from_json()` method by providing a path to a valid credentials
+            file
 
         (2) loading credentials from `~/.eta/google-credentials.json` that have
             been activated via `cls.activate_credentials()`
@@ -1722,24 +1721,8 @@ class NeedsGoogleCredentials(object):
         (3) setting credentials in any manner used by Application Default Credentials
             https://cloud.google.com/docs/authentication/production#automatically
 
-    In the above, the service account JSON file should have syntax similar to
-    the following::
-
-        {
-          "type": "service_account",
-          "project_id": "<project-id>",
-          "private_key_id": "<private-key-id>",
-          "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
-          "client_email": "<account-name>@<project-id>.iam.gserviceaccount.com",
-          "client_id": "<client-id>",
-          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-          "token_uri": "https://oauth2.googleapis.com/token",
-          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-          "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/..."
-        }
-
-    See the following page for more information:
-    https://cloud.google.com/docs/authentication/getting-started
+    In the above, credentials files can have any format supported by
+    https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.load_credentials_from_file
     """
 
     CREDENTIALS_PATH = os.path.join(
@@ -1752,7 +1735,7 @@ class NeedsGoogleCredentials(object):
         `~/.eta/google-credentials.json`.
 
         Args:
-            credentials_path: the path to a service account JSON file
+            credentials_path: the path to a credentials file
         """
         etau.copy_file(credentials_path, cls.CREDENTIALS_PATH)
         logger.info(
@@ -1790,8 +1773,11 @@ class NeedsGoogleCredentials(object):
         """Loads Google credentials as an `google.auth.credentials.Credentials`
         instance.
 
+        The credentials can have any format supported by
+        https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.load_credentials_from_file
+
         Args:
-            credentials_path: an optional path to a service account JSON file.
+            credentials_path: an optional path to a credentials file.
                 If omitted, the strategy described in the class docstring of
                 `NeedsGoogleCredentials` is used to locate credentials
 
@@ -1816,16 +1802,15 @@ class NeedsGoogleCredentials(object):
         else:
             return None, None
 
-        info = etas.read_json(credentials_path)
-        credentials = gos.Credentials.from_service_account_info(info)
+        credentials, _ = ga.load_credentials_from_file(credentials_path)
         return credentials, credentials_path
 
     @classmethod
     def from_json(cls, credentials_path):
-        """Creates a `cls` instance from the given service account JSON file.
+        """Creates a `cls` instance from the given credentials.
 
         Args:
-            credentials_path: the path to a service account JSON file
+            credentials_path: the path to a credentials file
 
         Returns:
             an instance of cls
@@ -2252,7 +2237,7 @@ class GoogleCloudStorageClient(
         #
         # Notes
         # - This may *only* work in Compute Engine/App Engine environments
-        # - This requires the service account to have the
+        # - This requires the credentials to have the
         #   ``roles/iam.serviceAccountTokenCreator`` permission
         #
         if self._is_default_credentials and self._signing_credentials is None:
@@ -2268,7 +2253,7 @@ class GoogleCloudStorageClient(
                     GoogleCredentialsError(
                         "Failed to generate signing credentials for your "
                         "Application Default Credentials. Note that your "
-                        "service account must have the "
+                        "credentials must have the "
                         "'roles/iam.serviceAccountTokenCreator' permission"
                     ),
                     e,
@@ -3223,8 +3208,8 @@ class AzureStorageClient(
 class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
     """Client for reading/writing data from Google Drive.
 
-    The service account credentials you use must have access permissions for
-    any Drive folders you intend to access.
+    The credentials you use must have access permissions for any Drive folders
+    you intend to access.
 
     See `NeedsGoogleCredentials` for more information about the authentication
     strategy used by this class.
