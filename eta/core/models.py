@@ -1587,8 +1587,8 @@ class ModelsManifest(Serializable):
             models_manifest: a ModelsManifest
             error_level: the error level to use, defined as:
 
-                0: raise error if the model cannot be added
-                1: log warning if the model cannot be added
+                0: raise error if a model cannot be added
+                1: log warning if a model cannot be added
                 2: ignore models that cannot be added
         """
         for model in models_manifest:
