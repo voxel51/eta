@@ -32,7 +32,7 @@ jobs:
         run: |
           RELEASE_VERSION=$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/v//') python setup.py sdist bdist_wheel
       - name: Upload wheel
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: wheel
           path: dist/
