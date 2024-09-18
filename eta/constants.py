@@ -17,13 +17,8 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import importlib.metadata as metadata
 import os
-
-try:
-    import importlib.metadata as metadata  # Python 3.8
-except ImportError:
-    import importlib_metadata as metadata  # Python < 3.8
-
 
 try:
     _META = metadata.metadata("voxel51-eta")

@@ -5,11 +5,8 @@ Installs ETA.
 Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
-try:
-    from importlib import metadata
-except ImportError:
-    import importlib_metadata as metadata
 
+from importlib import metadata
 import os
 import re
 from setuptools import setup, find_packages
@@ -31,7 +28,6 @@ INSTALL_REQUIRES = [
     "dill",
     "future",
     "glob2",
-    "importlib-metadata; python_version<'3.8'",
     "jsonlines",
     "numpy",
     "packaging",
@@ -142,13 +138,11 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11"
     ],
     entry_points={"console_scripts": ["eta=eta.core.cli:main"]},
-    python_requires=">=3.6",
+    python_requires=">=3.9",
     cmdclass={"bdist_wheel": BdistWheelCustom},
 )
