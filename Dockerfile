@@ -29,13 +29,7 @@ FROM $BASE_IMAGE
 # Install ETA
 #
 # Notes:
-#   ETA supports Python 2.7.X or Python 3.6.X
-#
-# `ppa:deadsnakes/ppa` is used in order to install Python 3.6 on Ubuntu 16.04
-# https://askubuntu.com/questions/865554/how-do-i-install-python-3-6-using-apt-get
-#
-# `https://bootstrap.pypa.io/get-pip.py` is used to install pip on Python 3.6
-# https://askubuntu.com/questions/889535/how-to-install-pip-for-python-3-6-on-ubuntu-16-10
+#   ETA supports Python 3.9+
 #
 # numpy==1.16.0 is enforced as a last step because tensorflow requires this
 # version to function properly, and some commands here seem to mess with the
@@ -58,8 +52,8 @@ RUN apt-get update \
         git \
         curl \
         wget \
-        python3.6 \
-        python3.6-dev \
+        python3.9 \
+        python3.9-dev \
         libcupti-dev \
         ffmpeg \
         imagemagick \

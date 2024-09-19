@@ -6,9 +6,6 @@ environment is highly recommended because it allows you to maintain a separate
 Python working environment for ETA that operates independently of other
 packages and Python applications on your machine.
 
-> Note that ETA does not currently support Python 3.7, so you must instead
-> have a Python 3.6 distribution installed on your machine
-
 > Note also that it is highly recommended that you do NOT use an Anaconda
 > Python distribution; if you do, the steps described here may fail... Fear
 > not, however, as ETA will install all necessary pacakges for you!
@@ -16,11 +13,7 @@ packages and Python applications on your machine.
 
 ## Creating a virtual environment
 
-* If you want to create a Python 2.7 virtual environment and need a fresh
-Python installtion, download and install it from
-https://www.python.org/downloads
-
-* If you want to create a Python 3.6 virtual environment and need a fresh
+* If you want to create a Python 3.9 virtual environment and need a fresh
 Python installation, follow the steps below:
 
 ```shell
@@ -29,8 +22,8 @@ sudo apt-get update
 sudo apt-get -y --no-install-recommends install software-properties-common
 sudo add-apt-repository -y ppa:deadsnakes/ppa
 sudo apt-get update
-sudo apt-get -y --no-install-recommends install python3.6 python3.6-dev
-sudo ln -s /usr/bin/python3.6 /usr/local/bin/python
+sudo apt-get -y --no-install-recommends install python3.9 python3.9-dev
+sudo ln -s /usr/bin/python3.9 /usr/local/bin/python
 curl https://bootstrap.pypa.io/get-pip.py | sudo python
 sudo pip install --upgrade pip setuptools
 sudo pip install virtualenv
@@ -61,10 +54,7 @@ cd "${ENV_DIR}"
 * Make a virtual environment, modifying the python executable path as needed:
 
 ```shell
-# Example for Python 2.7
-virtualenv -p /usr/local/bin/python eta2
-
-# Example for Python 3.6
+# Example for Python 3.9
 virtualenv -p /usr/local/bin/python3 eta3
 ```
 
@@ -90,7 +80,7 @@ exit() {
 To install ETA in a virtual environment, simply activate the environment:
 
 ```shell
-# Example of activating a Python 3.6 environment created above
+# Example of activating a Python 3.9 environment created above
 eta3
 ```
 
