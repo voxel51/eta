@@ -124,10 +124,10 @@ fi
 # Check Python version
 MSG "Checking version of 'python' binary"
 PYTHON_VERSION=$(python -c 'import platform; print(platform.python_version())')
-if [[ $PYTHON_VERSION == "3.6."* ]] || [[ $PYTHON_VERSION == "2.7."* ]]; then
+if [[ $PYTHON_VERSION == "3.9."* ]]; then
     MSG "Found compatible version: Python ${PYTHON_VERSION}"
 else
-    WARN "Python 3.6.X or 2.7.X are recommended, but Python $PYTHON_VERSION was found"
+    WARN "Python 3.9.X is recommended, but Python $PYTHON_VERSION was found"
     read -p "Are you sure you want to continue? [y/N] " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then

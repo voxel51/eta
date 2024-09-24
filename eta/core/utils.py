@@ -28,25 +28,8 @@ import glob2
 import hashlib
 import importlib
 import inspect
-
-try:
-    # Although StringIO.StringIO's handling of unicode vs bytes is imperfect,
-    # we import it here for use when a text-buffer replacement for `print` in
-    # Python 2.X is required
-    from StringIO import StringIO as _StringIO  # Python 2
-except ImportError:
-    from io import StringIO as _StringIO  # Python 3
-
-try:
-    import urllib.parse as urlparse  # Python 3
-except ImportError:
-    import urlparse  # Python 2
-
-try:
-    from importlib import metadata
-except ImportError:
-    import importlib_metadata as metadata
-
+from importlib import metadata
+from io import StringIO as _StringIO  # Python 3
 import itertools as it
 import logging
 import math
@@ -68,6 +51,7 @@ import tarfile
 import tempfile
 import timeit
 import types
+import urllib.parse as urlparse
 import zipfile as zf
 
 import eta
