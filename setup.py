@@ -13,7 +13,7 @@ from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
 
-VERSION = "0.13.0"
+VERSION = "0.13.1"
 
 
 class BdistWheelCustom(bdist_wheel):
@@ -140,7 +140,7 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11"
+        "Programming Language :: Python :: 3.11",
     ],
     entry_points={"console_scripts": ["eta=eta.core.cli:main"]},
     python_requires=">=3.9",

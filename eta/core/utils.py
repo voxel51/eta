@@ -1612,7 +1612,7 @@ class ProgressBar(object):
 
         num_pct_decimals = 0
 
-        self._total = self._get_total(total)
+        self._total = self._get_total(total, quiet)
         self._iterator = None
         self._iteration = 0
         self._show_percentage = show_percentage
@@ -1673,10 +1673,7 @@ class ProgressBar(object):
 
     def __call__(self, iterable):
         if self._total is None:
-            try:
-                self._total = len(iterable)
-            except:
-                self._total = None
+            self._total = self._get_total(iterable, self._quiet)
 
         if self._total is None:
             self._show_remaining_time = False
@@ -1926,9 +1923,13 @@ class ProgressBar(object):
         self._draw(force=force)
 
     @staticmethod
-    def _get_total(total):
+    def _get_total(total, quiet):
         if is_numeric(total) or total is None:
             return total
+
+        if quiet:
+            # Don't compute `len()` unnecessarily
+            return None
 
         try:
             return len(total)
