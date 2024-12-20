@@ -28,25 +28,8 @@ import glob2
 import hashlib
 import importlib
 import inspect
-
-try:
-    # Although StringIO.StringIO's handling of unicode vs bytes is imperfect,
-    # we import it here for use when a text-buffer replacement for `print` in
-    # Python 2.X is required
-    from StringIO import StringIO as _StringIO  # Python 2
-except ImportError:
-    from io import StringIO as _StringIO  # Python 3
-
-try:
-    import urllib.parse as urlparse  # Python 3
-except ImportError:
-    import urlparse  # Python 2
-
-try:
-    from importlib import metadata
-except ImportError:
-    import importlib_metadata as metadata
-
+from importlib import metadata
+from io import StringIO as _StringIO  # Python 3
 import itertools as it
 import logging
 import math
@@ -68,6 +51,7 @@ import tarfile
 import tempfile
 import timeit
 import types
+import urllib.parse as urlparse
 import zipfile as zf
 
 import eta
@@ -1628,7 +1612,7 @@ class ProgressBar(object):
 
         num_pct_decimals = 0
 
-        self._total = self._get_total(total)
+        self._total = self._get_total(total, quiet)
         self._iterator = None
         self._iteration = 0
         self._show_percentage = show_percentage
@@ -1689,10 +1673,7 @@ class ProgressBar(object):
 
     def __call__(self, iterable):
         if self._total is None:
-            try:
-                self._total = len(iterable)
-            except:
-                self._total = None
+            self._total = self._get_total(iterable, self._quiet)
 
         if self._total is None:
             self._show_remaining_time = False
@@ -1942,9 +1923,13 @@ class ProgressBar(object):
         self._draw(force=force)
 
     @staticmethod
-    def _get_total(total):
+    def _get_total(total, quiet):
         if is_numeric(total) or total is None:
             return total
+
+        if quiet:
+            # Don't compute `len()` unnecessarily
+            return None
 
         try:
             return len(total)
