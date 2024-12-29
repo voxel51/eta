@@ -1122,7 +1122,11 @@ def render_bounding_box(polyline):
     Returns:
         a BoundingBox
     """
-    xx, yy = zip(*list(itertools.chain(*polyline.points)))
+    try:
+        xx, yy = zip(*list(itertools.chain(*polyline.points)))
+    except ValueError:
+        return etag.BoundingBox.empty()
+
     xtl = min(xx)
     ytl = min(yy)
     xbr = max(xx)
