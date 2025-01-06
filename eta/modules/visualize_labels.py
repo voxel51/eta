@@ -6,7 +6,7 @@ Info:
     type: eta.core.types.Module
     version: 0.1.0
 
-Copyright 2017-2024, Voxel51, Inc.
+Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
