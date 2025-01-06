@@ -8,7 +8,7 @@ specifically designed to automate the processing of parallel files and
 directories that arise when ETA modules support both both single inputs or zip
 files containing multiple inputs of the same type.
 
-Copyright 2017-2024, Voxel51, Inc.
+Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
