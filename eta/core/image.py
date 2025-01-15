@@ -8,7 +8,7 @@ Notes::
         produced outside of this library must be converted to RGB. This
         conversion can be done via `eta.core.image.bgr_to_rgb()`
 
-Copyright 2017-2024, Voxel51, Inc.
+Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
 # pragma pylint: disable=redefined-builtin
@@ -1122,7 +1122,11 @@ def render_bounding_box(polyline):
     Returns:
         a BoundingBox
     """
-    xx, yy = zip(*list(itertools.chain(*polyline.points)))
+    try:
+        xx, yy = zip(*list(itertools.chain(*polyline.points)))
+    except ValueError:
+        return etag.BoundingBox.empty()
+
     xtl = min(xx)
     ytl = min(yy)
     xbr = max(xx)
