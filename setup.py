@@ -13,7 +13,7 @@ from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
 
-VERSION = "0.13.1"
+VERSION = "0.14.0"
 
 
 class BdistWheelCustom(bdist_wheel):
