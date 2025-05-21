@@ -1412,6 +1412,8 @@ class S3StorageClient(_BotoStorageClient, NeedsAWSCredentials):
         if credentials is not None:
             credentials["region_name"] = credentials.pop("region", None)
 
+        credentials.pop("credential_process", None)
+
         try:
             super(S3StorageClient, self).__init__(
                 credentials,
@@ -1684,10 +1686,12 @@ class MinIOStorageClient(_BotoStorageClient, NeedsMinIOCredentials):
             raise MinIOCredentialsError("No MinIO credentials found")
 
         _credentials = {
-            "aws_access_key_id": credentials["access_key"],
-            "aws_secret_access_key": credentials["secret_access_key"],
             "region_name": credentials.get("region", "us-east-1"),
         }
+        if "access_key" in credentials:
+            _credentials["aws_access_key_id"] = credentials["access_key"]
+        if "secret_access_key" in credentials:
+            _credentials["aws_secret_access_key"] = credentials["secret_access_key"]
 
         alias = credentials.pop("alias", None)
         endpoint_url = credentials.pop("endpoint_url")
