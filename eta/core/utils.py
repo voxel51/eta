@@ -1922,8 +1922,7 @@ class ProgressBar(object):
         """
         self._draw(force=force)
 
-    @staticmethod
-    def _get_total(total, quiet):
+    def _get_total(self, total, quiet):
         if is_numeric(total) or total is None:
             return total
 
