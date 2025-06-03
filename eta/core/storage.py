@@ -1412,7 +1412,7 @@ class S3StorageClient(_BotoStorageClient, NeedsAWSCredentials):
         if credentials is not None:
             credentials["region_name"] = credentials.pop("region", None)
 
-        credentials.pop("credential_process", None)
+            credentials.pop("credential_process", None)
 
         try:
             super(S3StorageClient, self).__init__(
