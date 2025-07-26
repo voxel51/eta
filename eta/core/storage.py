@@ -2266,7 +2266,7 @@ class GoogleCloudStorageClient(
                         e,
                     )
             elif isinstance(self._client._credentials, impersonated_credentials.Credentials):
-                return self._client._credentials
+                self._signing_credentials = self._client._credentials
             else:
                 try:
                     r = gatr.Request()
