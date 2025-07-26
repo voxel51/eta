@@ -2252,6 +2252,12 @@ class GoogleCloudStorageClient(
             _ = self._get_blob(cloud_path) 
             if isinstance(self._client._credentials, IdentityPoolCredentials):
                 try:
+                    if not hasattr(self._client._credentials, "service_account_email"):
+                        raise GoogleCredentialsError(
+                            "The 'service_account_email' attribute is missing from the "
+                            "IdentityPoolCredentials instance. Ensure that your credentials "
+                            "are properly configured."
+                        )
                     self._signing_credentials = impersonated_credentials.Credentials(
                         source_credentials=self._client._credentials,
                         target_principal=self._client._credentials.service_account_email,
