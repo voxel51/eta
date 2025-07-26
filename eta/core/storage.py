@@ -62,6 +62,8 @@ try:
     import google.auth.compute_engine as gace
     import google.cloud.storage as gcs
     from google.cloud.storage._signing import generate_signed_url_v4
+    from google.auth import impersonated_credentials
+    from google.auth.identity_pool import Credentials as IdentityPoolCredentials
     import googleapiclient.discovery as gad
     import googleapiclient.http as gah
     import pysftp
@@ -2247,21 +2249,38 @@ class GoogleCloudStorageClient(
         if self._is_default_credentials and self._signing_credentials is None:
             # May need to ensure the client has been used at least once
             # https://gist.github.com/jezhumble/91051485db4462add82045ef9ac2a0ec?permalink_comment_id=3585157#gistcomment-3585157
-            _ = self._get_blob(cloud_path)
-
-            try:
-                r = gatr.Request()
-                self._signing_credentials = gace.IDTokenCredentials(r, "")
-            except Exception as e:
-                six.raise_from(
-                    GoogleCredentialsError(
-                        "Failed to generate signing credentials for your "
-                        "Application Default Credentials. Note that your "
-                        "credentials must have the "
-                        "'roles/iam.serviceAccountTokenCreator' permission"
-                    ),
-                    e,
-                )
+            _ = self._get_blob(cloud_path) 
+            if isinstance(self._client._credentials, IdentityPoolCredentials):
+                try:
+                    self._signing_credentials = impersonated_credentials.Credentials(
+                        source_credentials=self._client._credentials,
+                        target_principal=self._client._credentials.service_account_email,
+                        target_scopes=['https://www.googleapis.com/auth/cloud-platform'],
+                    )
+                except Exception as e:
+                    six.raise_from(
+                        GoogleCredentialsError(
+                            "Failed to generate signing credentials for your "
+                            "Application Default Credentials."
+                        ),
+                        e,
+                    )
+            elif isinstance(self._client._credentials, impersonated_credentials.Credentials):
+                return self._client._credentials
+            else:
+                try:
+                    r = gatr.Request()
+                    self._signing_credentials = gace.IDTokenCredentials(r, "")
+                except Exception as e:
+                    six.raise_from(
+                        GoogleCredentialsError(
+                            "Failed to generate signing credentials for your "
+                            "Application Default Credentials. Note that your "
+                            "credentials must have the "
+                            "'roles/iam.serviceAccountTokenCreator' permission"
+                        ),
+                        e,
+                    )
 
         if self._signing_credentials is not None:
             return self._signing_credentials
