@@ -13,7 +13,7 @@ from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
 
-VERSION = "0.14.3"
+VERSION = "0.14.4"
 
 
 class BdistWheelCustom(bdist_wheel):
@@ -31,6 +31,7 @@ INSTALL_REQUIRES = [
     "jsonlines",
     "numpy",
     "packaging",
+    "paramiko>=3,<4",
     "Pillow>=6.2",
     "py7zr",
     "python-dateutil",
