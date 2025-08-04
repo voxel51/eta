@@ -121,7 +121,9 @@ setup(
             "google-api-python-client",
             "google-cloud-storage>=1.36",
             "httplib2<=0.15",
-            "pysftp",
+            "pysftp==0.2.9",
+            # paramiko 4.0 no longer supports DSA Encryption (DSSKey)
+            "paramiko<4.0",
         ],
     },
     classifiers=[
