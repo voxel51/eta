@@ -9,20 +9,6 @@ Matthew Lightman, matthew@voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 import logging
 import os
@@ -237,7 +223,7 @@ class Balancer(DatasetTransformer):
         ]
 
         if not any(
-            all(specified[k] == v for k, v in iteritems(pattern))
+            all(specified[k] == v for k, v in pattern.items())
             for pattern in acceptable_patterns
         ):
             raise ValueError(
@@ -667,7 +653,7 @@ class Balancer(DatasetTransformer):
                                     )
                                 )
 
-            for attr_set in itervalues(helper_dict):
+            for attr_set in helper_dict.values():
                 helper[1].extend(list(attr_set))
 
             if helper[1]:
@@ -866,7 +852,7 @@ class Balancer(DatasetTransformer):
         """
         v_pos = np.maximum(vector, 0)
         v_neg = np.abs(np.minimum(vector, 0))
-        vector2 = v_pos + (v_neg ** self.negative_power)
+        vector2 = v_pos + (v_neg**self.negative_power)
         try:
             return np.sum(vector2, axis=1)
         except np.AxisError:

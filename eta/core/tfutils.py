@@ -4,20 +4,6 @@ Core utilities for working with TensorFlow models.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from copy import copy
 import logging
 import os
@@ -335,7 +321,7 @@ def make_tf_config(config_proto=None):
             # Remove GPU options, just for clarity
             tf_config = {
                 k: v
-                for k, v in iteritems(tf_config)
+                for k, v in tf_config.items()
                 if not k.startswith("gpu_options.")
             }
 
@@ -354,7 +340,7 @@ def _set_proto_fields(proto, d):
         chunks = field.split(".", 1)
         return tuple(chunks) if len(chunks) == 2 else (chunks[0], None)
 
-    for field, val in iteritems(d):
+    for field, val in d.items():
         field, sub = _split_field(field)
         try:
             if sub:

@@ -11,7 +11,11 @@
         "format_videos": {
             "name": "format_videos",
             "tunable_parameters": [
-                "fps", "size", "scale", "max_fps", "max_size"
+                "fps",
+                "size",
+                "scale",
+                "max_fps",
+                "max_size"
             ],
             "set_parameters": {}
         },

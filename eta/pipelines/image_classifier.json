@@ -6,16 +6,14 @@
         "description": "A pipeline for classifying images"
     },
     "inputs": ["images_dir"],
-    "outputs": [
-        "image_set_labels",
-        "features_dir",
-        "annotated_images_dir"
-    ],
+    "outputs": ["image_set_labels", "features_dir", "annotated_images_dir"],
     "modules": {
         "apply_image_classifier": {
             "name": "apply_image_classifier",
             "tunable_parameters": [
-                "classifier", "confidence_threshold", "record_top_k_probs"
+                "classifier",
+                "confidence_threshold",
+                "record_top_k_probs"
             ],
             "set_parameters": {}
         },

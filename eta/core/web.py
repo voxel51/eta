@@ -4,20 +4,6 @@ Tools for downloading files from the web.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import io
 import logging
 import re
@@ -230,7 +216,7 @@ class GoogleDriveSession(WebSession):
 
         # Handle download warning for large files
         # https://stackoverflow.com/a/39225272
-        for key, token in iteritems(r.cookies):
+        for key, token in r.cookies.items():
             if key.startswith("download_warning"):
                 logger.debug("Retrying request with a confirm parameter")
                 r.close()

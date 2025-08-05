@@ -9,18 +9,6 @@ Info:
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
 
 import logging
 import sys
@@ -135,7 +123,8 @@ def _crop(crop_box):
         xs = img.shape[1]
         ys = img.shape[0]
         return img[
-            int(tl.y * ys) : int(br.y * ys), int(tl.x * xs) : int(br.x * xs),
+            int(tl.y * ys) : int(br.y * ys),
+            int(tl.x * xs) : int(br.x * xs),
         ]
 
     return crop_image

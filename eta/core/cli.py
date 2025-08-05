@@ -4,20 +4,6 @@ Definition of the `eta` command-line interface (CLI).
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-import six
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
 
 import argparse
 from collections import defaultdict
@@ -624,7 +610,7 @@ class ModelsCommand(Command):
 
         if args.search:
             models = etamode.find_all_models()
-            models = {k: v for k, v in iteritems(models) if args.search in k}
+            models = {k: v for k, v in models.items() if args.search in k}
             print(_render_names_in_dirs_str(models))
 
         if args.find:
@@ -754,7 +740,7 @@ class ModulesCommand(Command):
 
         if args.search:
             modules = etamodu.find_all_metadata()
-            modules = {k: v for k, v in iteritems(modules) if args.search in k}
+            modules = {k: v for k, v in modules.items() if args.search in k}
             print(_render_names_in_dirs_str(modules))
 
         if args.find:
@@ -778,7 +764,7 @@ class ModulesCommand(Command):
             etame.generate(args.metadata)
 
         if args.refresh_metadata:
-            for json_path in itervalues(etamodu.find_all_metadata()):
+            for json_path in etamodu.find_all_metadata().values():
                 py_path = os.path.splitext(json_path)[0] + ".py"
                 print("Generating metadata for module '%s'" % py_path)
                 etame.generate(py_path)
@@ -846,7 +832,7 @@ class PipelinesCommand(Command):
         if args.search:
             pipelines = etap.find_all_metadata()
             pipelines = {
-                k: v for k, v in iteritems(pipelines) if args.search in k
+                k: v for k, v in pipelines.items() if args.search in k
             }
             print(_render_names_in_dirs_str(pipelines))
 
@@ -893,7 +879,7 @@ class ConstantsCommand(Command):
         _print_constants_table(
             {
                 k: v
-                for k, v in iteritems(vars(etac))
+                for k, v in vars(etac).items()
                 if not k.startswith("_") and k == k.upper()
             }
         )
@@ -3881,7 +3867,7 @@ _SEARCH_COMPARISON_OPERATORS = {
 
 def _make_any_match_fcn(value, field_map):
     value = etau.remove_escape_chars(value, ",:=<>").strip()
-    searcher_map = {s.name: s for s in itervalues(field_map)}
+    searcher_map = {s.name: s for s in field_map.values()}
 
     def _any_match_fcn(record):
         for name in record:
@@ -4156,7 +4142,7 @@ def _parse_google_drive_mime_type(mime_type):
 
 
 def _parse_datetime(datetime_or_str):
-    if isinstance(datetime_or_str, six.string_types):
+    if isinstance(datetime_or_str, str):
         dt = dateutil.parser.isoparse(datetime_or_str)
     else:
         dt = datetime_or_str
@@ -4196,7 +4182,7 @@ def _render_names_in_dirs_str(d):
 
 def _group_by_dir(d):
     dd = defaultdict(list)
-    for name, path in iteritems(d):
+    for name, path in d.items():
         dd[os.path.dirname(path)].append(name)
 
     return dd
@@ -4213,7 +4199,7 @@ def _has_subparsers(parser):
 def _iter_subparsers(parser):
     for action in parser._actions:
         if isinstance(action, argparse._SubParsersAction):
-            for subparser in itervalues(action.choices):
+            for subparser in action.choices.values():
                 yield subparser
 
 

@@ -5,20 +5,6 @@ source.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 import logging
 import os
@@ -327,7 +313,7 @@ def _get_module_docstring(module_name):
 
 def _get_module_config_docstring(module_name):
     __import__(module_name)
-    for cls in itervalues(sys.modules[module_name].__dict__):
+    for cls in sys.modules[module_name].__dict__.values():
         if isinstance(cls, type) and issubclass(cls, etam.BaseModuleConfig):
             logger.info("Found module config class '%s'", cls.__name__)
             return cls.__doc__
@@ -359,7 +345,7 @@ def _build_module_metadata(module_name, mds, dds, pds):
     try:
         logger.info("*** Building inputs")
         inputs = []
-        for iname, ispec in iteritems(dds.inputs):
+        for iname, ispec in dds.inputs.items():
             ibuilder = (
                 etam.ModuleInputConfig.builder()
                 .set(name=iname)
@@ -377,7 +363,7 @@ def _build_module_metadata(module_name, mds, dds, pds):
     try:
         logger.info("*** Building outputs")
         outputs = []
-        for oname, ospec in iteritems(dds.outputs):
+        for oname, ospec in dds.outputs.items():
             obuilder = (
                 etam.ModuleOutputConfig.builder()
                 .set(name=oname)
@@ -395,7 +381,7 @@ def _build_module_metadata(module_name, mds, dds, pds):
     try:
         logger.info("*** Building parameters")
         parameters = []
-        for pname, pspec in iteritems(pds.parameters):
+        for pname, pspec in pds.parameters.items():
             parameter_builder = (
                 etam.ModuleParameterConfig.builder()
                 .set(name=pname)

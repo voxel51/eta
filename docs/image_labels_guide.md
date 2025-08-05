@@ -26,7 +26,6 @@ store a collection of `ImageLabels` instances describing multiple images.
 `ImageSetLabels` instances can have their own global schema that controls the
 content that can be contained in any image in the collection.
 
-
 ## Example Use
 
 The following code demonstrates a toy use of the `ImageLabels` and
@@ -189,9 +188,7 @@ print(image_set_labels.get_active_schema())
                 "scene": {
                     "type": "eta.core.data.CategoricalAttribute",
                     "name": "scene",
-                    "categories": [
-                        "intersection"
-                    ]
+                    "categories": ["intersection"]
                 },
                 "on_road": {
                     "type": "eta.core.data.BooleanAttribute",

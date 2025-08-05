@@ -7,20 +7,6 @@ the ETA pipeline system.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 from glob import glob
 import logging
@@ -221,7 +207,7 @@ def load_all_metadata():
         PipelineMetadataError: if any of the pipeline metadata files are
             invalid
     """
-    return {k: _load_metadata(v) for k, v in iteritems(find_all_metadata())}
+    return {k: _load_metadata(v) for k, v in find_all_metadata().items()}
 
 
 def load_metadata(pipeline_name):
@@ -615,7 +601,7 @@ class PipelineModule(Configurable):
         self._verify_has_parameters(set_parameters.keys())
         self._verify_parameter_values(set_parameters)
 
-        for pname, param in iteritems(self.metadata.parameters):
+        for pname, param in self.metadata.parameters.items():
             # Verify that required parameters are active
             is_tunable = pname in tunable_parameters
             is_set = pname in set_parameters
@@ -643,7 +629,7 @@ class PipelineModule(Configurable):
                 )
 
     def _verify_parameter_values(self, param_dict):
-        for name, val in iteritems(param_dict):
+        for name, val in param_dict.items():
             if not self.metadata.is_valid_parameter(name, val):
                 raise PipelineMetadataError(
                     "'%s' is an invalid value for parameter '%s' of module "
@@ -951,7 +937,7 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         self.info = PipelineInfo(config.info)
 
         # Parse modules
-        for name, module_config in iteritems(config.modules):
+        for name, module_config in config.modules.items():
             module = PipelineModule(name, module_config)
             self.modules[name] = module
             self.parameters.update(module.parameters)
@@ -1077,9 +1063,9 @@ def _validate_module_connections(modules, connections):
     Raises:
         PipelineMetadataError: if the modules were not properly connected
     """
-    for mname, module in iteritems(modules):
+    for mname, module in modules.items():
         # Validate inputs
-        for iname, node in iteritems(module.metadata.inputs):
+        for iname, node in module.metadata.inputs.items():
             node_str = PipelineNode.get_node_str(mname, iname)
             num_sources = len(_get_sources_with_sink(node_str, connections))
             if num_sources == 0 and node.is_required:
@@ -1095,7 +1081,7 @@ def _validate_module_connections(modules, connections):
                 )
 
         # Validate outputs
-        for oname, node in iteritems(module.metadata.outputs):
+        for oname, node in module.metadata.outputs.items():
             node_str = PipelineNode.get_node_str(mname, oname)
             sinks = _get_sinks_with_source(node_str, connections)
             if not sinks and node.is_required:

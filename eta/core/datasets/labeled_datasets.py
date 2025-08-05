@@ -7,18 +7,6 @@ voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
 
 import copy
 import logging
@@ -1563,7 +1551,9 @@ class LabeledVideoDataset(LabeledDataset):
             path: the path to write the video
         """
         writer = etav.FFmpegVideoWriter(
-            path, video_reader.frame_rate, video_reader.frame_size,
+            path,
+            video_reader.frame_rate,
+            video_reader.frame_size,
         )
         with writer:
             for img in video_reader:

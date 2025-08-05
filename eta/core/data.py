@@ -4,20 +4,6 @@ Core tools and data structures for working with data.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 import logging
 import os
@@ -60,7 +46,7 @@ def majority_vote_categorical_attrs(attrs, confidence_weighted=False):
             accums[attr.name].add(attr.value, weight=attr.confidence or 0.0)
 
     voted_attrs = AttributeContainer()
-    for name, accum in iteritems(accums):
+    for name, accum in accums.items():
         value = accum.argmax(weighted=confidence_weighted)
         confidence = accum.get_average_weight(value) or None
         attr = CategoricalAttribute(name, value, confidence=confidence)
@@ -1154,7 +1140,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
     @property
     def has_exclusive_attributes(self):
         """Whether this schema contains at least one exclusive attribute."""
-        return any(schema.is_exclusive for schema in itervalues(self.schema))
+        return any(schema.is_exclusive for schema in self.schema.values())
 
     def iter_attributes(self):
         """Returns an iterator over the (name, AttributeSchema) pairs in this
@@ -1163,7 +1149,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         Returns:
             an iterator over (name, AttributeSchema) pairs
         """
-        return iteritems(self.schema)
+        return self.schema.items()
 
     def has_attribute(self, name):
         """Whether the schema has an Attribute with the given name.
@@ -1332,7 +1318,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         # Enforce attribute exclusivity, if necessary
         if self.has_exclusive_attributes:
             counts = attrs.get_attribute_counts()
-            for name, count in iteritems(counts):
+            for name, count in counts.items():
                 if count > 1 and self.is_exclusive_attribute(name):
                     raise AttributeContainerSchemaError(
                         "Attribute '%s' is exclusive but appears %d times in "
@@ -1351,7 +1337,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         """
         self.validate_schema_type(schema)
 
-        for name, attr_schema in iteritems(self.schema):
+        for name, attr_schema in self.schema.items():
             if not schema.has_attribute(name):
                 raise AttributeContainerSchemaError(
                     "Attribute '%s' does not appear in schema" % name
@@ -1411,7 +1397,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         if schema is not None:
             schema = {
                 attr_name: AttributeSchema.from_dict(asd)
-                for attr_name, asd in iteritems(schema)
+                for attr_name, asd in schema.items()
             }
 
         return cls(schema=schema)
@@ -1486,7 +1472,7 @@ class MaskIndex(etas.Serializable):
             a MaskIndex
         """
         mask_index = cls()
-        for index, value in iteritems(labels_map):
+        for index, value in labels_map.items():
             mask_index[index] = CategoricalAttribute("label", value)
 
         return mask_index
@@ -1505,7 +1491,7 @@ class MaskIndex(etas.Serializable):
         if index is not None:
             index = {
                 int(value): Attribute.from_dict(ad)
-                for value, ad in iteritems(index)
+                for value, ad in index.items()
             }
 
         return cls(index=index)
@@ -1816,8 +1802,7 @@ class DataRecords(etas.Container):
         return len(self)
 
     def slice(self, field):
-        """Returns a list of `field` values for the records in the container.
-        """
+        """Returns a list of `field` values for the records in the container."""
         return [getattr(r, field) for r in self.__elements__]
 
     def subset_from_indices(self, indices):
