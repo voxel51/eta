@@ -2,7 +2,7 @@
 Core definition of `DatasetTransformer`s, which define the interface and
 implementations of applying transformations to `BuilderDataset`s.
 
-Copyright 2017-2020 Voxel51, Inc.
+Copyright 2017-2025 Voxel51, Inc.
 voxel51.com
 
 Matthew Lightman, matthew@voxel51.com

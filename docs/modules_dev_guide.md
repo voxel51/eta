@@ -515,7 +515,7 @@ Info:
     type: {{the type of the module}}
     version: {{the module version}}
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 '''
 #

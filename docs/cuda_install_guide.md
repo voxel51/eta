@@ -173,6 +173,6 @@ https://medium.com/@zhanwenchen/install-cuda-and-cudnn-for-tensorflow-gpu-on-ubu
 
 ## Copyright
 
-Copyright 2017-2019, Voxel51, Inc.<br> voxel51.com
+Copyright 2017-2025, Voxel51, Inc.<br> voxel51.com
 
 Yash Bhalgat, yash@voxel51.com

@@ -1,7 +1,7 @@
 """
 Core methods for splitting iterables into subsets.
 
-Copyright 2017-2020 Voxel51, Inc.
+Copyright 2017-2025 Voxel51, Inc.
 voxel51.com
 
 Matthew Lightman, matthew@voxel51.com
