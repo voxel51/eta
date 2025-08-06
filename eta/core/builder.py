@@ -4,20 +4,6 @@ Core pipeline building system.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 import copy
 import logging
@@ -215,7 +201,7 @@ class PipelineBuildRequest(Configurable):
 
     def _validate_inputs(self):
         # Validate inputs
-        for iname, ipath in iteritems(self.inputs):
+        for iname, ipath in self.inputs.items():
             if not self.metadata.has_input(iname):
                 raise PipelineBuildRequestError(
                     "Pipeline '%s' has no input '%s'" % (self.pipeline, iname)
@@ -229,7 +215,7 @@ class PipelineBuildRequest(Configurable):
             self.inputs[iname] = os.path.abspath(ipath)
 
         # Ensure that required inputs were supplied
-        for miname, miobj in iteritems(self.metadata.inputs):
+        for miname, miobj in self.metadata.inputs.items():
             if miobj.is_required and miname not in self.inputs:
                 raise PipelineBuildRequestError(
                     "Required input '%s' of pipeline '%s' was not "
@@ -238,7 +224,7 @@ class PipelineBuildRequest(Configurable):
 
     def _validate_outputs(self):
         # Validate outputs
-        for oname, opath in iteritems(self.outputs):
+        for oname, opath in self.outputs.items():
             if not self.metadata.has_output(oname):
                 raise PipelineBuildRequestError(
                     "Pipeline '%s' has no output '%s'" % (self.pipeline, oname)
@@ -255,7 +241,7 @@ class PipelineBuildRequest(Configurable):
 
     def _validate_parameters(self):
         # Validate parameters
-        for pname, pval in iteritems(self.parameters):
+        for pname, pval in self.parameters.items():
             if not self.metadata.has_tunable_parameter(pname):
                 raise PipelineBuildRequestError(
                     "Pipeline '%s' has no tunable parameter '%s'"
@@ -271,7 +257,7 @@ class PipelineBuildRequest(Configurable):
                 self.parameters[pname] = os.path.abspath(pval)
 
         # Ensure that required parmeters were supplied
-        for mpname, mpobj in iteritems(self.metadata.parameters):
+        for mpname, mpobj in self.metadata.parameters.items():
             if mpobj.is_required and mpname not in self.parameters:
                 raise PipelineBuildRequestError(
                     "Required parameter '%s' of pipeline '%s' was not "
@@ -463,12 +449,12 @@ class PipelineBuilder(object):
         pmeta = self.request.metadata
 
         # Distribute pipeline inputs
-        for piname, pipath in iteritems(self.request.inputs):
+        for piname, pipath in self.request.inputs.items():
             for sink in pmeta.get_input_sinks(piname):
                 self.module_inputs[sink.module][sink.node] = pipath
 
         # Distribute published outputs
-        for poname, popath in iteritems(self.request.outputs):
+        for poname, popath in self.request.outputs.items():
             if popath:
                 source = pmeta.get_output_source(poname)
                 self.module_outputs[source.module][source.node] = popath
@@ -477,7 +463,7 @@ class PipelineBuilder(object):
         for module in pmeta.execution_order:
             mmeta = pmeta.modules[module].metadata  # ModuleMetadata
             oconns = pmeta.get_outgoing_connections(module)
-            for oname, osinks in iteritems(oconns):
+            for oname, osinks in oconns.items():
                 if oname in self.module_outputs[module]:
                     # This is either a published output or a node with multiple
                     # outgoing connections; in either case, we already have
@@ -498,7 +484,7 @@ class PipelineBuilder(object):
                         self.module_inputs[osink.module][osink.node] = opath
 
         # Populate module parameters
-        for param in itervalues(pmeta.parameters):
+        for param in pmeta.parameters.values():
             val = _get_param_value(param, self.request)
             # We specifically omit any parameters that are set to `None` so
             # that the module's default parameter will be used
@@ -661,8 +647,7 @@ class PipelineBuilder(object):
 
 
 class PipelineBuilderError(Exception):
-    """Exception raised when an invalid action is taken with a PipelineBuilder.
-    """
+    """Exception raised when an invalid action is taken with a PipelineBuilder."""
 
     pass
 

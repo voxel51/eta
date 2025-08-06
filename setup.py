@@ -13,7 +13,7 @@ from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
 
-VERSION = "0.14.4"
+VERSION = "0.15.0"
 
 
 class BdistWheelCustom(bdist_wheel):
@@ -26,7 +26,6 @@ class BdistWheelCustom(bdist_wheel):
 INSTALL_REQUIRES = [
     "argcomplete",
     "dill",
-    "future",
     "glob2",
     "jsonlines",
     "numpy",
@@ -39,7 +38,6 @@ INSTALL_REQUIRES = [
     "rarfile",
     "requests",
     "retrying",
-    "six",
     "scikit-image",
     "sortedcontainers",
     "tabulate",

@@ -4,20 +4,6 @@ Core data structures for working with data that can be read/written to disk.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from base64 import b64encode, b64decode
 from collections import OrderedDict
 import copy
@@ -554,7 +540,7 @@ def _recurse(v, reflective):
 
     if isinstance(v, dict):
         return OrderedDict(
-            (str(ki), _recurse(vi, reflective)) for ki, vi in iteritems(v)
+            (str(ki), _recurse(vi, reflective)) for ki, vi in v.items()
         )
 
     if isinstance(v, np.ndarray):
@@ -676,7 +662,7 @@ class Set(Serializable):
         return key in self.__elements__
 
     def __iter__(self):
-        return iter(itervalues(self.__elements__))
+        return iter(self.__elements__.values())
 
     def __len__(self):
         return len(self.__elements__)
@@ -881,7 +867,7 @@ class Set(Serializable):
             a Set with elements matching the filters
         """
         _set = self.empty()
-        _set.add_iterable(itervalues(self._filter_elements(filters, match)))
+        _set.add_iterable(self._filter_elements(filters, match).values())
         return _set
 
     def sort_by(self, attr, reverse=False):
@@ -900,7 +886,7 @@ class Set(Serializable):
 
         elements = OrderedDict(
             sorted(
-                iteritems(self.__elements__),
+                self.__elements__.items(),
                 reverse=reverse,
                 key=field_none_last,
             )
@@ -933,7 +919,7 @@ class Set(Serializable):
         # Note that we serialize the elements as a list; the keys are
         # re-generated during de-serialization
         #
-        elements_list = list(itervalues(self.__elements__))
+        elements_list = list(self.__elements__.values())
         d[self._ELE_ATTR] = _recurse(elements_list, False)
 
         return d
@@ -1021,7 +1007,7 @@ class Set(Serializable):
             keys = [keys]
 
         return OrderedDict(
-            (k, e) for k, e in iteritems(self.__elements__) if k in set(keys)
+            (k, e) for k, e in self.__elements__.items() if k in set(keys)
         )
 
     def _pop_elements_with_keys(self, keys):
@@ -1037,7 +1023,7 @@ class Set(Serializable):
         match_fcn = lambda e: match(f(e) for f in filters)
 
         return OrderedDict(
-            (k, e) for k, e in iteritems(self.__elements__) if match_fcn(e)
+            (k, e) for k, e in self.__elements__.items() if match_fcn(e)
         )
 
     def _pop_elements(self, filters, match):
@@ -1045,7 +1031,7 @@ class Set(Serializable):
 
         pop = []
         del_keys = []
-        for k, e in iteritems(self.__elements__):
+        for k, e in self.__elements__.items():
             if match_fcn(e):
                 pop.append(e)
                 del_keys.append(k)
@@ -1610,7 +1596,7 @@ class BigSet(BigMixin, Set):
 
         elements = OrderedDict(
             sorted(
-                iteritems(self.__elements__),
+                self.__elements__.items(),
                 reverse=reverse,
                 key=field_none_last,
             )
@@ -1754,7 +1740,7 @@ class BigSet(BigMixin, Set):
             return match(f(ele) for f in filters)
 
         return OrderedDict(
-            (k, e) for k, e in iteritems(self.__elements__) if run_filters(k)
+            (k, e) for k, e in self.__elements__.items() if run_filters(k)
         )
 
     @property

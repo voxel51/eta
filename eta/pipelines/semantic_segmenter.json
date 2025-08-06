@@ -6,10 +6,7 @@
         "description": "A pipeline for performing semantic segmentation on the frames of videos"
     },
     "inputs": ["video"],
-    "outputs": [
-        "labels",
-        "annotated_video"
-    ],
+    "outputs": ["labels", "annotated_video"],
     "modules": {
         "format_videos": {
             "name": "format_videos",
@@ -21,10 +18,7 @@
         },
         "apply_image_semantic_segmenter": {
             "name": "apply_image_semantic_segmenter",
-            "tunable_parameters": [
-                "segmenter",
-                "store_mask_index"
-            ],
+            "tunable_parameters": ["segmenter", "store_mask_index"],
             "set_parameters": {}
         },
         "visualize_labels": {

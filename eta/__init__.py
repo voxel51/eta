@@ -4,20 +4,6 @@ ETA package initialization.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 import os
 import sys
@@ -209,5 +195,5 @@ config = ETAConfig.from_json(etac.CONFIG_JSON_PATH)
 sys.path = sys.path[:1] + config.pythonpath_dirs + sys.path[1:]
 
 # Set any environment variables
-for var, val in iteritems(config.environment_vars):
+for var, val in config.environment_vars.items():
     os.environ[var] = val

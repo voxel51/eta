@@ -1,22 +1,13 @@
 {
     "config_dir": "{{eta}}/configs",
     "output_dir": "{{eta}}/out",
-    "module_dirs": [
-        "{{eta}}/modules",
-        "./modules"
-    ],
-    "pipeline_dirs": [
-        "{{eta}}/pipelines",
-        "./pipelines"
-    ],
-    "models_dirs": [
-        "{{eta}}/models",
-        "./models"
-    ],
+    "module_dirs": ["{{eta}}/modules", "./modules"],
+    "pipeline_dirs": ["{{eta}}/pipelines", "./pipelines"],
+    "models_dirs": ["{{eta}}/models", "./models"],
     "pythonpath_dirs": [],
     "environment_vars": {},
     "tf_config": {
-        "gpu_options.per_process_gpu_memory_fraction": 0.90
+        "gpu_options.per_process_gpu_memory_fraction": 0.9
     },
     "patterns": {},
     "max_model_versions_to_keep": -1,

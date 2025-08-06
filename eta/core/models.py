@@ -7,20 +7,6 @@ the ETA model management system.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 from distutils.version import LooseVersion
 import logging
@@ -135,9 +121,7 @@ def find_all_models(downloaded_only=False):
             full paths to the model files
     """
     models = _list_models(downloaded_only=downloaded_only)[0]
-    return {
-        name: md[0].get_path_in_dir(md[1]) for name, md in iteritems(models)
-    }
+    return {name: md[0].get_path_in_dir(md[1]) for name, md in models.items()}
 
 
 def is_model_downloaded(name):
@@ -222,17 +206,17 @@ def flush_old_models():
 
     # Group by base name
     bmodels = defaultdict(list)
-    for model, mdir in itervalues(downloaded_models):
+    for model, mdir in downloaded_models.values():
         bmodels[model.base_name].append((model, mdir))
 
     # Sort by version (newest first)
     bmodels = {
         k: sorted(v, reverse=True, key=lambda vi: vi[0].comp_version)
-        for k, v in iteritems(bmodels)
+        for k, v in bmodels.items()
     }
 
     # Flush old models
-    for base_name, models_list in iteritems(bmodels):
+    for base_name, models_list in bmodels.items():
         num_to_flush = len(models_list) - max_vers
         if num_to_flush > 0:
             logger.info(
@@ -490,7 +474,7 @@ def register_model_dry_run(name, models_dir, base_filename=None):
     # Verify novelty
     logger.info("Verifying that model '%s' does not yet exist", name)
     models = _list_models()[0]
-    base_names = [mm[0].base_name for mm in itervalues(models)]
+    base_names = [mm[0].base_name for mm in models.values()]
     if name in models:
         raise ModelError("Model '%s' already exists" % name)
 
@@ -625,7 +609,7 @@ def _find_latest_model(base_name):
     _mdir = None
 
     models, manifests = _list_models()
-    for model, mdir in itervalues(models):
+    for model, mdir in models.values():
         if model.base_name == base_name:
             if _model is None or model.comp_version > _model.comp_version:
                 _model = model
