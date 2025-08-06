@@ -4,20 +4,6 @@ Core tools and data structures for working with objects in images and videos.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 from copy import deepcopy
 import logging
@@ -610,7 +596,7 @@ class VideoObject(
     @property
     def has_detections(self):
         """Whether the object has at least one non-empty DetectedObject."""
-        return any(not dobj.is_empty for dobj in itervalues(self.frames))
+        return any(not dobj.is_empty for dobj in self.frames.values())
 
     def iter_attributes(self):
         """Returns an iterator over the object-level attributes of the object.
@@ -738,9 +724,7 @@ class VideoObject(
         object.
         """
         self.frames = {
-            fn: dobj
-            for fn, dobj in iteritems(self.frames)
-            if not dobj.is_empty
+            fn: dobj for fn, dobj in self.frames.items() if not dobj.is_empty
         }
 
     def clear_attributes(self):
@@ -879,7 +863,7 @@ class VideoObject(
         if frames is not None:
             frames = {
                 int(fn): DetectedObject.from_dict(do)
-                for fn, do in iteritems(frames)
+                for fn, do in frames.items()
             }
 
         return cls(
@@ -1099,7 +1083,7 @@ class VideoObjectContainer(
 
         # Build VideoObjects
         video_objects = cls()
-        for dobjects in itervalues(objects_map):
+        for dobjects in objects_map.values():
             video_objects.add(VideoObject.from_detections(dobjects))
 
         return video_objects
@@ -1592,7 +1576,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         Returns:
             an iterator over (label, :class:`ObjectSchema`) pairs
         """
-        return iteritems(self.schema)
+        return self.schema.items()
 
     def has_object_label(self, label):
         """Whether the schema has an object with the given label.
@@ -1990,7 +1974,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         """
         self.validate_schema_type(schema)
 
-        for label, obj_schema in iteritems(self.schema):
+        for label, obj_schema in self.schema.items():
             if not schema.has_object_label(label):
                 raise ObjectContainerSchemaError(
                     "Object label '%s' does not appear in schema" % label
@@ -2048,7 +2032,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         if schema is not None:
             schema = {
                 label: ObjectSchema.from_dict(osd)
-                for label, osd in iteritems(schema)
+                for label, osd in schema.items()
             }
 
         return cls(schema=schema)
@@ -2281,7 +2265,7 @@ def strip_spatiotemporal_content_from_objects(objects):
 
     # Store object-level attributes in a container with `constant == False`
     attrs = etad.AttributeContainer()
-    for attr in itervalues(attrs_map):
+    for attr in attrs_map.values():
         attr.constant = False
         attrs.add(attr)
 

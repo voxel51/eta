@@ -5,19 +5,6 @@ module.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import numpy as np
 
 from eta.core.config import Config
@@ -55,8 +42,7 @@ class VGG16ClassifierConfig(Config, etal.HasPublishedModel):
 class VGG16Classifier(
     etal.ImageClassifier, etal.ExposesFeatures, etal.ExposesProbabilities
 ):
-    """Interface for evaluating an `eta.core.vgg16.VGG16` instance on images.
-    """
+    """Interface for evaluating an `eta.core.vgg16.VGG16` instance on images."""
 
     def __init__(self, config):
         """Creates a VGG16Classifier instance.

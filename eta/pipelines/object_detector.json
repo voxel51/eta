@@ -6,11 +6,7 @@
         "description": "A pipeline for detecting objects in videos"
     },
     "inputs": ["video"],
-    "outputs": [
-        "labels",
-        "features_dir",
-        "annotated_video"
-    ],
+    "outputs": ["labels", "features_dir", "annotated_video"],
     "modules": {
         "format_videos": {
             "name": "format_videos",
@@ -22,9 +18,7 @@
         },
         "apply_object_detector": {
             "name": "apply_object_detector",
-            "tunable_parameters": [
-                "detector", "objects", "record_top_k_probs"
-            ],
+            "tunable_parameters": ["detector", "objects", "record_top_k_probs"],
             "set_parameters": {}
         },
         "visualize_labels": {

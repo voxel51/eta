@@ -4,20 +4,6 @@ Core tools for defining, reading and writing configuration files.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-import six
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
 
 import inspect
 import numbers
@@ -181,7 +167,7 @@ class ConfigBuilder(etas.Serializable):
         Returns:
             the ConfigBuilder instance
         """
-        for k, v in iteritems(kwargs):
+        for k, v in kwargs.items():
             setattr(self, k, v)
             self._attributes.append(k)
         self._is_validated = False
@@ -389,7 +375,7 @@ class Config(etas.Serializable):
         if found:
             val = {
                 k: (v if isinstance(v, cls) else cls.from_dict(v))
-                for k, v in iteritems(val)
+                for k, v in val.items()
             }
         return val
 
@@ -445,7 +431,7 @@ class Config(etas.Serializable):
             ConfigError: if the field value was the wrong type or no default
                 value was provided and the key was not found in the dictionary
         """
-        val = _parse_key(d, key, six.string_types, default)[0]
+        val = _parse_key(d, key, str, default)[0]
         return str(val) if val is not None else val
 
     @staticmethod
@@ -467,7 +453,7 @@ class Config(etas.Serializable):
             ConfigError: if the field value was the wrong type or no default
                 value was provided and the key was not found in the dictionary
         """
-        val = _parse_key(d, key, six.string_types, default)[0]
+        val = _parse_key(d, key, str, default)[0]
 
         if val is not None:
             val = os.path.abspath(os.path.expanduser(str(val)))
@@ -570,7 +556,7 @@ class Config(etas.Serializable):
         val, found = _parse_key(d, key, None, default)
         if inspect.isclass(choices):
             choices = set(
-                v for k, v in iteritems(vars(choices)) if not k.startswith("_")
+                v for k, v in vars(choices).items() if not k.startswith("_")
             )
         if found and val not in choices:
             raise ConfigError(
@@ -592,7 +578,7 @@ class Config(etas.Serializable):
         Raises:
             ConfigError: if zero or more than one truthy value was found
         """
-        d = [(k, v) for k, v in iteritems(fields) if v]
+        d = [(k, v) for k, v in fields.items() if v]
         num_fields = len(d)
         if num_fields != 1:
             raise ConfigError(
@@ -617,8 +603,8 @@ class Config(etas.Serializable):
         Raises:
             ConfigError: if some values are truth and some are not
         """
-        d = [(k, v) for k, v in iteritems(fields) if v]
-        d_falsey = [(k, v) for k, v in iteritems(fields) if not v]
+        d = [(k, v) for k, v in fields.items() if v]
+        d_falsey = [(k, v) for k, v in fields.items() if not v]
         num_fields = len(d)
         if num_fields != 0 and num_fields != len(fields):
             raise ConfigError(
@@ -722,9 +708,7 @@ class EnvConfig(etas.Serializable):
             EnvConfigError: if the environment variable, the dictionary key, or
                 a default value was not provided
         """
-        val = _parse_env_var_or_key(
-            d, key, six.string_types, env_var, str, False, default
-        )
+        val = _parse_env_var_or_key(d, key, str, env_var, str, False, default)
         return str(val) if val is not None else val
 
     @staticmethod
@@ -748,9 +732,7 @@ class EnvConfig(etas.Serializable):
             EnvConfigError: if the environment variable, the dictionary key, or
                 a default value was not provided
         """
-        val = _parse_env_var_or_key(
-            d, key, six.string_types, env_var, str, False, default
-        )
+        val = _parse_env_var_or_key(d, key, str, env_var, str, False, default)
 
         if val is not None:
             val = os.path.abspath(os.path.expanduser(str(val)))

@@ -15,20 +15,6 @@ This module currently provides clients for the following storage resources:
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-import six
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
 
 import configparser
 import datetime
@@ -63,18 +49,17 @@ try:
     import google.cloud.storage as gcs
     from google.cloud.storage._signing import generate_signed_url_v4
     from google.auth import impersonated_credentials
-    from google.auth.identity_pool import Credentials as IdentityPoolCredentials
+    from google.auth.identity_pool import (
+        Credentials as IdentityPoolCredentials,
+    )
     import googleapiclient.discovery as gad
     import googleapiclient.http as gah
     import pysftp
 except ImportError as e:
-    six.raise_from(
-        ImportError(
-            "The requested operation requires extra dependencies; install "
-            '"voxel51-eta[storage]" to use it'
-        ),
-        e,
-    )
+    raise ImportError(
+        "The requested operation requires extra dependencies; install "
+        '"voxel51-eta[storage]" to use it'
+    ) from e
 
 import eta.constants as etac
 import eta.core.serial as etas
@@ -1693,7 +1678,9 @@ class MinIOStorageClient(_BotoStorageClient, NeedsMinIOCredentials):
         if "access_key" in credentials:
             _credentials["aws_access_key_id"] = credentials["access_key"]
         if "secret_access_key" in credentials:
-            _credentials["aws_secret_access_key"] = credentials["secret_access_key"]
+            _credentials["aws_secret_access_key"] = credentials[
+                "secret_access_key"
+            ]
 
         alias = credentials.pop("alias", None)
         endpoint_url = credentials.pop("endpoint_url")
@@ -2249,10 +2236,12 @@ class GoogleCloudStorageClient(
         if self._is_default_credentials and self._signing_credentials is None:
             # May need to ensure the client has been used at least once
             # https://gist.github.com/jezhumble/91051485db4462add82045ef9ac2a0ec?permalink_comment_id=3585157#gistcomment-3585157
-            _ = self._get_blob(cloud_path) 
+            _ = self._get_blob(cloud_path)
             if isinstance(self._client._credentials, IdentityPoolCredentials):
                 try:
-                    if not hasattr(self._client._credentials, "service_account_email"):
+                    if not hasattr(
+                        self._client._credentials, "service_account_email"
+                    ):
                         raise GoogleCredentialsError(
                             "The 'service_account_email' attribute is missing from the "
                             "IdentityPoolCredentials instance. Ensure that your credentials "
@@ -2261,32 +2250,30 @@ class GoogleCloudStorageClient(
                     self._signing_credentials = impersonated_credentials.Credentials(
                         source_credentials=self._client._credentials,
                         target_principal=self._client._credentials.service_account_email,
-                        target_scopes=['https://www.googleapis.com/auth/cloud-platform'],
+                        target_scopes=[
+                            "https://www.googleapis.com/auth/cloud-platform"
+                        ],
                     )
                 except Exception as e:
-                    six.raise_from(
-                        GoogleCredentialsError(
-                            "Failed to generate signing credentials for your "
-                            "Application Default Credentials."
-                        ),
-                        e,
-                    )
-            elif isinstance(self._client._credentials, impersonated_credentials.Credentials):
+                    raise GoogleCredentialsError(
+                        "Failed to generate signing credentials for your "
+                        "Application Default Credentials."
+                    ) from e
+            elif isinstance(
+                self._client._credentials, impersonated_credentials.Credentials
+            ):
                 self._signing_credentials = self._client._credentials
             else:
                 try:
                     r = gatr.Request()
                     self._signing_credentials = gace.IDTokenCredentials(r, "")
                 except Exception as e:
-                    six.raise_from(
-                        GoogleCredentialsError(
-                            "Failed to generate signing credentials for your "
-                            "Application Default Credentials. Note that your "
-                            "credentials must have the "
-                            "'roles/iam.serviceAccountTokenCreator' permission"
-                        ),
-                        e,
-                    )
+                    raise GoogleCredentialsError(
+                        "Failed to generate signing credentials for your "
+                        "Application Default Credentials. Note that your "
+                        "credentials must have the "
+                        "'roles/iam.serviceAccountTokenCreator' permission"
+                    ) from e
 
         if self._signing_credentials is not None:
             return self._signing_credentials
@@ -3729,7 +3716,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     recursive=True,
                 )
 
-                for subname, subid in iteritems(subfile_ids):
+                for subname, subid in subfile_ids.items():
                     file_ids[os.path.join(subfolder, subname)] = subid
 
         return file_ids
@@ -4742,8 +4729,8 @@ def _read_file_in_chunks(file_obj, chunk_size):
 
 
 def _to_bytes(val, encoding="utf-8"):
-    bytes_str = val.encode(encoding) if isinstance(val, six.text_type) else val
-    if not isinstance(bytes_str, six.binary_type):
+    bytes_str = val.encode(encoding) if isinstance(val, str) else val
+    if not isinstance(bytes_str, bytes):
         raise TypeError("Failed to convert %r to bytes" % bytes_str)
 
     return bytes_str

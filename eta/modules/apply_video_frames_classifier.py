@@ -10,20 +10,6 @@ Info:
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict, deque
 import logging
 import sys
@@ -185,7 +171,7 @@ def _classify_windows(classifier, video_reader, labels, parameters):
                 attrs_map[idx].add(attr)
 
     # Finalize attributes
-    for frame_number, attrs in iteritems(attrs_map):
+    for frame_number, attrs in attrs_map.items():
         # Majority vote over frame
         final_attrs = etad.majority_vote_categorical_attrs(
             attrs, confidence_weighted=cweighted

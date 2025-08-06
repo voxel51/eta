@@ -4,20 +4,6 @@ Core system and file I/O utilities.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-import six
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
 
 from collections import defaultdict, deque
 from datetime import datetime
@@ -63,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 def is_str(val):
     """Returns True/False whether the given value is a string."""
-    return isinstance(val, six.string_types)
+    return isinstance(val, str)
 
 
 def is_numeric(val):
@@ -98,9 +84,7 @@ def standarize_strs(arg):
             via str()
     """
     if isinstance(arg, dict):
-        return {
-            standarize_strs(k): standarize_strs(v) for k, v in iteritems(arg)
-        }
+        return {standarize_strs(k): standarize_strs(v) for k, v in arg.items()}
 
     if isinstance(arg, list):
         return [standarize_strs(e) for e in arg]
@@ -325,7 +309,7 @@ def fill_patterns(string, patterns):
     if string is None:
         return None
 
-    for patt, val in iteritems(patterns):
+    for patt, val in patterns.items():
         string = string.replace(patt, val)
 
     return string
@@ -389,7 +373,7 @@ def parse_categorical_string(value, choices, ignore_case=True):
     """
     if inspect.isclass(choices):
         choices = set(
-            v for k, v in iteritems(vars(choices)) if not k.startswith("_")
+            v for k, v in vars(choices).items() if not k.startswith("_")
         )
 
     orig_value = value
@@ -995,7 +979,7 @@ def handle_error(error, error_level, base_error=None):
     """
     if error_level <= 0:
         if base_error is not None:
-            six.raise_from(error, base_error)
+            raise error from base_error
         else:
             raise error
 
@@ -1251,7 +1235,7 @@ class LazyModule(types.ModuleType):
             self._module = module
         except ImportError as e:
             if self._error_msg is not None:
-                six.raise_from(ImportError(self._error_msg), e)
+                raise ImportError(self._error_msg) from e
 
             raise
 
@@ -1322,7 +1306,7 @@ def query_yes_no(question, default=None):
 
     while True:
         sys.stdout.write(question + prompt)
-        choice = six.moves.input().lower()
+        choice = input().lower()
         if default and not choice:
             return valid[default]
         if choice in valid:
@@ -3681,7 +3665,7 @@ def extract_rar(rar_path, outdir=None, delete_rar=False):
             "which you may need to install. Check the error message above for "
             "more information."
         ) % rar_path
-        six.raise_from(IOError(message), e)
+        raise IOError(message) from e
 
     if delete_rar:
         delete_file(rar_path)
@@ -4200,7 +4184,7 @@ def remove_none_values(d):
     Returns:
         a copy of the input dictionary with keys whose value was None ommitted
     """
-    return {k: v for k, v in iteritems(d) if v is not None}
+    return {k: v for k, v in d.items() if v is not None}
 
 
 def find_duplicate_files(path_list, verbose=False):
@@ -4223,7 +4207,7 @@ def find_duplicate_files(path_list, verbose=False):
     hash_buckets = _get_file_hash_buckets(path_list, verbose)
 
     duplicates = []
-    for file_group in itervalues(hash_buckets):
+    for file_group in hash_buckets.values():
         if len(file_group) >= 2:
             duplicates.extend(_find_duplicates_brute_force(file_group))
 

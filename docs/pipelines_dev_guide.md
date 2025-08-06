@@ -5,7 +5,6 @@ This document describes how to add new analytics pipelines to ETA. See
 and see `core_dev_guide.md` for instructions on contributing to the core ETA
 infrastructure.
 
-
 ## What are ETA Pipelines?
 
 Pipelines are the mechanisms by which analytics capabilities are exposed to the
@@ -22,7 +21,6 @@ builtin ETA modules in graphs to implement various useful video analytics.
 
 New pipelines can be easily added to the ETA system by writing a simple JSON
 configuration file whose syntax is described in the next section.
-
 
 ## Pipeline Metadata JSON Files
 
@@ -52,7 +50,11 @@ formatting pipeline with one module:
         "format_videos": {
             "name": "format_videos",
             "tunable_parameters": [
-                "fps", "size", "scale", "max_fps", "max_size"
+                "fps",
+                "size",
+                "scale",
+                "max_fps",
+                "max_size"
             ],
             "set_parameters": {}
         }
@@ -76,22 +78,22 @@ entity, and we refer to the keys of a JSON object (e.g., `info`) as **fields.**
 
 The pipeline metadata file contains the following top-level fields:
 
-- `info`: a spec containing basic information about the module
-- `inputs`: a list defining the names of the pipeline inputs
-- `outputs`: a list defining the names of the pipeline outputs
-- `modules`: a list of specs describing the modules (nodes) in the pipeline
-- `connections`: a list of specs describing the connections (edges) between
+-   `info`: a spec containing basic information about the module
+-   `inputs`: a list defining the names of the pipeline inputs
+-   `outputs`: a list defining the names of the pipeline outputs
+-   `modules`: a list of specs describing the modules (nodes) in the pipeline
+-   `connections`: a list of specs describing the connections (edges) between
     modules in the pipeline
 
 The `info` spec contains the following fields:
 
-- `name`: the name of the pipeline
-- `type`: the type of the pipeline, i.e., what computation it performs. Must
+-   `name`: the name of the pipeline
+-   `type`: the type of the pipeline, i.e., what computation it performs. Must
     be a valid pipeline type exposed by the ETA library, i.e. a subclass of
     `eta.core.types.Pipeline`
-- `version`: the current pipeline version
-- `description`: a free-text description of the pipeline purpose and
-  implementation
+-   `version`: the current pipeline version
+-   `description`: a free-text description of the pipeline purpose and
+    implementation
 
 The `inputs` field defines the names of the inputs exposed by the pipeline.
 
@@ -99,26 +101,25 @@ The `outputs` field defines the names of the outputs exposed by the pipeline.
 
 The `modules` field contains a list of module specs with the following fields:
 
-- `name`: the name of the module to include
-- `tunable_parameters`: a list of module parameters that are exposed to the
+-   `name`: the name of the module to include
+-   `tunable_parameters`: a list of module parameters that are exposed to the
     end-user for tuning
-- `set_parameters`: a dictionary whose keys are module parameters and whose
+-   `set_parameters`: a dictionary whose keys are module parameters and whose
     values are values to assign to those parameters
 
 The `connections` field contains a list of connection (edge) specs with the
 following fields:
 
-- `source`: the source (starting point) of the edge. The syntax for a source is
-    `<module>.<node>`. Alternatively, the special module `INPUT` can be
-    used to refer to a pipeline input
-- `sink`: the sink (stopping point) of the edge. The syntax for a sink is
-    `<module>.<node>`. Alternatively, the special module `OUTPUT` can be
-    used to refer to a pipeline output
+-   `source`: the source (starting point) of the edge. The syntax for a source
+    is `<module>.<node>`. Alternatively, the special module `INPUT` can be used
+    to refer to a pipeline input
+-   `sink`: the sink (stopping point) of the edge. The syntax for a sink is
+    `<module>.<node>`. Alternatively, the special module `OUTPUT` can be used
+    to refer to a pipeline output
 
 The pipeline metadata file defines the connectivity of the computation graph,
-and the pipeline builder uses this information to instantiate the
-necessary configuration files to run a pipeline on new input data.
-
+and the pipeline builder uses this information to instantiate the necessary
+configuration files to run a pipeline on new input data.
 
 #### Exposing a new pipeline
 
@@ -131,15 +132,14 @@ files contained in them are assumed to be pipeline metadata files.
 > `pipeline_dirs` list in the ETA-wide `config.json` file or add it to the
 > `ETA_PIPELINE_DIRS` environment variable during execution.
 
-
 ## Types in the ETA System
 
 Because the ETA system is generic and supports third-party pipelines that may
 be written in languages other than Python or otherwise developed independently
 from the ETA codebase and exposed only through executable files (perhaps even
 remotely via a REST API), the ETA library exposes a **type system** in the
-`eta.core.types` module that defines a common framework that pipelines must
-use to define their semantics.
+`eta.core.types` module that defines a common framework that pipelines must use
+to define their semantics.
 
 The ETA types must be used by all pipeline metadata files whether or not the
 pipeline is built using the ETA library. In particular, if a third-party
@@ -158,7 +158,6 @@ guide.
 > inherit from the base type `eta.core.types.Type`. More specifically, for
 > pipelines, all new types must be subclasses of `eta.core.types.Pipeline`.
 
-
 #### Pipelines
 
 All ETA pipelines must be declared with a `type` in their pipeline metadata
@@ -171,13 +170,11 @@ to classify and organize the available pipelines by function.
 > more fine-grained pipeline types will be added to make the pipeline taxonomy
 > more descriptive for the end-user.
 
-
 ## Building and Running Pipelines
 
 Once a pipeline metadata file exists describing the architecture of the
 pipeline, it is straightforward to run a pipeline on new input data using the
 `eta.core.builder` module. The following subsections describe the process.
-
 
 #### Pipeline build requests
 
@@ -198,17 +195,17 @@ pipeline build requests is:
 ```
 
 Here, `<pipeline-name>` specifies the name of the pipeline to run, and
-`<inputs>` and `<parameters>` define the data to pass into the pipeline and
-the parameter values to use during processing, respectively.
+`<inputs>` and `<parameters>` define the data to pass into the pipeline and the
+parameter values to use during processing, respectively.
 
 A pipeline build request is valid only if all of the following conditions are
 met:
 
-- The pipeline name must be the name of a valid pipeline metadata file exposed
-    by the ETA system
-- All required pipeline inputs (as defined by the pipeline metadata file) are
+-   The pipeline name must be the name of a valid pipeline metadata file
+    exposed by the ETA system
+-   All required pipeline inputs (as defined by the pipeline metadata file) are
     provided and have valid values
-- All required pipeline parameters (as defined by the pipeline metadata file)
+-   All required pipeline parameters (as defined by the pipeline metadata file)
     are provided and have valid values
 
 For example, the following JSON defines a valid pipeline build request for the
@@ -227,8 +224,8 @@ video formatting pipeline whose metadata file was given earlier:
 }
 ```
 
-Note that the `<module>.<parameter>` notion is used in the above JSON to
-set the parameters of the relevant modules in the pipeline.
+Note that the `<module>.<parameter>` notion is used in the above JSON to set
+the parameters of the relevant modules in the pipeline.
 
 Pipeline build requests are defined in the ETA library by the
 `eta.core.builder.PipelineBuildRequestConfig` class, and they can be loaded
@@ -240,7 +237,6 @@ import eta.core.builder as etab
 # Load a pipeline request from JSON
 request = etab.PipelineBuildRequest.from_json("/path/to/pipeline-request.json")
 ```
-
 
 #### Building a pipeline instance
 
@@ -262,17 +258,16 @@ When the `build()` method is called, a pipeline config file and the associated
 module config files necessary to run the pipeline on the given input data with
 the given parameters are automatically generated and written to disk. The
 outputs of each module are written to a specified output directory with a
-folder structure based on the names of the constituent modules. Both the
-config directory and the base output directory can be configured as desired.
+folder structure based on the names of the constituent modules. Both the config
+directory and the base output directory can be configured as desired.
 
-> To change the directory where pipeline configs are written, either modify
-> the `config_dir` field in the ETA-wide `config.json` file or set the
+> To change the directory where pipeline configs are written, either modify the
+> `config_dir` field in the ETA-wide `config.json` file or set the
 > `ETA_CONFIG_DIR` environment variable during execution.
 
-> To change the directory where pipeline outputs are written, either modify
-> the `output_dir` field in the ETA-wide `config.json` file or set the
+> To change the directory where pipeline outputs are written, either modify the
+> `output_dir` field in the ETA-wide `config.json` file or set the
 > `ETA_OUTPUT_DIR` environment variable during execution.
-
 
 #### Full pipeline building example
 
@@ -302,7 +297,6 @@ Alternatively, one can build and run a pipeline from the command-line using the
 eta build -r "/path/to/pipeline-request.json" --run-now
 ```
 
-
 ## Visualizing Pipelines
 
 The ETA system provides the ability to visualize pipelines as block diagrams
@@ -324,16 +318,12 @@ pipeline.render("pipeline_block_diagram.svg")
 The above code generates the following image that depicts the pipeline as a
 block diagram:
 
-[![pipeline\_block\_diagram.png](
-https://drive.google.com/uc?id=1GQGAnDAi3ZZCCsIP8xNP7ul8gJFlvYtk)](
-https://drive.google.com/uc?id=1ArnECNoNFm_f9--vxWVtn80RQqDQgtKH)
+[![pipeline_block_diagram.png](https://drive.google.com/uc?id=1GQGAnDAi3ZZCCsIP8xNP7ul8gJFlvYtk)](https://drive.google.com/uc?id=1ArnECNoNFm_f9--vxWVtn80RQqDQgtKH)
 
 Behind the scenes, an intermediate `pipeline_block_diagram.diag` file is
 generated that describes the pipeline in a format understood by the `blockdiag`
 package.
 
-
 ## Copyright
 
-Copyright 2017-2025, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2025, Voxel51, Inc.<br> voxel51.com
