@@ -2233,47 +2233,46 @@ class GoogleCloudStorageClient(
         # - This requires the credentials to have the
         #   ``roles/iam.serviceAccountTokenCreator`` permission
         #
-        if self._is_default_credentials and self._signing_credentials is None:
+        if isinstance(self._client._credentials, IdentityPoolCredentials):
+            try:
+                if not hasattr(
+                    self._client._credentials, "service_account_email"
+                ):
+                    raise GoogleCredentialsError(
+                        "The 'service_account_email' attribute is missing from the "
+                        "IdentityPoolCredentials instance. Ensure that your credentials "
+                        "are properly configured."
+                    )
+                self._signing_credentials = impersonated_credentials.Credentials(
+                    source_credentials=self._client._credentials,
+                    target_principal=self._client._credentials.service_account_email,
+                    target_scopes=[
+                        "https://www.googleapis.com/auth/cloud-platform"
+                    ],
+                )
+            except Exception as e:
+                raise GoogleCredentialsError(
+                    "Failed to generate signing credentials for your "
+                    "Application Default Credentials."
+                ) from e
+        elif isinstance(
+            self._client._credentials, impersonated_credentials.Credentials
+        ):
+            self._signing_credentials = self._client._credentials
+        elif self._is_default_credentials and self._signing_credentials is None:
             # May need to ensure the client has been used at least once
             # https://gist.github.com/jezhumble/91051485db4462add82045ef9ac2a0ec?permalink_comment_id=3585157#gistcomment-3585157
             _ = self._get_blob(cloud_path)
-            if isinstance(self._client._credentials, IdentityPoolCredentials):
-                try:
-                    if not hasattr(
-                        self._client._credentials, "service_account_email"
-                    ):
-                        raise GoogleCredentialsError(
-                            "The 'service_account_email' attribute is missing from the "
-                            "IdentityPoolCredentials instance. Ensure that your credentials "
-                            "are properly configured."
-                        )
-                    self._signing_credentials = impersonated_credentials.Credentials(
-                        source_credentials=self._client._credentials,
-                        target_principal=self._client._credentials.service_account_email,
-                        target_scopes=[
-                            "https://www.googleapis.com/auth/cloud-platform"
-                        ],
-                    )
-                except Exception as e:
-                    raise GoogleCredentialsError(
-                        "Failed to generate signing credentials for your "
-                        "Application Default Credentials."
-                    ) from e
-            elif isinstance(
-                self._client._credentials, impersonated_credentials.Credentials
-            ):
-                self._signing_credentials = self._client._credentials
-            else:
-                try:
-                    r = gatr.Request()
-                    self._signing_credentials = gace.IDTokenCredentials(r, "")
-                except Exception as e:
-                    raise GoogleCredentialsError(
-                        "Failed to generate signing credentials for your "
-                        "Application Default Credentials. Note that your "
-                        "credentials must have the "
-                        "'roles/iam.serviceAccountTokenCreator' permission"
-                    ) from e
+            try:
+                r = gatr.Request()
+                self._signing_credentials = gace.IDTokenCredentials(r, "")
+            except Exception as e:
+                raise GoogleCredentialsError(
+                    "Failed to generate signing credentials for your "
+                    "Application Default Credentials. Note that your "
+                    "credentials must have the "
+                    "'roles/iam.serviceAccountTokenCreator' permission"
+                ) from e
 
         if self._signing_credentials is not None:
             return self._signing_credentials
