@@ -15,7 +15,7 @@ import hashlib
 import importlib
 import inspect
 from importlib import metadata
-from io import StringIO as _StringIO  # Python 3
+from io import StringIO as _StringIO
 import itertools as it
 import logging
 import math
@@ -3469,10 +3469,6 @@ def make_tar(dir_path, tar_path, cleanup=False):
 def make_zip(dir_path, zip_path, cleanup=False):
     """Makes a zipfile containing the given directory.
 
-    Python 2 users must use `make_zip64` when making large zip files.
-    `shutil.make_archive` does not offer Zip64 in Python 2, and is therefore
-    limited to 4GiB archives with less than 65,536 entries.
-
     Args:
         dir_path: the directory to zip
         zip_path: the path + filename of the zip file to create
@@ -4485,20 +4481,7 @@ def get_terminal_size():
         the (width, height) of the Terminal
     """
     try:
-        try:
-            return tuple(os.get_terminal_size())
-        except AttributeError:
-            # Fallback for Python 2.X
-            # https://stackoverflow.com/a/3010495
-            import fcntl, termios, struct
-
-            h, w, hp, wp = struct.unpack(
-                "HHHH",
-                fcntl.ioctl(
-                    0, termios.TIOCGWINSZ, struct.pack("HHHH", 0, 0, 0, 0)
-                ),
-            )
-            return w, h
+        return tuple(os.get_terminal_size())
     except OSError as e:
         if e.errno in (
             getattr(errno, "ENOTTY", None),

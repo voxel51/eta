@@ -5,8 +5,8 @@ bounding boxes.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
+from math import isclose
 
-import eta.core.numutils as etan
 from eta.core.serial import BigContainer, Container, Serializable, Set, BigSet
 
 
@@ -428,7 +428,7 @@ class RelativePoint(Serializable):
         return "(%.3f, %.3f)" % (self.x, self.y)
 
     def __eq__(self, rel_point):
-        return etan.is_close(self.x, rel_point.x) and etan.is_close(
+        return isclose(self.x, rel_point.x) and isclose(
             self.y, rel_point.y
         )
 

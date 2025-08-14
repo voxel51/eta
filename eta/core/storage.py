@@ -25,12 +25,7 @@ import logging
 import os
 import re
 import requests
-
-try:
-    import urllib.parse as urlparse  # Python 3
-except ImportError:
-    import urlparse  # Python 2
-
+import urllib.parse
 import urllib3
 
 try:
@@ -2213,7 +2208,7 @@ class GoogleCloudStorageClient(
         """
         credentials = self._get_signing_credentials(cloud_path)
         bucket, name = self._parse_path(cloud_path)
-        resource = "/%s/%s" % (bucket, urlparse.quote(name, safe=b"/~"))
+        resource = "/%s/%s" % (bucket, urllib.parse.quote(name, safe=b"/~"))
         return generate_signed_url_v4(
             credentials,
             resource=resource,
@@ -4271,7 +4266,7 @@ class HTTPStorageClient(StorageClient):
             pass
 
         if not filename:
-            filename = os.path.basename(urlparse.urlparse(url).path)
+            filename = os.path.basename(urllib.parse.urlparse(url).path)
 
         return filename
 
