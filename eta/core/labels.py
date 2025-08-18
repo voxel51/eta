@@ -4,20 +4,6 @@ Core data structures for working with labels.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 import logging
 
@@ -829,8 +815,7 @@ class LabelsContainerRenderer(LabelsRenderer):
 
     @property
     def element_renderer_cls(self):
-        """The LabelsRenderer class to use to render elements of the container.
-        """
+        """The LabelsRenderer class to use to render elements of the container."""
         return self._ELEMENT_RENDERER_CLS
 
     def render(self, in_place=False):
@@ -979,7 +964,7 @@ class LabelsContainerFrameRenderer(
             # pylint: disable=not-callable
             renderer = self.element_renderer_cls(labels)
             frames_map = renderer.render_all_frames(in_place=in_place)
-            for frame_number, frame_element in iteritems(frames_map):
+            for frame_number, frame_element in frames_map.items():
                 frame_elements_map[frame_number].add(frame_element)
 
         return dict(frame_elements_map)

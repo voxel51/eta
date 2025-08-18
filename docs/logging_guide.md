@@ -3,7 +3,6 @@
 ETA uses the standard Python `logging` module to log messages. This document
 describes how to use ETA's logging infrastructure.
 
-
 ## Logging in a module
 
 By convention, all ETA library code uses module-level loggers:
@@ -27,7 +26,6 @@ logger.warning(...)
 # captures raised exceptions and logs them before the process is terminated
 raise Exception("A FATAL ERROR HERE")
 ```
-
 
 ## Logging configuration
 
@@ -123,7 +121,6 @@ logging_config = etal.LoggingConfig.from_json("/path/to/logging_config.json")
 print(logging_config)
 ```
 
-
 ## References
 
 General logging resources
@@ -138,8 +135,6 @@ Formatter syntax
 
 -   https://docs.python.org/3.1/library/logging.html#formatter-objects
 
-
 ## Copyright
 
-Copyright 2017-2025, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2025, Voxel51, Inc.<br> voxel51.com

@@ -6,20 +6,6 @@ Core tools and data structures for working with events in images and videos.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 from copy import deepcopy
 import logging
@@ -708,7 +694,7 @@ class VideoEvent(
     @property
     def has_detections(self):
         """Whether the event has at least one non-empty DetectedEvent."""
-        return any(not devent.is_empty for devent in itervalues(self.frames))
+        return any(not devent.is_empty for devent in self.frames.values())
 
     @property
     def framewise_renderer_cls(self):
@@ -917,7 +903,7 @@ class VideoEvent(
         """Removes all empty DetectedEvents from this event."""
         self.frames = {
             fn: devent
-            for fn, devent in iteritems(self.frames)
+            for fn, devent in self.frames.items()
             if not devent.is_empty
         }
 
@@ -1111,7 +1097,7 @@ class VideoEvent(
         if frames is not None:
             frames = {
                 int(fn): DetectedEvent.from_dict(do)
-                for fn, do in iteritems(frames)
+                for fn, do in frames.items()
             }
 
         return cls(
@@ -1383,7 +1369,7 @@ class VideoEventContainer(
 
         # Build VideoEvents
         video_events = cls()
-        for devents in itervalues(events_map):
+        for devents in events_map.values():
             video_events.add(VideoEvent.from_detections(devents))
 
         return video_events
@@ -2177,7 +2163,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Returns:
             an iterator over (label, EventSchema) pairs
         """
-        return iteritems(self.schema)
+        return self.schema.items()
 
     def has_event_label(self, label):
         """Whether the schema has an event with the given label.
@@ -3029,7 +3015,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         """
         self.validate_schema_type(schema)
 
-        for label, event_schema in iteritems(self.schema):
+        for label, event_schema in self.schema.items():
             if not schema.has_event_label(label):
                 raise EventContainerSchemaError(
                     "Event label '%s' does not appear in schema" % label
@@ -3086,7 +3072,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         if schema is not None:
             schema = {
                 label: EventSchema.from_dict(esd)
-                for label, esd in iteritems(schema)
+                for label, esd in schema.items()
             }
 
         return cls(schema=schema)
@@ -3368,7 +3354,7 @@ def strip_spatiotemporal_content_from_events(events):
 
     # Store event-level attributes in a container with `constant == False`
     attrs = etad.AttributeContainer()
-    for attr in itervalues(attrs_map):
+    for attr in attrs_map.values():
         attr.constant = False
         attrs.add(attr)
 

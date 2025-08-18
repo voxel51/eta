@@ -5,7 +5,6 @@ This document describes how to export frozen TensorFlow graphs for inference.
 See [this document](visualize_tf_graphs_guide.md) for more information about
 visualizing the architecture of graphs that you have exported.
 
-
 ## Exporting a generic training checkpoint
 
 Training a generic TF model yields a model directory with contents similar to:
@@ -31,7 +30,6 @@ output_node_names = ["output", "nodes"]
 
 model_path = etat.export_frozen_graph(model_dir, output_node_names)
 ```
-
 
 ## Exporting pre-trained models from the TF-Slim Model Zoo
 
@@ -77,12 +75,10 @@ etat.export_frozen_inference_graph(
     checkpoint_path, network_name, output_path, num_classes=1001)
 ```
 
-
 ## Exporting pre-trained models from the TF-Models Detection Zoo
 
 This section describes how to export a pre-trained model from the
-[TensorFlow Detection Model Zoo](
-https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md).
+[TensorFlow Detection Model Zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md).
 
 First, choose a model of interest from the zoo:
 
@@ -125,8 +121,6 @@ etat.export_frozen_inference_graph(
     checkpoint_path, pipeline_config_path, output_dir)
 ```
 
-
 ## Copyright
 
-Copyright 2017-2025, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2025, Voxel51, Inc.<br> voxel51.com

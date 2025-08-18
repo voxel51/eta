@@ -6,7 +6,6 @@ TensorFlow graph using TensorBoard.
 See [this document](export_tf_graphs_guide.md) for more information about
 exporting TensorFlow graphs for inference.
 
-
 ## Visualizing a training checkpoint
 
 Training a TF model yields a model directory with contents similar to:
@@ -37,7 +36,6 @@ etat.visualize_checkpoint(model_dir, log_dir=log_dir, port=8000)
 The command will print the URL that you should open in your browser to view
 TensorBoard.
 
-
 ## Visualizing a frozen TF graph
 
 Run the commands below to launch a tensorboard session for a frozen graph of
@@ -59,8 +57,6 @@ etat.visualize_frozen_graph(model_path, log_dir=log_dir, port=8000)
 The command will print the URL that you should open in your browser to view
 TensorBoard.
 
-
 ## Copyright
 
-Copyright 2017-2025, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2025, Voxel51, Inc.<br> voxel51.com

@@ -10,11 +10,10 @@ packages and Python applications on your machine.
 > Python distribution; if you do, the steps described here may fail... Fear
 > not, however, as ETA will install all necessary pacakges for you!
 
-
 ## Creating a virtual environment
 
-* If you want to create a Python 3.9 virtual environment and need a fresh
-Python installation, follow the steps below:
+-   If you want to create a Python 3.9 virtual environment and need a fresh
+    Python installation, follow the steps below:
 
 ```shell
 # Ubuntu
@@ -34,32 +33,32 @@ brew install pkg-config gdbm openssl readline sqlite xz
 brew install --ignore-dependencies https://raw.githubusercontent.com/Homebrew/homebrew-core/f2a764ef944b1080be64bd88dca9a1d80130c558/Formula/python.rb
 ```
 
-* Install the `virtualenv` package:
+-   Install the `virtualenv` package:
 
 ```shell
 pip install virtualenv
 ```
 
-* If desired, disable prompt modification when a virtual environment is active
-by setting the `VIRTUAL_ENV_DISABLE_PROMPT` environment variable to a
-non-empty value.
+-   If desired, disable prompt modification when a virtual environment is
+    active by setting the `VIRTUAL_ENV_DISABLE_PROMPT` environment variable to
+    a non-empty value.
 
-* Navigate to a directory in which to store your environments:
+-   Navigate to a directory in which to store your environments:
 
 ```shell
 ENV_DIR="/path/to/env"
 cd "${ENV_DIR}"
 ```
 
-* Make a virtual environment, modifying the python executable path as needed:
+-   Make a virtual environment, modifying the python executable path as needed:
 
 ```shell
 # Example for Python 3.9
 virtualenv -p /usr/local/bin/python3 eta3
 ```
 
-* Add some convenience functions to your `~/.bashrc` or `~/.bash_profile` for
-activating and deactivating the environments:
+-   Add some convenience functions to your `~/.bashrc` or `~/.bash_profile` for
+    activating and deactivating the environments:
 
 ```bash
 # Python environments
@@ -73,7 +72,6 @@ exit() {
     esac
 }
 ```
-
 
 ## Installing ETA in a virtual environment
 
@@ -114,17 +112,13 @@ which pip
 pip freeze
 ```
 
-
 ## More resources
 
-`virtualenv` user guide:
-https://virtualenv.pypa.io/en/stable/userguide
+`virtualenv` user guide: https://virtualenv.pypa.io/en/stable/userguide
 
 Cheat sheet:
 http://stuarteberg.github.io/conda-docs/_downloads/conda-pip-virtualenv-translator.html
 
-
 ## Copyright
 
-Copyright 2017-2025, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2025, Voxel51, Inc.<br> voxel51.com

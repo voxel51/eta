@@ -19,9 +19,9 @@ generated when processing a video.
 
 `VideoLabelsSchema` files have an `attrs` field that contains an
 `eta.core.data.AttributesSchema` instance that describes the schema of each
-video-level attribute that may be generated. They also contain a `frames`
-field that contains an `eta.core.data.AttributesSchema` instance that describes
-the schema of each frame-level attribute that may be generated. Finally, they
+video-level attribute that may be generated. They also contain a `frames` field
+that contains an `eta.core.data.AttributesSchema` instance that describes the
+schema of each frame-level attribute that may be generated. Finally, they
 contain an `objects` field that maps the set of object labels that may be
 detected to `eta.core.data.AttributesSchema` instances that describe each of
 the object-level attributes that may be generated for each object.
@@ -30,7 +30,6 @@ Finally, the `eta.core.video.VideoSetLabels` class provides the ability to
 store a collection of `VideoLabels` instances describing multiple videos.
 `VideoSetLabels` instances can have their own global schema that controls the
 content that can be contained in any video in the collection.
-
 
 ## Example Use
 
@@ -217,19 +216,14 @@ print(video_labels.get_active_schema())
                 "weather": {
                     "type": "eta.core.data.CategoricalAttribute",
                     "name": "weather",
-                    "categories": [
-                        "rain"
-                    ]
+                    "categories": ["rain"]
                 },
                 "daytime": {
                     "type": "eta.core.data.BooleanAttribute",
                     "name": "daytime"
                 },
                 "fps": {
-                    "range": [
-                        30.0,
-                        30.0
-                    ],
+                    "range": [30.0, 30.0],
                     "type": "eta.core.data.NumericAttribute",
                     "name": "fps"
                 }
@@ -238,19 +232,14 @@ print(video_labels.get_active_schema())
         "frames": {
             "schema": {
                 "quality": {
-                    "range": [
-                        0.5,
-                        0.5
-                    ],
+                    "range": [0.5, 0.5],
                     "type": "eta.core.data.NumericAttribute",
                     "name": "quality"
                 },
                 "scene": {
                     "type": "eta.core.data.CategoricalAttribute",
                     "name": "scene",
-                    "categories": [
-                        "intersection"
-                    ]
+                    "categories": ["intersection"]
                 },
                 "on_road": {
                     "type": "eta.core.data.BooleanAttribute",
@@ -264,19 +253,14 @@ print(video_labels.get_active_schema())
                     "make": {
                         "type": "eta.core.data.CategoricalAttribute",
                         "name": "make",
-                        "categories": [
-                            "Honda"
-                        ]
+                        "categories": ["Honda"]
                     }
                 }
             },
             "person": {
                 "schema": {
                     "age": {
-                        "range": [
-                            42.0,
-                            42.0
-                        ],
+                        "range": [42.0, 42.0],
                         "type": "eta.core.data.NumericAttribute",
                         "name": "age"
                     }

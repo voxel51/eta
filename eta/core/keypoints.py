@@ -4,20 +4,6 @@ Core data structures for working with keypoints.
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import eta.core.data as etad
 import eta.core.labels as etal
 import eta.core.utils as etau
@@ -728,7 +714,7 @@ class KeypointsContainerSchema(etal.LabelsContainerSchema):
         Returns:
             an iterator over (label, :class:`KeypointsSchema`) pairs
         """
-        return iteritems(self.schema)
+        return self.schema.items()
 
     def has_keypoints_label(self, label):
         """Whether the schema has a keypoints with the given label.
@@ -988,7 +974,7 @@ class KeypointsContainerSchema(etal.LabelsContainerSchema):
         """
         self.validate_schema_type(schema)
 
-        for label, poly_schema in iteritems(self.schema):
+        for label, poly_schema in self.schema.items():
             if not schema.has_keypoints_label(label):
                 raise KeypointsContainerSchemaError(
                     "Keypoints label '%s' does not appear in schema" % label
@@ -1046,7 +1032,7 @@ class KeypointsContainerSchema(etal.LabelsContainerSchema):
         if schema is not None:
             schema = {
                 label: KeypointsSchema.from_dict(psd)
-                for label, psd in iteritems(schema)
+                for label, psd in schema.items()
             }
 
         return cls(schema=schema)

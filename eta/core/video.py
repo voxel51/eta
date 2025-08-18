@@ -13,20 +13,6 @@ Notes::
 Copyright 2017-2025, Voxel51, Inc.
 voxel51.com
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from copy import deepcopy
 import errno
 import logging
@@ -681,7 +667,7 @@ class VideoLabels(
         Returns:
             an iterator over VideoFrameLabels
         """
-        return itervalues(self.frames)
+        return self.frames.values()
 
     @property
     def framewise_renderer_cls(self):
@@ -1161,7 +1147,7 @@ class VideoLabels(
     def remove_empty_frames(self):
         """Removes all empty VideoFrameLabels from the video."""
         self.frames = SortedDict(
-            {fn: vfl for fn, vfl in iteritems(self.frames) if not vfl.is_empty}
+            {fn: vfl for fn, vfl in self.frames.items() if not vfl.is_empty}
         )
 
     def merge_labels(self, video_labels, reindex=False):
@@ -1319,7 +1305,7 @@ class VideoLabels(
         if frames is not None:
             frames = {
                 int(fn): VideoFrameLabels.from_dict(vfl)
-                for fn, vfl in iteritems(frames)
+                for fn, vfl in frames.items()
             }
 
         objects = d.get("objects", None)
@@ -1910,7 +1896,7 @@ def strip_spatiotemporal_content_from_frames(video_labels):
 
     # Store video-level attributes in a container with `constant == False`
     attrs = etad.AttributeContainer()
-    for attr in itervalues(attrs_map):
+    for attr in attrs_map.values():
         attr.constant = False
         attrs.add(attr)
 
@@ -2970,7 +2956,7 @@ def sliding_window_sample_frames(imgs_or_video_path, k, stride, size=None):
     # Resize frames, if necessary
     if size is not None:
         imgs_dict = {
-            fn: etai.resize(img, *size) for fn, img in iteritems(imgs_dict)
+            fn: etai.resize(img, *size) for fn, img in imgs_dict.items()
         }
 
     # Generate clips tensor

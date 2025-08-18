@@ -24,9 +24,8 @@ Here are some highlights of our Python style:
 -   Imports should always be on separate lines at the top of the file, just
     after any module comments and doc strings. Imports should be grouped by
     type with one space between each group, with the groups sorted in order of
-    most generic to least generic _ future import block for Python 2/3
-    compatibility _ standard library imports _ third-party imports _
-    application-specific imports
+    most generic to least generic* standard library imports * third-party
+    imports \_ application-specific imports
 
 -   When encountering a pylint error during a commit that cannot be addressed
     for whatever reason, add an inline comment `# pylint: disable=rule` where
@@ -50,12 +49,6 @@ Within each group, imports should be sorted alphabetically by full package
 path, ignoring `from` and `import`:
 
 ```py
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
 import os
 import sys
 
