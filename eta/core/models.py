@@ -1040,6 +1040,7 @@ class Model(Serializable):
         requirements: the ModelRequirements for the model (if any)
         tags: a list of tags for the model (if any)
         date_added: the datetime that the model was added (if any)
+        training_data: the training data information for the model (if any)
     """
 
     # An optional error message to append to any error messages resulting from
@@ -1063,6 +1064,7 @@ class Model(Serializable):
         requirements=None,
         tags=None,
         date_added=None,
+        training_data=None,
     ):
         """Creates a Model instance.
 
@@ -1084,6 +1086,7 @@ class Model(Serializable):
             requirements: (optional) a ModelRequirements for the model
             tags: (optional) a list of tags for the model
             date_added: (optional) the datetime that the model was created
+            training_data: (optional) the training data information for the model
         """
         self.base_name = base_name
         self.base_filename = base_filename
@@ -1100,6 +1103,7 @@ class Model(Serializable):
         self.requirements = requirements
         self.tags = tags
         self.date_added = date_added
+        self.training_data = training_data
 
     @property
     def name(self):
