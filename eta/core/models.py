@@ -1433,6 +1433,7 @@ class Model(Serializable):
             "requirements",
             "tags",
             "date_added",
+            "training_data",
         ]
 
     @classmethod
@@ -1454,8 +1455,6 @@ class Model(Serializable):
         if requirements is not None:
             requirements = ModelRequirements.from_dict(requirements)
 
-        tags = d.get("tags", None)
-
         date_added = etau.parse_isotime(d.get("date_added"))
 
         return cls(
@@ -1474,8 +1473,9 @@ class Model(Serializable):
                 "default_deployment_config_dict", None
             ),
             requirements=requirements,
-            tags=tags,
+            tags=d.get("tags", None),
             date_added=date_added,
+            training_data=d.get("training_data", None),
         )
 
 
