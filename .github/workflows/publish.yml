@@ -7,7 +7,8 @@ on:
 
 jobs:
   publish:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    environment: release # For trusted publishing. See below.
     steps:
       - name: Clone ETA
         uses: actions/checkout@v2
@@ -31,19 +32,10 @@ jobs:
       - name: Build wheel
         run: |
           RELEASE_VERSION=$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/v//') python setup.py sdist bdist_wheel
-      - name: Upload wheel
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheel
-          path: dist/
-      - name: Set environment
-        env:
-          RELEASE_TAG: ${{ github.ref }}
-        run: |
-          echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
-          echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
-      - name: Publish wheel
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_NON_INTERACTIVE: 1
-        run: twine upload dist/*
+      # Utilize
+      # [trusted publishers](https://docs.pypi.org/trusted-publishers/)
+      # This will use OIDC to publish the dists/ package to pypi.
+      # See
+      # [fiftyone-brain](https://pypi.org/manage/project/fiftyone-brain/settings/publishing/)
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@v1.13.0
