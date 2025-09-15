@@ -2259,7 +2259,9 @@ class GoogleCloudStorageClient(
             self._client._credentials, impersonated_credentials.Credentials
         ):
             self._signing_credentials = self._client._credentials
-        elif self._is_default_credentials and self._signing_credentials is None:
+        elif (
+            self._is_default_credentials and self._signing_credentials is None
+        ):
             # May need to ensure the client has been used at least once
             # https://gist.github.com/jezhumble/91051485db4462add82045ef9ac2a0ec?permalink_comment_id=3585157#gistcomment-3585157
             _ = self._get_blob(cloud_path)
