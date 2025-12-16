@@ -982,18 +982,36 @@ def _load_tf2_detection_model(model_dir):
     """
     with etat.TFLoggingLevel(tf1.logging.ERROR):
         with etau.CaptureStdout():
-            detect_fn = tf.saved_model.load(
+            loaded = tf.saved_model.load(
                 os.path.join(model_dir, "saved_model")
             )
 
-    def predict(image):
-        detections = detect_fn(image)
+    if callable(loaded):
+        detect_fn = loaded
+        use_signature = False
+    else:
+        detect_fn = loaded.signatures["serving_default"]
+        use_signature = True
 
-        return (
-            detections["detection_boxes"],
-            detections["detection_scores"],
-            detections["detection_classes"],
-        )
+    def predict(image):
+        if use_signature:
+            image = tf.cast(image, tf.float32)
+            detections = detect_fn(input=image)
+        else:
+            detections = detect_fn(image)
+
+        if "detection_boxes" in detections:
+            return (
+                detections["detection_boxes"],
+                detections["detection_scores"],
+                detections["detection_classes"],
+            )
+        else:
+            return (
+                detections["output_3"],
+                detections["output_1"],
+                detections["output_2"],
+            )
 
     return predict
 
