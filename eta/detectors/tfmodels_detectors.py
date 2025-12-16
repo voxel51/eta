@@ -1007,11 +1007,11 @@ def _load_tf2_detection_model(model_dir):
                 detections["detection_classes"],
             )
         else:
-            return (
-                detections["output_3"],
-                detections["output_1"],
-                detections["output_2"],
-            )
+            # inferred from tensor shapes
+            boxes = detections["output_3"]
+            scores = detections["output_1"]
+            classes = detections["output_2"]
+            return (boxes, scores, classes)
 
     return predict
 
