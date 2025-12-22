@@ -1007,7 +1007,10 @@ def _load_tf2_detection_model(model_dir):
                 detections["detection_classes"],
             )
         else:
-            # inferred from tensor shapes
+            # centernet-mobilenet-v2-fpn was exported for TFLite and uses
+            # generic output names: output_1=scores, output_2=classes,
+            # output_3=boxes; see CenterNetModule in
+            # https://github.com/tensorflow/models/blob/master/research/object_detection/export_tflite_graph_lib_tf2.py
             boxes = detections["output_3"]
             scores = detections["output_1"]
             classes = detections["output_2"]
