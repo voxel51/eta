@@ -11,7 +11,7 @@ David Frossard, 2016
 Model architecture:
 https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
 
-Copyright 2017-2025, Voxel51, Inc.
+Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
 

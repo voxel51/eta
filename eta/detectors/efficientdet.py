@@ -4,7 +4,7 @@ Interface to the EfficientDet object detection model.
 This module wraps the EfficientDet implementation at
 https://github.com/voxel51/automl/tree/master/efficientdet.
 
-Copyright 2017-2025 Voxel51, Inc.
+Copyright 2017-2026 Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com

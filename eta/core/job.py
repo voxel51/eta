@@ -1,7 +1,7 @@
 """
 Core job infrastructure for running modules in a pipeline.
 
-Copyright 2017-2025, Voxel51, Inc.
+Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
 

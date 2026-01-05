@@ -11,7 +11,7 @@
 #   bash guide2tex.bash modules_dev_guide.md
 #   bash guide2tex.bash pipelines_dev_guide.md
 #
-# Copyright 2017-2025, Voxel51, Inc.
+# Copyright 2017-2026, Voxel51, Inc.
 # voxel51.com
 #
 
