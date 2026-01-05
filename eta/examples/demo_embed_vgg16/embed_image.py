@@ -7,7 +7,7 @@ infrastructure, which is the preferred approach for ETA modules since they
 maintain the on-disk backing store for the class which is used to communicate
 between modules.
 
-Copyright 2017-2025, Voxel51, Inc.
+Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
 

@@ -81,4 +81,4 @@ docker run -it --runtime=nvidia $TAG
 
 ## Copyright
 
-Copyright 2017-2025, Voxel51, Inc.<br> voxel51.com
+Copyright 2017-2026, Voxel51, Inc.<br> voxel51.com

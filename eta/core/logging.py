@@ -3,7 +3,7 @@ Core logging infrastructure.
 
 Note that calling this module's methods will modify your **root logger**.
 
-Copyright 2017-2025, Voxel51, Inc.
+Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
 

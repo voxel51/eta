@@ -2,7 +2,7 @@
 Core definition of `LabeledDatasetBuilder`s, which serve the purpose of
 managing and applying a series of `DatasetTransformer`s to `LabeledDataset`s.
 
-Copyright 2017-2025 Voxel51, Inc.
+Copyright 2017-2026 Voxel51, Inc.
 voxel51.com
 
 Ben Kane, ben@voxel51.com

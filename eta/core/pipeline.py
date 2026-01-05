@@ -4,7 +4,7 @@ Core pipeline infrastructure.
 See `docs/pipelines_dev_guide.md` for detailed information about the design of
 the ETA pipeline system.
 
-Copyright 2017-2025, Voxel51, Inc.
+Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
 from collections import defaultdict
