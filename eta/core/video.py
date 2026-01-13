@@ -10,7 +10,7 @@ Notes::
         produced outside of this library must be converted to RGB. This
         conversion can be done via `eta.core.image.bgr_to_rgb()`
 
-Copyright 2017-2025, Voxel51, Inc.
+Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
 from copy import deepcopy

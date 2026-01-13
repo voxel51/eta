@@ -2,7 +2,7 @@
 Tools for generating metadata JSON files for ETA modules programmatically from
 source.
 
-Copyright 2017-2025, Voxel51, Inc.
+Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
 from collections import defaultdict

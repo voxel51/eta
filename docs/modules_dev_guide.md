@@ -515,7 +515,7 @@ Info:
     type: {{the type of the module}}
     version: {{the module version}}
 
-Copyright 2017-2025, Voxel51, Inc.
+Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 '''
 #
@@ -897,4 +897,4 @@ area = circle.area()  # pi
 
 ## Copyright
 
-Copyright 2017-2025, Voxel51, Inc.<br> voxel51.com
+Copyright 2017-2026, Voxel51, Inc.<br> voxel51.com

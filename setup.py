@@ -2,7 +2,7 @@
 """
 Installs ETA.
 
-Copyright 2017-2025, Voxel51, Inc.
+Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
 
@@ -13,7 +13,7 @@ from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
 
-VERSION = "0.15.1"
+VERSION = "0.15.2"
 
 
 class BdistWheelCustom(bdist_wheel):
@@ -119,7 +119,7 @@ setup(
             "boto3>=1.15",
             "google-api-python-client",
             "google-cloud-storage>=1.36",
-            "httplib2<=0.15",
+            "httplib2",
             "pysftp",
         ],
     },

@@ -4,7 +4,7 @@ Core module infrastructure.
 See `docs/modules_dev_guide.md` for detailed information about the design and
 usage of ETA modules.
 
-Copyright 2017-2025, Voxel51, Inc.
+Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
 from collections import OrderedDict

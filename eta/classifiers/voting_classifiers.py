@@ -1,7 +1,7 @@
 """
 A collection of classifiers that use voting to generate predictions.
 
-Copyright 2017-2025, Voxel51, Inc.
+Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
 from eta.core.config import Config

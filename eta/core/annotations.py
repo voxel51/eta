@@ -4,7 +4,7 @@ Core utilities for rendering annotations on media.
 @todo improve efficiency by minimizing number of times that images are copied
 and rendered.
 
-Copyright 2017-2025, Voxel51, Inc.
+Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
 from copy import deepcopy

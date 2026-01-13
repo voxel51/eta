@@ -2,7 +2,7 @@
 Interface to the TF-Models Object Detection Library available at
 https://github.com/voxel51/models/tree/master/research/object_detection.
 
-Copyright 2017-2025, Voxel51, Inc.
+Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
 
@@ -982,18 +982,39 @@ def _load_tf2_detection_model(model_dir):
     """
     with etat.TFLoggingLevel(tf1.logging.ERROR):
         with etau.CaptureStdout():
-            detect_fn = tf.saved_model.load(
+            loaded = tf.saved_model.load(
                 os.path.join(model_dir, "saved_model")
             )
 
-    def predict(image):
-        detections = detect_fn(image)
+    if callable(loaded):
+        detect_fn = loaded
+        use_signature = False
+    else:
+        detect_fn = loaded.signatures["serving_default"]
+        use_signature = True
 
-        return (
-            detections["detection_boxes"],
-            detections["detection_scores"],
-            detections["detection_classes"],
-        )
+    def predict(image):
+        if use_signature:
+            image = tf.cast(image, tf.float32)
+            detections = detect_fn(input=image)
+        else:
+            detections = detect_fn(image)
+
+        if "detection_boxes" in detections:
+            return (
+                detections["detection_boxes"],
+                detections["detection_scores"],
+                detections["detection_classes"],
+            )
+        else:
+            # centernet-mobilenet-v2-fpn was exported for TFLite and uses
+            # generic output names: output_1=scores, output_2=classes,
+            # output_3=boxes; see CenterNetModule in
+            # https://github.com/tensorflow/models/blob/master/research/object_detection/export_tflite_graph_lib_tf2.py
+            boxes = detections["output_3"]
+            scores = detections["output_1"]
+            classes = detections["output_2"]
+            return (boxes, scores, classes)
 
     return predict
 

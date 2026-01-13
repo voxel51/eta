@@ -1,7 +1,7 @@
 """
 Core interfaces, data structures, and methods for working with datasets.
 
-Copyright 2017-2025 Voxel51, Inc.
+Copyright 2017-2026 Voxel51, Inc.
 voxel51.com
 
 Ben Kane, ben@voxel51.com
