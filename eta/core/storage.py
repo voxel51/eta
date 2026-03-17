@@ -18,12 +18,13 @@ voxel51.com
 
 import configparser
 import datetime
-import dateutil.parser
 import io
 import itertools
 import logging
 import os
 import re
+
+import dateutil.parser
 import requests
 
 try:
@@ -34,9 +35,10 @@ except ImportError:
 import urllib3
 
 try:
+    import azure.core.credentials as azc
+    import azure.core.exceptions as aze
     import azure.identity as azi
     import azure.storage.blob as azb
-    import azure.core.exceptions as aze
     import boto3
     import botocore
     import botocore.config as bcc
@@ -44,17 +46,16 @@ try:
     import google.api_core.exceptions as gae
     import google.api_core.retry as gar
     import google.auth as ga
-    import google.auth.transport.requests as gatr
     import google.auth.compute_engine as gace
+    import google.auth.transport.requests as gatr
     import google.cloud.storage as gcs
-    from google.cloud.storage._signing import generate_signed_url_v4
-    from google.auth import impersonated_credentials
-    from google.auth.identity_pool import (
-        Credentials as IdentityPoolCredentials,
-    )
     import googleapiclient.discovery as gad
     import googleapiclient.http as gah
     import pysftp
+    from google.auth import impersonated_credentials
+    from google.auth.identity_pool import \
+        Credentials as IdentityPoolCredentials
+    from google.cloud.storage._signing import generate_signed_url_v4
 except ImportError as e:
     raise ImportError(
         "The requested operation requires extra dependencies; install "
@@ -2650,6 +2651,7 @@ class AzureStorageClient(
         account_key = credentials.get("account_key", None)
         conn_str = credentials.get("conn_str", None)
         alias = credentials.pop("alias", None)
+        sas_token = credentials.get("sas_token", None)
 
         # https://github.com/Azure/azure-sdk-for-python/issues/12102#issuecomment-645641481
         if max_pool_connections is not None:
@@ -2692,6 +2694,8 @@ class AzureStorageClient(
                 credential = azi.ClientSecretCredential(
                     tenant_id, client_id, client_secret, **kwargs
                 )
+            elif sas_token:
+                credential = azc.AzureSasCredential(sas_token)
             else:
                 credential = azi.DefaultAzureCredential(**kwargs)
 
@@ -2738,11 +2742,12 @@ class AzureStorageClient(
         self._account_key = account_key
         self._alias = alias
         self._prefixes = tuple(prefixes)
+        self._sas_token = sas_token
 
         self._user_delegation_key = None
         self._user_delegation_expiration = None
 
-        if self._account_key is None:
+        if self._account_key is None and self._sas_token is None:
             self._generate_user_delegation_key()
 
         self._permissions = {
@@ -3043,21 +3048,23 @@ class AzureStorageClient(
         """
         container_name, blob_name = self._parse_path(cloud_path)
 
-        self._refresh_user_delegation_key_if_necessary()
+        signature = self._sas_token
+        if signature is None:
+            self._refresh_user_delegation_key_if_necessary()
 
-        permission = self._permissions[method.upper()]
-        expiry = datetime.datetime.utcnow() + datetime.timedelta(hours=hours)
+            permission = self._permissions[method.upper()]
+            expiry = datetime.datetime.utcnow() + datetime.timedelta(hours=hours)
 
-        signature = azb.generate_blob_sas(
-            account_name=self._account_name,
-            container_name=container_name,
-            blob_name=blob_name,
-            account_key=self._account_key,
-            user_delegation_key=self._user_delegation_key,
-            permission=permission,
-            expiry=expiry,
-            content_type=content_type,
-        )
+            signature = azb.generate_blob_sas(
+                account_name=self._account_name,
+                container_name=container_name,
+                blob_name=blob_name,
+                account_key=self._account_key,
+                user_delegation_key=self._user_delegation_key,
+                permission=permission,
+                expiry=expiry,
+                content_type=content_type,
+            )
 
         root = self._account_url
         return root + "/" + container_name + "/" + blob_name + "?" + signature
