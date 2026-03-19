@@ -6,14 +6,14 @@ Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
 
-from importlib import metadata
 import os
 import re
-from setuptools import setup, find_packages
+from importlib import metadata
+
+from setuptools import find_packages, setup
 from wheel.bdist_wheel import bdist_wheel
 
-
-VERSION = "0.15.3"
+VERSION = "0.15.4"
 
 
 class BdistWheelCustom(bdist_wheel):
