@@ -1268,21 +1268,11 @@ class Model(Serializable):
 
         found_gpu = etau.has_gpu()
 
-        if found_gpu:
-            if self.requirements.supports_gpu == False:  # False, not None
-                error_msg = (
-                    "Model '%s' requires GPU but no GPU was found" % self.name
-                )
-
-                if self._REQUIREMENT_ERROR_SUFFIX:
-                    error_msg += "\n\n" + self._REQUIREMENT_ERROR_SUFFIX
-
-                etau.handle_error(ModelError(error_msg), error_level)
-        else:
+        if not found_gpu:
             if self.requirements.supports_cpu == False:  # False not None
                 error_msg = (
-                    "Model '%s' does not support CPU and no GPU was found"
-                    % self.name
+                    "Model '%s' does not support CPU-only inference and no "
+                    "GPU was found" % self.name
                 )
 
                 if self._REQUIREMENT_ERROR_SUFFIX:
