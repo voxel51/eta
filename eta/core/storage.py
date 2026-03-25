@@ -969,35 +969,71 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
                 list of metadata dictionaries (when `return_metadata == True`)
                 for the files in the folder
         """
-        bucket, folder_name = self._parse_path(cloud_folder)
+        items = []
+        page_token = None
+        while True:
+            page, page_token = self.list_files_in_folder_page(
+                cloud_folder,
+                page_token=page_token,
+                recursive=recursive,
+                return_metadata=return_metadata,
+            )
+            items.extend(page)
+            if page_token is None:
+                break
+
+        return items
+
+    def list_files_in_folder_page(
+        self,
+        dirpath,
+        page_token=None,
+        page_size=1000,
+        recursive=False,
+        return_metadata=False,
+    ):
+        """Returns one page of files in the given cloud folder.
+
+        Args:
+            dirpath: a cloud folder URI
+            page_token (None): continuation token from a previous call
+            page_size (1000): maximum number of items per page
+            recursive (False): whether to list files recursively
+            return_metadata (False): whether to return metadata dicts
+                instead of paths
+
+        Returns:
+            a tuple of (items, next_token) where items is a list of full
+            cloud paths (or metadata dicts) and next_token is ``None``
+            when no more pages remain
+        """
+        bucket, folder_name = self._parse_path(dirpath)
         if folder_name and not folder_name.endswith("/"):
             folder_name += "/"
 
-        kwargs = {"Bucket": bucket, "Prefix": folder_name}
+        kwargs = dict(Bucket=bucket, Prefix=folder_name, MaxKeys=page_size)
         if not recursive:
             kwargs["Delimiter"] = "/"
+        if page_token:
+            kwargs["ContinuationToken"] = page_token
 
-        paths_or_metadata = []
-        prefix = self._get_prefix(cloud_folder) + bucket + "/"
-        while True:
-            resp = self._client.list_objects_v2(**kwargs)
+        response = self._client.list_objects_v2(**kwargs)
+        contents = [
+            obj
+            for obj in response.get("Contents", [])
+            if not obj["Key"].endswith("/")
+        ]
+        next_token = response.get("NextContinuationToken")
 
-            for obj in resp.get("Contents", []):
-                path = obj["Key"]
-                if not path.endswith("/"):
-                    if return_metadata:
-                        paths_or_metadata.append(
-                            self._get_object_metadata(bucket, obj)
-                        )
-                    else:
-                        paths_or_metadata.append(prefix + path)
+        if return_metadata:
+            items = [
+                self._get_object_metadata(bucket, obj) for obj in contents
+            ]
+            return items, next_token
 
-            try:
-                kwargs["ContinuationToken"] = resp["NextContinuationToken"]
-            except KeyError:
-                break
-
-        return paths_or_metadata
+        path_prefix = self._get_prefix(dirpath) + bucket + "/"
+        items = [path_prefix + obj["Key"] for obj in contents]
+        return items, next_token
 
     def list_subfolders(self, cloud_folder):
         """Returns a list of sub "folders" in the given cloud "folder".
@@ -2134,7 +2170,45 @@ class GoogleCloudStorageClient(
                 list of metadata dictionaries (when `return_metadata == True`)
                 for the files in the folder
         """
-        bucket_name, folder_name = self._parse_path(cloud_folder)
+        items = []
+        page_token = None
+        while True:
+            page, page_token = self.list_files_in_folder_page(
+                cloud_folder,
+                page_token=page_token,
+                recursive=recursive,
+                return_metadata=return_metadata,
+            )
+            items.extend(page)
+            if page_token is None:
+                break
+
+        return items
+
+    def list_files_in_folder_page(
+        self,
+        dirpath,
+        page_token=None,
+        page_size=1000,
+        recursive=False,
+        return_metadata=False,
+    ):
+        """Returns one page of files in the given cloud folder.
+
+        Args:
+            dirpath: a cloud folder URI
+            page_token (None): continuation token from a previous call
+            page_size (1000): maximum number of items per page
+            recursive (False): whether to list files recursively
+            return_metadata (False): whether to return metadata dicts
+                instead of paths
+
+        Returns:
+            a tuple of (items, next_token) where items is a list of full
+            cloud paths (or metadata dicts) and next_token is ``None``
+            when no more pages remain
+        """
+        bucket_name, folder_name = self._parse_path(dirpath)
         if folder_name and not folder_name.endswith("/"):
             folder_name += "/"
 
@@ -2143,26 +2217,22 @@ class GoogleCloudStorageClient(
             bucket_name,
             prefix=folder_name,
             delimiter=delimiter,
+            max_results=page_size,
+            page_token=page_token,
             retry=self._retry,
         )
 
-        # Return metadata dictionaries for each file
-        if return_metadata:
-            metadata = []
-            for blob in blobs:
-                if not blob.name.endswith("/"):
-                    metadata.append(self._get_file_metadata(blob))
-
-            return metadata
-
-        # Return paths for each file
-        paths = []
         prefix = "gs://" + bucket_name + "/"
-        for blob in blobs:
-            if not blob.name.endswith("/"):
-                paths.append(prefix + blob.name)
 
-        return paths
+        if return_metadata:
+            items_raw = [b for b in blobs if not b.name.endswith("/")]
+            next_token = blobs.next_page_token
+            items = [self._get_file_metadata(b) for b in items_raw]
+            return items, next_token
+
+        items = [prefix + b.name for b in blobs if not b.name.endswith("/")]
+        next_token = blobs.next_page_token
+        return items, next_token
 
     def list_subfolders(self, cloud_folder):
         """Returns a list of sub "folders" in the given "folder" in GCS.
@@ -2398,6 +2468,10 @@ class NeedsAzureCredentials(object):
         client_id = ...
         secret = ...
         tenant = ...
+        account_name = ...
+
+        [default]
+        sas_token = ...
         account_name = ...
 
     See the following pages for more information:
@@ -2972,31 +3046,74 @@ class AzureStorageClient(
                 list of metadata dictionaries (when `return_metadata == True`)
                 for the files in the folder
         """
-        container_name, folder_name = self._parse_path(cloud_folder)
+        items = []
+        page_token = None
+        while True:
+            page, page_token = self.list_files_in_folder_page(
+                cloud_folder,
+                page_token=page_token,
+                recursive=recursive,
+                return_metadata=return_metadata,
+            )
+            items.extend(page)
+            if page_token is None:
+                break
+
+        return items
+
+    def list_files_in_folder_page(
+        self,
+        dirpath,
+        page_token=None,
+        page_size=1000,
+        recursive=False,
+        return_metadata=False,
+    ):
+        """Returns one page of files in the given cloud folder.
+
+        Args:
+            dirpath: a cloud folder URI
+            page_token (None): continuation token from a previous call
+            page_size (1000): maximum number of items per page
+            recursive (False): whether to list files recursively
+            return_metadata (False): whether to return metadata dicts
+                instead of paths
+
+        Returns:
+            a tuple of (items, next_token) where items is a list of full
+            cloud paths (or metadata dicts) and next_token is ``None``
+            when no more pages remain
+        """
+        container_name, folder_name = self._parse_path(dirpath)
         if folder_name and not folder_name.endswith("/"):
             folder_name += "/"
 
-        blobs = self._list_blobs(
-            container_name, prefix=folder_name, recursive=recursive
-        )
+        container = self._client.get_container_client(container_name)
+        if recursive:
+            pager = container.list_blobs(
+                name_starts_with=folder_name, results_per_page=page_size
+            ).by_page(continuation_token=page_token)
+        else:
+            pager = container.walk_blobs(
+                name_starts_with=folder_name,
+                delimiter="/",
+                results_per_page=page_size,
+            ).by_page(continuation_token=page_token)
 
-        # Return metadata dictionaries for each file
+        page = next(pager, [])
+        prefix = self._get_prefix(dirpath) + container_name + "/"
+        next_token = pager.continuation_token or None
+
         if return_metadata:
-            metadata = []
-            for blob in blobs:
-                if not blob.name.endswith("/"):
-                    metadata.append(self._get_file_metadata(blob))
+            items = [
+                self._get_file_metadata(b)
+                for b in page
+                if not b.name.endswith("/")
+            ]
+            return items, next_token
 
-            return metadata
-
-        # Return paths for each file
-        paths = []
-        prefix = self._get_prefix(cloud_folder) + container_name + "/"
-        for blob in blobs:
-            if not blob.name.endswith("/"):
-                paths.append(prefix + blob.name)
-
-        return paths
+        items = [prefix + b.name for b in page if not b.name.endswith("/")]
+        return items, next_token
 
     def list_subfolders(self, cloud_folder):
         """Returns a list of sub "folders" in the given "folder" in Azure
