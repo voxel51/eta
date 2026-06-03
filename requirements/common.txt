@@ -4,7 +4,7 @@ Cython>=0.28.5 # 0.29.28
 dill==0.2.7.1
 glob2==0.6
 jsonlines==3.1.0
-lxml==4.9.1
+lxml==6.1.0
 numpy>=1.16.3
 opencv-python-headless<5,>=4.1.0.25
 packaging==19.2
