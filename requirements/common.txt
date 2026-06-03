@@ -4,11 +4,11 @@ Cython>=0.28.5 # 0.29.28
 dill==0.2.7.1
 glob2==0.6
 jsonlines==3.1.0
-lxml==4.9.1
+lxml==6.1.0
 numpy>=1.16.3
 opencv-python-headless<5,>=4.1.0.25
 packaging==19.2
-Pillow==10.3.0
+Pillow==12.2.0
 py7zr==0.20.4
 python-dateutil==2.7.0
 pytz==2019.3
@@ -24,4 +24,4 @@ simplejson==3.8.1
 sortedcontainers==2.1.0
 tabulate==0.8.5
 tzlocal==2.0.0
-urllib3==2.6.3
+urllib3==2.7.0

@@ -13,7 +13,7 @@ from importlib import metadata
 from setuptools import find_packages, setup
 from wheel.bdist_wheel import bdist_wheel
 
-VERSION = "0.15.5"
+VERSION = "0.16.0"
 
 
 class BdistWheelCustom(bdist_wheel):
@@ -137,11 +137,11 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
     ],
     entry_points={"console_scripts": ["eta=eta.core.cli:main"]},
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     cmdclass={"bdist_wheel": BdistWheelCustom},
 )
