@@ -598,8 +598,9 @@ def install_package(
 
     Args:
         requirement_str: a PEP 440 compliant package requirement, like
-            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
-            "tensorflow>=1.13,<1.15"
+            "tensorflow", "tensorflow<2", "tensorflow==2.3.0",
+            "tensorflow>=1.13,<1.15", or
+            "clip @ git+https://github.com/openai/CLIP.git"
         error_level: the error level to use, defined as:
 
             0: raise error if the install fails
@@ -662,11 +663,12 @@ def ensure_package(
 
     Args:
         requirement_str: a PEP 440 compliant package requirement, like
-            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
-            "tensorflow>=1.13,<1.15". This can also be an iterable of multiple
-            requirements, all of which must be installed, or this can be a
-            single "|"-delimited string specifying multiple requirements, at
-            least one of which must be installed
+            "tensorflow", "tensorflow<2", "tensorflow==2.3.0",
+            "tensorflow>=1.13,<1.15", or
+            "clip @ git+https://github.com/openai/CLIP.git". This can also be
+            an iterable of multiple requirements, all of which must be
+            installed, or this can be a single "|"-delimited string specifying
+            multiple requirements, at least one of which must be installed
         error_level: the error level to use, defined as:
 
             0: raise error if requirement is not satisfied
@@ -732,11 +734,11 @@ def ensure_import(
 
     Args:
         requirement_str: a PEP 440-like module requirement, like "tensorflow",
-            "tensorflow<2", "tensorflow==2.3.0", or "tensorflow>=1.13,<1.15".
-            This can also be an iterable of multiple requirements, all of which
-            must be installed, or this can be a single "|"-delimited string
-            specifying multiple requirements, at least one of which must be
-            installed
+            "tensorflow<2", "tensorflow==2.3.0", "tensorflow>=1.13,<1.15", or
+            "clip @ git+https://github.com/openai/CLIP.git". This can also be
+            an iterable of multiple requirements, all of which must be
+            installed, or this can be a single "|"-delimited string specifying
+            multiple requirements, at least one of which must be installed
         error_level: the error level to use, defined as:
 
             0: raise error if requirement is not satisfied
