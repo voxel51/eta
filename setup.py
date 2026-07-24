@@ -30,7 +30,7 @@ INSTALL_REQUIRES = [
     "jsonlines",
     "numpy",
     "packaging",
-    "paramiko>=3,<4",
+    "paramiko>=3,<6",
     "Pillow>=6.2",
     "py7zr",
     "python-dateutil",
@@ -120,7 +120,6 @@ setup(
             "google-api-python-client",
             "google-cloud-storage>=1.36",
             "httplib2",
-            "pysftp",
         ],
     },
     classifiers=[
