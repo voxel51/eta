@@ -8,7 +8,7 @@ This module currently provides clients for the following storage resources:
 - S3 buckets via the `boto3` package
 - Google Cloud buckets via the `google.cloud.storage` package
 - Google Drive via the `googleapiclient` package
-- Remote servers via the `pysftp` package
+- Remote servers via the `paramiko` package
 - Web storage via HTTP requests
 - Local disk storage
 
@@ -22,6 +22,8 @@ import io
 import itertools
 import logging
 import os
+import posixpath
+import stat
 import re
 
 import dateutil.parser
@@ -51,7 +53,7 @@ try:
     import google.cloud.storage as gcs
     import googleapiclient.discovery as gad
     import googleapiclient.http as gah
-    import pysftp
+    import paramiko
     from google.auth import impersonated_credentials
     from google.auth.identity_pool import \
         Credentials as IdentityPoolCredentials
@@ -4709,7 +4711,7 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
             remote_dir: the remote directory to write the uploaded directory
         """
         with self._connection as sftp:
-            sftp.put_r(local_dir, remote_dir)
+            _sftp_put_r(sftp, local_dir, remote_dir)
 
     def download_dir(self, remote_dir, local_dir):
         """Downloads the remote directory to the given local directory.
@@ -4719,7 +4721,7 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
             local_dir: the local directory to write the downloaded directory
         """
         with self._connection as sftp:
-            sftp.get_r(remote_dir, local_dir)
+            _sftp_get_r(sftp, remote_dir, local_dir)
 
     def make_dir(self, remote_dir, mode=777):
         """Makes the specified remote directory, recursively if necessary.
@@ -4729,7 +4731,7 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
             mode: int representation of the octal permissions for directory
         """
         with self._connection as sftp:
-            sftp.makedirs(remote_dir, mode=mode)
+            _sftp_makedirs(sftp, remote_dir, mode=mode)
 
     def delete_dir(self, remote_dir):
         """Deletes the remote directory, which must be empty.
@@ -4742,8 +4744,8 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
 
 
 class _SFTPConnection(object):
-    """An internal class for managing a pysftp.Connection that can either be
-    kept open manually controlled or automatically opened and closed on a
+    """An internal class for managing a paramiko SFTP session that can either
+    be kept open manually controlled or automatically opened and closed on a
     per-context basis.
 
     Attributes:
@@ -4757,21 +4759,21 @@ class _SFTPConnection(object):
 
         # Automatic usage
         conn = _SFTPConnection(..., keep_open=False)
-        # no pysftp.Connection is opened yet
-        with conn as pyconn:
-            # pyconn is a open pysftp.Connection object that is automatically
-            #closed when this context is exited
-        with conn as pyconn:
-            # pyconn is a new pysftp.Connection
+        # no SFTP session is opened yet
+        with conn as sftp:
+            # sftp is an open paramiko.SFTPClient that is automatically
+            # closed when this context is exited
+        with conn as sftp:
+            # sftp is a new paramiko.SFTPClient
         # no need to call conn.close()
 
         # Manual usage
         conn = _SFTPConnection(..., keep_open=True)
-        # an underlying pysftp.Connection is immediately opened
-        with conn as pyconn:
-            # pyconn is the opened pysftp.Connection
-        with conn as pyconn:
-            # pyconn is the same pysftp.Connection
+        # an underlying SFTP session is immediately opened
+        with conn as sftp:
+            # sftp is the opened paramiko.SFTPClient
+        with conn as sftp:
+            # sftp is the same paramiko.SFTPClient
         conn.close()
     """
 
@@ -4798,6 +4800,7 @@ class _SFTPConnection(object):
         self.port = port
         self.keep_open = False
 
+        self._ssh = None
         self._pyconn = None
         self.set_keep_open(keep_open)
 
@@ -4831,17 +4834,73 @@ class _SFTPConnection(object):
             self._close()
 
     def _open(self):
-        self._pyconn = pysftp.Connection(
+        ssh = paramiko.SSHClient()
+        ssh.load_system_host_keys()
+        ssh.connect(
             self.hostname,
-            username=self.username,
-            private_key=self.private_key_path,
             port=self.port,
+            username=self.username,
+            key_filename=self.private_key_path,
         )
+        self._ssh = ssh
+        self._pyconn = ssh.open_sftp()
 
     def _close(self):
         if self._pyconn is not None:
             self._pyconn.close()
+
+        if self._ssh is not None:
+            self._ssh.close()
+
         self._pyconn = None
+        self._ssh = None
+
+
+def _sftp_makedirs(sftp, remote_dir, mode=777):
+    # Interprets `mode` as the string representation of an octal permission,
+    # e.g. 777 -> 0o777, matching the semantics of `pysftp.makedirs`
+    mode = int(str(mode), 8)
+
+    to_make = []
+    remote_dir = posixpath.normpath(remote_dir)
+    while remote_dir not in ("/", "", "."):
+        try:
+            sftp.stat(remote_dir)
+            break
+        except IOError:
+            to_make.append(remote_dir)
+            remote_dir = posixpath.dirname(remote_dir)
+
+    for path in reversed(to_make):
+        sftp.mkdir(path, mode=mode)
+
+
+def _sftp_put_r(sftp, local_dir, remote_dir):
+    for root, _, files in os.walk(local_dir):
+        rel = os.path.relpath(root, local_dir)
+        if rel == ".":
+            rdir = remote_dir
+        else:
+            rdir = posixpath.join(remote_dir, *rel.split(os.sep))
+
+        _sftp_makedirs(sftp, rdir)
+        for filename in files:
+            sftp.put(
+                os.path.join(root, filename), posixpath.join(rdir, filename)
+            )
+
+
+def _sftp_get_r(sftp, remote_dir, local_dir):
+    if not os.path.isdir(local_dir):
+        os.makedirs(local_dir)
+
+    for entry in sftp.listdir_attr(remote_dir):
+        remote_path = posixpath.join(remote_dir, entry.filename)
+        local_path = os.path.join(local_dir, entry.filename)
+        if stat.S_ISDIR(entry.st_mode):
+            _sftp_get_r(sftp, remote_path, local_path)
+        else:
+            sftp.get(remote_path, localpath=local_path)
 
 
 def _read_file_in_chunks(file_obj, chunk_size):
