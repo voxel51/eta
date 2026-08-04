@@ -1,0 +1,28 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - release/v*
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone ETA
+        uses: actions/checkout@v6
+      - name: Set up Python 3
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3
+      - name: Install ETA
+        run: |
+          pip install --upgrade pip setuptools wheel
+          pip install -e .
+          pip install pytest
+      - name: Run tests
+        run: |
+          pytest tests/ -v
