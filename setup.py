@@ -120,6 +120,7 @@ setup(
             "google-api-python-client",
             "google-cloud-storage>=1.36",
             "httplib2",
+            "paramiko",
         ],
     },
     classifiers=[
