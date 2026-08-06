@@ -124,10 +124,10 @@ fi
 # Check Python version
 MSG "Checking version of 'python' binary"
 PYTHON_VERSION=$(python -c 'import platform; print(platform.python_version())')
-if [[ $PYTHON_VERSION == "3.9."* ]]; then
+if python -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)'; then
     MSG "Found compatible version: Python ${PYTHON_VERSION}"
 else
-    WARN "Python 3.9.X is recommended, but Python $PYTHON_VERSION was found"
+    WARN "Python 3.10 or later is required, but Python $PYTHON_VERSION was found"
     read -p "Are you sure you want to continue? [y/N] " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -156,21 +156,6 @@ if [ "${OS}" == "Darwin" ]; then
 fi
 
 
-# GPU flag
-MSG "Checking system for GPU"
-if [ "${OS}" == "Linux" ]; then
-    grep -q "NVIDIA" <(lspci)
-    if [ $? -eq 0 ]; then
-        GCARD=ON
-    else
-        GCARD=OFF
-    fi
-elif [ "${OS}" == "Darwin" ]; then
-    GCARD=OFF
-fi
-MSG "Setting GCARD=${GCARD}"
-
-
 # Install base packages
 MSG "Installing base machine packages"
 if [ "${OS}" == "Linux" ]; then
@@ -189,10 +174,6 @@ elif [ "${OS}" == "Darwin" ]; then
 fi
 
 
-MSG "Installing Python packages"
-CRITICAL pip install -r requirements.txt
-
-
 MSG "Installing ETA"
 if [ ${DEV_INSTALL} = true ]; then
     CRITICAL pip install -e .
@@ -208,47 +189,17 @@ fi
 
 
 MSG "Installing storage extras"
-CRITICAL pip install -r requirements/storage.txt
+CRITICAL pip install ".[storage]"
 
 
 MSG "Installing pipeline extras"
-CRITICAL pip install -r requirements/pipeline.txt
+CRITICAL pip install ".[pipeline]"
 
 
 if [ ${DEV_INSTALL} = true ]; then
     MSG "Performing dev install"
-    CRITICAL pip install -r requirements/dev.txt
+    CRITICAL pip install -e ".[dev]"
     CRITICAL pre-commit install
-fi
-
-
-#
-# Install Tensorflow
-#
-# Supported build configurations:
-# https://www.tensorflow.org/install/source#tested_build_configurations
-#
-if [ "${GCARD}" == "ON" ]; then
-    if [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 8") -gt 0 ]; then
-        # Found CUDA 8
-        MSG "Installing tensorflow-gpu 1.4"
-        CRITICAL pip install --upgrade tensorflow-gpu~=1.4
-    elif [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 9") -gt 0 ]; then
-        # Found CUDA 9
-        MSG "Installing tensorflow-gpu 1.12"
-        CRITICAL pip install --upgrade tensorflow-gpu~=1.12
-    elif [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 10") -gt 0 ]; then
-        # Found CUDA 10
-        MSG "Installing tensorflow-gpu 1.15"
-        CRITICAL pip install --upgrade tensorflow-gpu~=1.15
-    else
-        # Couldn't find CUDA
-        MSG "Installing tensorflow-gpu"
-        CRITICAL pip install --upgrade tensorflow-gpu
-    fi
-else
-    MSG "Installing tensorflow"
-    CRITICAL pip install --upgrade tensorflow
 fi
 
 

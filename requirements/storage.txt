@@ -1,8 +1,0 @@
-azure-identity===1.16.1
-azure-storage-blob==12.15.0
-boto3==1.10.9
-google-api-python-client==1.6.5
-google-auth-httplib2==0.0.3
-google-cloud-storage==1.7.0
-httplib2==0.15.0
-pysftp==0.2.9
