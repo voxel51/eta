@@ -1,5 +1,90 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voxel51-eta"
+dynamic = ["version"]
+description = "Extensible Toolkit for Analytics"
+readme = "README.md"
+authors = [{ name = "Voxel51, Inc.", email = "info@voxel51.com" }]
+license = { text = "Apache" }
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "argcomplete",
+    "dill",
+    "glob2",
+    "jsonlines",
+    "numpy",
+    "opencv-python-headless<5,>=4.1",
+    "packaging",
+    "paramiko>=3,<6",
+    "Pillow>=6.2",
+    "py7zr",
+    "python-dateutil",
+    "pytz",
+    "rarfile",
+    "requests",
+    "retrying",
+    "scikit-image",
+    "sortedcontainers",
+    "tabulate",
+    "tzlocal",
+    "urllib3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "pre-commit",
+    "pylint",
+    "pytest",
+    "Sphinx",
+    "sphinx-rtd-theme",
+    "sphinxcontrib-napoleon",
+]
+pipeline = ["blockdiag", "Sphinx", "sphinxcontrib-napoleon"]
+storage = [
+    "azure-identity",
+    "azure-storage-blob>=12.4.0",
+    "boto3>=1.15",
+    "google-api-python-client",
+    "google-cloud-storage>=1.36",
+    "httplib2",
+    "paramiko",
+]
+
+[project.urls]
+Homepage = "https://github.com/voxel51/eta"
+
+[project.scripts]
+eta = "eta.core.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["eta*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.black]
 line-length = 79
 include = '\.pyi?$'
