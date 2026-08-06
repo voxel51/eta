@@ -105,9 +105,8 @@ You can symlink an existing globally-installed OpenCV distribution on your
 machine into a virtual environment. For example:
 
 ```shell
-GLOBAL="/usr/local/lib/python2.7/site-packages"
-VIRTUAL="/path/to/virtual/env/lib/python2.7/site-packages"
-ln -s "${GLOBAL}/cv.py" "${VIRTUAL}/cv.py"
+GLOBAL="/usr/local/lib/python3.11/site-packages"
+VIRTUAL="/path/to/virtual/env/lib/python3.11/site-packages"
 ln -s "${GLOBAL}/cv2.so" "${VIRTUAL}/cv2.so"
 ```
 

@@ -125,9 +125,9 @@ print(logging_config)
 
 General logging resources
 
--   https://docs.python.org/2/howto/logging.html
+-   https://docs.python.org/3/howto/logging.html
 
--   https://docs.python.org/2.7/howto/logging-cookbook.html#logging-cookbook
+-   https://docs.python.org/3/howto/logging-cookbook.html#logging-cookbook
 
 -   https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python
 
