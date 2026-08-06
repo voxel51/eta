@@ -189,10 +189,6 @@ elif [ "${OS}" == "Darwin" ]; then
 fi
 
 
-MSG "Installing Python packages"
-CRITICAL pip install -r requirements.txt
-
-
 MSG "Installing ETA"
 if [ ${DEV_INSTALL} = true ]; then
     CRITICAL pip install -e .
@@ -208,16 +204,16 @@ fi
 
 
 MSG "Installing storage extras"
-CRITICAL pip install -r requirements/storage.txt
+CRITICAL pip install ".[storage]"
 
 
 MSG "Installing pipeline extras"
-CRITICAL pip install -r requirements/pipeline.txt
+CRITICAL pip install ".[pipeline]"
 
 
 if [ ${DEV_INSTALL} = true ]; then
     MSG "Performing dev install"
-    CRITICAL pip install -r requirements/dev.txt
+    CRITICAL pip install -e ".[dev]"
     CRITICAL pre-commit install
 fi
 

@@ -33,7 +33,7 @@ FROM $BASE_IMAGE
 #
 # numpy==1.16.0 is enforced as a last step because tensorflow requires this
 # version to function properly, and some commands here seem to mess with the
-# numpy version installed via the `requirements.txt` file
+# numpy version installed via the package requirements
 #
 
 RUN apt-get update \
@@ -65,11 +65,7 @@ COPY . eta/
 
 ARG TENSORFLOW_VERSION
 RUN pip --no-cache-dir  install --upgrade pip setuptools \
-    && pip --no-cache-dir install -r eta/requirements/common.txt \
-    && pip --no-cache-dir install -r eta/requirements/pipeline.txt \
-    && pip --no-cache-dir install -r eta/requirements/storage.txt \
-    && pip --no-cache-dir install --upgrade setuptools \
-    && pip --no-cache-dir install -e eta/. \
+    && pip --no-cache-dir install -e "eta/.[pipeline,storage]" \
     && pip --no-cache-dir install -I $TENSORFLOW_VERSION \
     && pip --no-cache-dir install --upgrade numpy==1.16.0 \
     && pip --no-cache-dir install -e eta/eta/tensorflow/darkflow/. \

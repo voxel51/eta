@@ -53,6 +53,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+dev = [
+    "black",
+    "pre-commit",
+    "pylint",
+    "pytest",
+    "Sphinx",
+    "sphinx-rtd-theme",
+    "sphinxcontrib-napoleon",
+]
 pipeline = ["blockdiag", "Sphinx", "sphinxcontrib-napoleon"]
 storage = [
     "azure-identity",
