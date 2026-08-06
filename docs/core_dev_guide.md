@@ -65,9 +65,9 @@ than combining multiple changes into a single commit.
 ## Style guide
 
 We require all ETA code to adhere to our Python style guide. See the
-[Python style guide](https://github.com/voxel51/eta/blob/develop/docs/python_style_guide.md)
+[Python style guide](https://github.com/voxel51/eta/blob/main/docs/python_style_guide.md)
 for a description of our style, and see the
-[linting guide](https://github.com/voxel51/eta/blob/develop/docs/linting_guide.md)
+[linting guide](https://github.com/voxel51/eta/blob/main/docs/linting_guide.md)
 for details on our code linting tools.
 
 ## Image and video color formats
