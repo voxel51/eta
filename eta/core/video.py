@@ -17,6 +17,7 @@ from copy import deepcopy
 import errno
 import logging
 import os
+import re
 from subprocess import Popen, PIPE
 import threading
 
@@ -4008,6 +4009,49 @@ class FFprobe(object):
         return out.decode("utf-8") if decode else out
 
 
+_VSYNC_TO_FPS_MODE = {
+    "-1": "auto",
+    "0": "passthrough",
+    "1": "cfr",
+    "2": "vfr",
+}
+
+_ffmpeg_has_fps_mode = None
+
+
+def _ffmpeg_supports_fps_mode():
+    """Determines whether the ``ffmpeg`` binary supports the ``-fps_mode``
+    option, which was added in ffmpeg 5.1 and replaces ``-vsync``, which was
+    removed in ffmpeg 9.
+
+    The result is cached after the first call.
+
+    Returns:
+        True/False
+    """
+    global _ffmpeg_has_fps_mode
+
+    if _ffmpeg_has_fps_mode is None:
+        try:
+            with Popen(["ffmpeg", "-version"], stdout=PIPE, stderr=PIPE) as p:
+                out = p.communicate()[0].decode("utf-8", errors="ignore")
+        except EnvironmentError:
+            # No usable ffmpeg; don't cache, so a binary that appears later
+            # is probed fresh
+            return False
+
+        m = re.search(r"version\s+\D*?(\d+)\.(\d+)", out)
+        if m:
+            version = (int(m.group(1)), int(m.group(2)))
+            _ffmpeg_has_fps_mode = version >= (5, 1)
+        else:
+            # Unparseable version strings are typically git/master builds,
+            # which support -fps_mode
+            _ffmpeg_has_fps_mode = True
+
+    return _ffmpeg_has_fps_mode
+
+
 class FFmpeg(object):
     """Interface for the ffmpeg binary.
 
@@ -4159,6 +4203,8 @@ class FFmpeg(object):
                 # Append filters
                 out_opts += self._filter_opts
 
+        in_opts, out_opts = self._translate_vsync_opts(in_opts, out_opts)
+
         # Construct ffmpeg command
         self._args = (
             ["ffmpeg"]
@@ -4230,6 +4276,44 @@ class FFmpeg(object):
         self._p = None
         self.is_input_streaming = False
         self.is_output_streaming = False
+
+    @staticmethod
+    def _translate_vsync_opts(in_opts, out_opts):
+        """Translates legacy ``-vsync`` options into ``-fps_mode`` options
+        when the ``ffmpeg`` binary supports them.
+
+        ``-fps_mode`` is an output-only option, so ``-vsync`` flags in the
+        input options are moved to the output options.
+        """
+        if "-vsync" not in in_opts and "-vsync" not in out_opts:
+            return in_opts, out_opts
+
+        if not _ffmpeg_supports_fps_mode():
+            return in_opts, out_opts
+
+        def _pop_vsync(opts):
+            new_opts = []
+            fps_mode = None
+            i = 0
+            while i < len(opts):
+                if opts[i] == "-vsync" and i + 1 < len(opts):
+                    val = opts[i + 1]
+                    fps_mode = _VSYNC_TO_FPS_MODE.get(val, val)
+                    i += 2
+                else:
+                    new_opts.append(opts[i])
+                    i += 1
+
+            return new_opts, fps_mode
+
+        in_opts, in_fps_mode = _pop_vsync(in_opts)
+        out_opts, out_fps_mode = _pop_vsync(out_opts)
+
+        fps_mode = out_fps_mode or in_fps_mode
+        if fps_mode is not None and "-fps_mode" not in out_opts:
+            out_opts = out_opts + ["-fps_mode", fps_mode]
+
+        return in_opts, out_opts
 
     @staticmethod
     def _gen_filter_opts(fps, size, scale):

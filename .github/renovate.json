@@ -1,58 +1,28 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-    "extends": [
-        "config:recommended"
-    ],
+    "extends": ["config:recommended"],
     "dependencyDashboard": false,
-    "baseBranches": [
-        "main"
-    ],
+    "baseBranches": ["main"],
     "gitAuthor": "voxel51-bot <bot@voxel51.com>",
     "rangeStrategy": "widen",
-    "schedule": [
-        "* * * * 3"
-    ],
-    "labels": [
-        "dependencies"
-    ],
-    "enabledManagers": [
-        "pip_requirements",
-        "pip_setup",
-        "github-actions"
-    ],
-    "pip_requirements": {
-        "managerFilePatterns": [
-            "/(^|/)[\\w-]*requirements([-._]\\w+)?\\.(txt|pip)$/",
-            "/(^|/)requirements/[^/]+\\.(txt|pip)$/"
-        ]
-    },
+    "schedule": ["* * * * 3"],
+    "labels": ["dependencies"],
+    "enabledManagers": ["pep621", "github-actions"],
     "packageRules": [
         {
-            "matchManagers": [
-                "pip_requirements",
-                "pip_setup"
-            ],
+            "matchManagers": ["pep621"],
             "groupName": "python-packages",
-            "addLabels": [
-                "python"
-            ]
+            "addLabels": ["python"]
         },
         {
-            "matchManagers": [
-                "github-actions"
-            ],
+            "matchManagers": ["github-actions"],
             "groupName": "github-actions",
-            "addLabels": [
-                "github-actions"
-            ]
+            "addLabels": ["github-actions"]
         }
     ],
     "vulnerabilityAlerts": {
         "enabled": true,
-        "labels": [
-            "dependencies",
-            "security"
-        ]
+        "labels": ["dependencies", "security"]
     },
     "osvVulnerabilityAlerts": true
 }

@@ -29,11 +29,9 @@ infrastructure.**
 ETA is very portable:
 
 -   Installable on Mac or Linux
--   Supports Python 3.9 or later
+-   Supports Python 3.10 or later
 -   Supports TensorFlow 1.X and 2.X
--   Supports OpenCV 2.4+ and OpenCV 3.0+
 -   Supports CPU-only and GPU-enabled installations
--   Supports CUDA 8, 9 and 10 for GPU installations
 
 ## Installation
 
@@ -46,13 +44,6 @@ pip install voxel51-eta
 This will perform a [lite installation of ETA](#lite-installation). If you use
 an ETA feature that requires additional dependencies (e.g., `ffmpeg` or
 `tensorflow`), you will be prompted to install the relevant packages.
-
-## Docker Installation
-
-If you prefer to operate via Docker, see the
-[Docker Build Guide](https://github.com/voxel51/eta/blob/main/docs/docker_build_guide.md)
-for simple instructions for building a Docker image with an ETA environment
-installed.
 
 ## Installation from source
 
@@ -87,24 +78,11 @@ Note that the install script supports flags that control things like (on macOS)
 whether `port` or `brew` is used to install packages. Run
 `bash install.bash -h` for more information.
 
-For Linux installs, the script inspects your system to see if CUDA is installed
-via the `lspci` command. If CUDA is available, TensorFlow is installed with GPU
-support.
+The install script does not install TensorFlow; if you use ETA features that
+require it, install the version appropriate for your system.
 
-The table below lists the version of TensorFlow that will be installed by the
-installer, as recommended by the
-[tested build configurations](https://www.tensorflow.org/install/source#tested_build_configurations):
-
-| CUDA Version Found | TensorFlow Version Installed |
-| ------------------ | ---------------------------- |
-| CUDA 8             | `tensorflow-gpu~=1.4`        |
-| CUDA 9             | `tensorflow-gpu~=1.12`       |
-| CUDA 10            | `tensorflow-gpu~=1.15`       |
-| Other CUDA         | `tensorflow-gpu~=1.15`       |
-| No CUDA            | `tensorflow~=1.15`           |
-
-> Note that ETA also supports TensorFlow 2.X. The only problems you may face
-> when using ETA with TensorFlow 2 are when trying to run inference with
+> Note that ETA supports TensorFlow 1.X and 2.X. The only problems you may
+> face when using ETA with TensorFlow 2 are when trying to run inference with
 > [ETA models](https://github.com/voxel51/eta/blob/main/eta/models/manifest.json)
 > that only support TensorFlow 1. A notable case here are TF-slim models. In
 > such cases, you should see an informative error message alerting you of the
