@@ -1,7 +1,7 @@
 # ETA Examples
 
 This directory contains various examples of using the ETA library. See the
-[docs folder](https://github.com/voxel51/eta/tree/develop/docs) for more
+[docs folder](https://github.com/voxel51/eta/tree/main/docs) for more
 documentation about the various components of the ETA library that are used
 here.
 
