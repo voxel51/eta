@@ -2,7 +2,7 @@
 
 This document describes ETA's infrastructure for accessing resources in remote
 storage, which is contained in the
-[eta.core.storage](https://github.com/voxel51/eta/blob/develop/eta/core/storage.py)
+[eta.core.storage](https://github.com/voxel51/eta/blob/main/eta/core/storage.py)
 module.
 
 ## Supported Clients

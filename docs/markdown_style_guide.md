@@ -9,7 +9,7 @@ We use Prettier (deterministic) auto-formatting for all Markdown files as a
 pre-commit hook. Installing ETA with the `-d` (dev) flag automatically
 configures these hooks. Much of the style guide is automatically handled by
 Prettier. See the
-[linting guide](https://github.com/voxel51/eta/blob/develop/docs/linting_guide.md)
+[linting guide](https://github.com/voxel51/eta/blob/main/docs/linting_guide.md)
 for more information.
 
 All Markdown must obey the

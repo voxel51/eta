@@ -3,7 +3,6 @@ name: Tests
 on:
   push:
     branches:
-      - develop
       - main
       - release/v*
   pull_request:
