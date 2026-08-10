@@ -58,6 +58,7 @@ dev = [
     "pre-commit",
     "pylint",
     "pytest",
+    "ruff",
     "Sphinx",
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
@@ -84,6 +85,15 @@ include = ["eta*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+required-version = "==0.16.0"
+target-version = "py310"
+line-length = 79
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82", "F811"]
+fixable = []
 
 [tool.black]
 line-length = 79
