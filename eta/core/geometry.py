@@ -447,7 +447,7 @@ class RelativePoint(Serializable):
             the absolute (x, y) coordinates of this point
         """
         w, h = _to_frame_size(frame_size=frame_size, shape=shape, img=img)
-        return int(w * 1.0 * self.x), int(h * 1.0 * self.y)
+        return int(round(w * self.x)), int(round(h * self.y))
 
     @staticmethod
     def clamp(x, y):
