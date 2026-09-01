@@ -44,11 +44,14 @@ DEFAULT_LOGO_CONFIG_PATH = os.path.join(
 
 
 # Package metadata
+# Wheels built from pyproject metadata omit some legacy fields (eg "author"
+# and "home-page"), and indexing a missing key warns on Python 3.12+ and
+# raises on Python 3.14+, so optional fields must use `get()` with fallbacks
 NAME = _META["name"]
 VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
-AUTHOR = _META["author"]
-AUTHOR_EMAIL = _META["author-email"]
-URL = _META["home-page"]
-LICENSE = _META["license"]
+AUTHOR = _META.get("author", "Voxel51, Inc.")
+AUTHOR_EMAIL = _META.get("author-email", "info@voxel51.com")
+URL = _META.get("home-page", "https://github.com/voxel51/eta")
+LICENSE = _META.get("license", "Apache")
 VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
