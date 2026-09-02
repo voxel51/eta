@@ -21,20 +21,28 @@ jobs:
           python-version: 3
       - name: Install dependencies
         run: |
-          pip install --upgrade pip setuptools wheel twine
-      - name: Install ETA
+          pip install --upgrade pip build
+      - name: Set release version
+        env:
+          RELEASE_TAG: ${{ github.ref }}
         run: |
-          pip install --no-deps -e .
-      - name: Validate version
+          # The tag must match the VERSION file (vX.Y.Z), or extend it with
+          # a release-candidate suffix (vX.Y.Z-rc.N), which is written to
+          # VERSION for this build only.
+          base_version=$(tr -d '\r\n' < VERSION)
+          tag_version=${RELEASE_TAG#refs/tags/v}
+          if [ "$tag_version" = "$base_version" ]; then
+            :
+          elif [[ "$tag_version" == "$base_version"-rc.* ]]; then
+            printf '%s\n' "$tag_version" > VERSION
+          else
+            echo "::error::Tag $tag_version does not match VERSION $base_version"
+            exit 1
+          fi
+          echo "Building voxel51-eta $(tr -d '\r\n' < VERSION)"
+      - name: Build
         run: |
-          SETUP_VERSION="$(pip list --format json | jq -r '.[] | select(.name=="voxel51-eta") | .version')"
-          TAG_VERSION="$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/v//' | sed 's/-rc\..*//')"
-          echo "setup.py version: ${SETUP_VERSION}"
-          echo "tagged version: ${TAG_VERSION}"
-          test "${SETUP_VERSION}" = "${TAG_VERSION}"
-      - name: Build wheel
-        run: |
-          RELEASE_VERSION=$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/v//') python setup.py sdist bdist_wheel
+          python -m build
       # Utilize
       # [trusted publishers](https://docs.pypi.org/trusted-publishers/)
       # This will use OIDC to publish the dists/ package to pypi.
