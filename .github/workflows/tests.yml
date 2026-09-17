@@ -35,7 +35,7 @@ jobs:
       - name: Install ETA
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install -e .
+          pip install -e ".[storage]"
           pip install pytest
       - name: Run tests
         run: |

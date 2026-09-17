@@ -1075,7 +1075,7 @@ class _BotoStorageClient(StorageClient, CanSyncDirectories):
 
         Args:
             cloud_path: the cloud path
-            method: the HTTP verb (GET, PUT, DELETE) to authorize
+            method: the HTTP verb (GET, HEAD, PUT, DELETE) to authorize
             hours: the number of hours that the URL is valid
             content_type: (PUT actions only) the optional type of the content
                 being uploaded
@@ -2276,7 +2276,7 @@ class GoogleCloudStorageClient(
 
         Args:
             cloud_path: the path to the GCS object
-            method: the HTTP verb (GET, PUT, DELETE) to authorize
+            method: the HTTP verb (GET, HEAD, PUT, DELETE) to authorize
             hours: the number of hours that the URL is valid
             content_type: (PUT actions only) the optional type of the content
                 being uploaded
@@ -2826,8 +2826,12 @@ class AzureStorageClient(
         if self._account_key is None and self._sas_token is None:
             self._generate_user_delegation_key()
 
+        # A HEAD returns a blob's properties and none of its content, which
+        # read permission authorizes. Azure has no properties-only permission
+        # to narrow it to.
         self._permissions = {
             "GET": azb.BlobSasPermissions(read=True),
+            "HEAD": azb.BlobSasPermissions(read=True),
             "PUT": azb.BlobSasPermissions(create=True),
             "DELETE": azb.BlobSasPermissions(delete=True),
         }
@@ -3157,13 +3161,16 @@ class AzureStorageClient(
 
         Args:
             cloud_path: the path to the Azure Storage object
-            method: the HTTP verb (GET, PUT, DELETE) to authorize
+            method: the HTTP verb (GET, HEAD, PUT, DELETE) to authorize
             hours: the number of hours that the URL is valid
             content_type: (PUT actions only) the optional type of the content
                 being uploaded
 
         Returns:
             a URL for accessing the object via HTTP request
+
+        Raises:
+            ValueError: if the client cannot sign a URL for ``method``
         """
         container_name, blob_name = self._parse_path(cloud_path)
 
@@ -3171,7 +3178,13 @@ class AzureStorageClient(
         if signature is None:
             self._refresh_user_delegation_key_if_necessary()
 
-            permission = self._permissions[method.upper()]
+            try:
+                permission = self._permissions[method.upper()]
+            except KeyError:
+                raise ValueError(
+                    "Cannot sign a URL for HTTP method '%s'; expected one "
+                    "of %s" % (method, sorted(self._permissions))
+                ) from None
             expiry = datetime.datetime.utcnow() + datetime.timedelta(hours=hours)
 
             signature = azb.generate_blob_sas(
