@@ -3221,6 +3221,9 @@ def to_human_decimal_str(num, decimals=1, strip=False, max_unit=None):
         if max_unit is not None and unit == max_unit:
             break
 
+        if unit == _DECIMAL_UNITS[-1]:
+            break  # there is no larger unit to convert to
+
         num /= 1000
 
     str_fmt = "%." + str(decimals) + "f"
@@ -3296,6 +3299,9 @@ def to_human_bytes_str(num_bytes, decimals=1, strip=False, max_unit=None):
         if max_unit is not None and unit == max_unit:
             break
 
+        if unit == _BYTES_UNITS[-1]:
+            break  # there is no larger unit to convert to
+
         num_bytes /= 1024
 
     str_fmt = "%." + str(decimals) + "f"
@@ -3369,6 +3375,9 @@ def to_human_bits_str(num_bits, decimals=1, strip=False, max_unit=None):
 
         if max_unit is not None and unit == max_unit:
             break
+
+        if unit == _BITS_UNITS[-1]:
+            break  # there is no larger unit to convert to
 
         num_bits /= 1024
 
