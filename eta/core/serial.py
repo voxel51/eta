@@ -89,7 +89,7 @@ def read_json(path):
         ValueError: if the JSON file was invalid
     """
     try:
-        with open(path, "rt") as f:
+        with open(path, "rt", encoding="utf-8") as f:
             return json.load(f)
     except ValueError:
         raise ValueError("Unable to parse JSON file '%s'" % path)
@@ -107,7 +107,7 @@ def write_json(obj, path, pretty_print=False):
     """
     s = json_to_str(obj, pretty_print=pretty_print)
     etau.ensure_basedir(path)
-    with open(path, "wt") as f:
+    with open(path, "wt", encoding="utf-8") as f:
         f.write(s)
 
 
@@ -173,7 +173,7 @@ def write_ndjson(obj, path, append=False):
         prefix = ""
 
     mode = "at" if append else "wt"
-    with open(path, mode) as f:
+    with open(path, mode, encoding="utf-8") as f:
         if prefix:
             f.write(prefix)
 
