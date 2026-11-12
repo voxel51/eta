@@ -3945,18 +3945,21 @@ def fill_partial_pattern(patt, vals):
 
 
 def _iter_pattern_matches(patt):
-    def _glob_escape(s):
-        return re.sub(r"([\*\?\[])", r"\\\1", s)
+    # Only the numeric sequences are patterns; the rest is a literal path,
+    # which may contain backslashes, parentheses, brackets, etc
+    seq_exp = re.compile(r"(%[0-9]*d)")
+    chunks = re.split(seq_exp, patt)
+    literals = chunks[::2]
+    seq_patts = chunks[1::2]
+    num_inds = len(seq_patts)
 
     # Use glob to extract approximate matches
-    seq_exp = re.compile(r"(%[0-9]*d)")
-    glob_patt = re.sub(seq_exp, "*", _glob_escape(patt))
+    glob_patt = "*".join(glob.escape(literal) for literal in literals)
     files = get_glob_matches(glob_patt)
 
     # Create validation functions
-    seq_patts = re.findall(seq_exp, patt)
     fcns = [parse_int_sprintf_pattern(sp) for sp in seq_patts]
-    full_exp, num_inds = re.subn(seq_exp, r"(\\s*\\d+)", patt)
+    full_exp = r"(\s*\d+)".join(re.escape(literal) for literal in literals)
 
     # Iterate over exactly matching patterns and files
     for f in files:
