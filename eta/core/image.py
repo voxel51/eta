@@ -464,7 +464,17 @@ def read(path_or_url, include_alpha=False, flag=None):
         return download(path_or_url, include_alpha=include_alpha, flag=flag)
 
     flag = _get_opencv_imread_flag(flag, include_alpha)
-    img_bgr = cv2.imread(path_or_url, flag)
+    if _is_non_ascii_windows_path(path_or_url):
+        # OpenCV cannot open these paths, so read the bytes ourselves
+        try:
+            vec = np.fromfile(path_or_url, dtype=np.uint8)
+        except OSError:
+            vec = np.empty(0, dtype=np.uint8)
+
+        img_bgr = cv2.imdecode(vec, flag) if vec.size else None
+    else:
+        img_bgr = cv2.imread(path_or_url, flag)
+
     if img_bgr is None:
         raise OSError("Image not found '%s'" % path_or_url)
 
@@ -479,7 +489,12 @@ def write(img, path):
         path: the output path
     """
     etau.ensure_basedir(path)
-    cv2.imwrite(path, _exchange_rb(img))
+    if _is_non_ascii_windows_path(path):
+        # OpenCV cannot open these paths, so write the bytes ourselves
+        _, vec = cv2.imencode(os.path.splitext(path)[1], _exchange_rb(img))
+        vec.tofile(path)
+    else:
+        cv2.imwrite(path, _exchange_rb(img))
 
 
 def encode(img, ext):
@@ -493,6 +508,16 @@ def encode(img, ext):
         the encoded image bytes
     """
     return cv2.imencode(ext, _exchange_rb(img))[1].tobytes()
+
+
+def _is_non_ascii_windows_path(path):
+    # On Windows, OpenCV reads paths in the ANSI code page rather than Unicode
+    try:
+        str(path).encode("ascii")
+    except UnicodeError:
+        return os.name == "nt"
+
+    return False
 
 
 def _get_opencv_imread_flag(flag, include_alpha):
